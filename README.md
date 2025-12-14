@@ -49,7 +49,7 @@ See also
 - ✅ Code linting using [flake8](https://flake8.pycqa.org/en/latest/)
 - 📊 Code coverage reports using [codecov](https://about.codecov.io/sign-up/)
 - 🛳️ Automatic release to [PyPI](https://pypi.org) using [twine](https://twine.readthedocs.io/en/latest/) and github actions.
-- 🎯 Entry points to execute your program using `python -m <project_name>` or `$ project_name` with basic CLI argument parsing.
+- 🎯 Entry points to execute your program using `python -m <prime_directive>` or `$ prime_directive` with basic CLI argument parsing.
 - 🔄 Continuous integration using [Github Actions](.github/workflows/) with jobs to lint, test and release your project on Linux, Mac and Windows environments.
 
 > Curious about architectural decisions on this template? read [ABOUT_THIS_TEMPLATE.md](ABOUT_THIS_TEMPLATE.md)  
@@ -60,33 +60,33 @@ See also
 <!--  DELETE THE LINES ABOVE THIS AND WRITE YOUR PROJECT README BELOW -->
 
 ---
-# project_name
+# prime_directive
 
-[![codecov](https://codecov.io/gh/author_name/project_urlname/branch/main/graph/badge.svg?token=project_urlname_token_here)](https://codecov.io/gh/author_name/project_urlname)
-[![CI](https://github.com/author_name/project_urlname/actions/workflows/main.yml/badge.svg)](https://github.com/author_name/project_urlname/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/ImmortalDemonGod/prime-directive/branch/main/graph/badge.svg?token=prime-directive_token_here)](https://codecov.io/gh/ImmortalDemonGod/prime-directive)
+[![CI](https://github.com/ImmortalDemonGod/prime-directive/actions/workflows/main.yml/badge.svg)](https://github.com/ImmortalDemonGod/prime-directive/actions/workflows/main.yml)
 
-project_description
+Awesome prime_directive created by ImmortalDemonGod
 
 ## Install it from PyPI
 
 ```bash
-pip install project_name
+pip install prime_directive
 ```
 
 ## Usage
 
 ```py
-from project_name import BaseClass
-from project_name import base_function
+from prime_directive import BaseClass
+from prime_directive import base_function
 
 BaseClass().base_method()
 base_function()
 ```
 
 ```bash
-$ python -m project_name
+$ python -m prime_directive
 #or
-$ project_name
+$ prime_directive
 ```
 
 ## Development
