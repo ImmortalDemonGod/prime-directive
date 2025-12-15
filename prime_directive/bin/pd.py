@@ -1,9 +1,18 @@
 import typer
 import shutil
-import requests
 import os
 import sys
 import logging
+from dotenv import load_dotenv
+from pathlib import Path
+
+# Load .env from multiple locations (in order of priority)
+# 1. Current working directory
+# 2. User's home ~/.prime-directive/.env
+# 3. The prime-directive repo root
+load_dotenv()  # CWD
+load_dotenv(Path.home() / ".prime-directive" / ".env")
+load_dotenv(Path(__file__).parent.parent.parent / ".env")
 from rich.console import Console
 from rich.table import Table
 from typing import Optional
@@ -44,29 +53,22 @@ def load_config() -> DictConfig:
     # Register structured configs
     register_configs()
     
-    # Initialize Hydra
+    # Initialize Hydra - use relative path from this module's location
+    # ../conf is relative to prime_directive/bin/pd.py -> prime_directive/conf
     try:
-        config_dir = Path(__file__).parent.parent / "conf"
-        # Hydra expects relative path from the calling script or absolute path
-        with initialize(version_base=None, config_path=str(config_dir)):
+        with initialize(version_base=None, config_path="../conf"):
             cfg = compose(config_name="config")
             return cfg
-    except (OSError, ValueError) as e:
-        # Fallback for when running from root or different context
-        try:
-            with initialize(version_base=None, config_path="../../prime_directive/conf"):
-                cfg = compose(config_name="config")
-                return cfg
-        except (OSError, ValueError) as inner_e:
-            msg = f"Error loading config: {e} | {inner_e}"
-            console.print(f"[bold red]{msg}[/bold red]")
-            logger.critical(msg)
-            sys.exit(1)
+    except Exception as e:
+        msg = f"Error loading config: {e}"
+        console.print(f"[bold red]{msg}[/bold red]")
+        logger.critical(msg)
+        sys.exit(1)
 
 # Initialize logging globally with default, will be re-configured if needed
 setup_logging()
 
-async def freeze_logic(repo_id: str, config: DictConfig):
+async def freeze_logic(repo_id: str, config: DictConfig, human_note: Optional[str] = None):
     """Core freeze logic separated for reuse (Async)."""
     if repo_id not in config.repos:
         msg = f"Repository '{repo_id}' not found in configuration."
@@ -119,6 +121,7 @@ async def freeze_logic(repo_id: str, config: DictConfig):
             terminal_logs=term_output,
             active_task=active_task,
             model=config.system.ai_model,
+            provider=getattr(config.system, 'ai_provider', 'ollama'),
             fallback_provider=config.system.ai_fallback_provider,
             fallback_model=config.system.ai_fallback_model,
             require_confirmation=config.system.ai_require_confirmation,
@@ -135,25 +138,51 @@ async def freeze_logic(repo_id: str, config: DictConfig):
     # 5. Save to DB (Async)
     await init_db(config.system.db_path)
     async for session in get_session(config.system.db_path):
+        # Ensure Repository exists (FK constraint)
+        from prime_directive.core.db import Repository
+        from sqlalchemy import select as sql_select
+        stmt = sql_select(Repository).where(Repository.id == repo_id)
+        result = await session.execute(stmt)
+        existing_repo = result.scalars().first()
+        if not existing_repo:
+            new_repo = Repository(
+                id=repo_id,
+                path=repo_path,
+                priority=repo_config.priority,
+                active_branch=repo_config.get("active_branch", "main")
+            )
+            session.add(new_repo)
+            await session.flush()
+        
         snapshot = ContextSnapshot(
             repo_id=repo_id,
             timestamp=datetime.utcnow(),
             git_status_summary=git_summary,
             terminal_last_command=last_cmd,
             terminal_output_summary=term_output,
-            ai_sitrep=sitrep
+            ai_sitrep=sitrep,
+            human_note=human_note
         )
         session.add(snapshot)
         await session.commit()
         msg = f"Snapshot saved. ID: {snapshot.id}"
         console.print(f"[bold green]{msg}[/bold green]")
+        console.print(f"[bold magenta]YOUR NOTE:[/bold magenta] {human_note}")
         console.print(f"[italic]{sitrep}[/italic]")
-        logger.info(f"{msg}. SITREP: {sitrep}")
+        logger.info(f"{msg}. SITREP: {sitrep}. Note: {human_note}")
 
 @app.command("freeze")
-def freeze(repo_id: str):
+def freeze(
+    repo_id: str,
+    note: str = typer.Option(..., "--note", "-n", help="REQUIRED: What you were actually working on (AI can't read your mind)")
+):
     """
     Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
+    
+    The --note is MANDATORY. This is YOUR context that the AI will miss.
+    Without it, you lose the most important piece of information: what YOU knew.
+    
+    Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit review"
     """
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
@@ -161,7 +190,7 @@ def freeze(repo_id: str):
     
     async def run_freeze():
         try:
-            await freeze_logic(repo_id, cfg)
+            await freeze_logic(repo_id, cfg, human_note=note)
         except ValueError:
             raise typer.Exit(code=1) from None
         finally:
