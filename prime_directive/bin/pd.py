@@ -61,7 +61,7 @@ def load_config() -> DictConfig:
              logger.critical(msg)
              sys.exit(1)
 
-# Initialize logging globally
+# Initialize logging globally with default, will be re-configured if needed
 setup_logging()
 
 def freeze_logic(repo_id: str, config: DictConfig):
@@ -79,27 +79,45 @@ def freeze_logic(repo_id: str, config: DictConfig):
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
     
     # 1. Capture Git State
-    git_st = get_status(repo_path)
-    git_summary = f"Branch: {git_st['branch']}\nDirty: {git_st['is_dirty']}\nFiles: {git_st['uncommitted_files']}\nDiff: {git_st.get('diff_stat', '')}"
+    if config.system.mock_mode:
+        logger.info("MOCK MODE: Skipping actual git status check")
+        git_summary = "MOCK: Branch: main\nDirty: False"
+        git_st = {"branch": "main", "is_dirty": False, "uncommitted_files": [], "diff_stat": ""}
+    else:
+        git_st = get_status(repo_path)
+        git_summary = f"Branch: {git_st['branch']}\nDirty: {git_st['is_dirty']}\nFiles: {git_st['uncommitted_files']}\nDiff: {git_st.get('diff_stat', '')}"
+    
     logger.debug(f"Git state for {repo_id}: {git_st}")
     
     # 2. Capture Terminal State
-    last_cmd, term_output = capture_terminal_state()
+    if config.system.mock_mode:
+        logger.info("MOCK MODE: Skipping terminal capture")
+        last_cmd = "mock_cmd"
+        term_output = "MOCK: Terminal output"
+    else:
+        last_cmd, term_output = capture_terminal_state()
+    
     logger.debug(f"Terminal state: cmd={last_cmd}")
     
     # 3. Capture Active Task
+    # Tasks are file based, so we might still want to read them even in mock mode?
+    # Or mock that too. Let's read them as it's just FS.
     active_task = get_active_task(repo_path)
     logger.debug(f"Active task: {active_task}")
     
     # 4. Generate AI SITREP
     console.print("Generating AI SITREP...")
-    sitrep = generate_sitrep(
-        repo_id=repo_id,
-        git_state=git_summary,
-        terminal_logs=term_output,
-        active_task=active_task,
-        model=config.system.ai_model
-    )
+    if config.system.mock_mode:
+        logger.info("MOCK MODE: Skipping AI generation")
+        sitrep = "MOCK: SITREP generated without AI."
+    else:
+        sitrep = generate_sitrep(
+            repo_id=repo_id,
+            git_state=git_summary,
+            terminal_logs=term_output,
+            active_task=active_task,
+            model=config.system.ai_model
+        )
     logger.info(f"Generated SITREP for {repo_id}")
     
     # 5. Save to DB
@@ -130,6 +148,7 @@ def freeze(repo_id: str):
     """
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
+    setup_logging(cfg.system.log_path)
     freeze_logic(repo_id, cfg)
 
 @app.command("switch")
@@ -139,6 +158,7 @@ def switch(repo_id: str):
     """
     logger.info(f"Command: switch {repo_id}")
     cfg = load_config()
+    setup_logging(cfg.system.log_path)
     
     if repo_id not in cfg.repos:
         msg = f"Repository '{repo_id}' not found in configuration."
@@ -167,10 +187,16 @@ def switch(repo_id: str):
     logger.info(f"Switching to {repo_id}")
     
     # Ensure Tmux Session
-    ensure_session(repo_id, target_repo.path)
+    if cfg.system.mock_mode:
+        logger.info(f"MOCK MODE: ensure_session({repo_id})")
+    else:
+        ensure_session(repo_id, target_repo.path)
     
     # Launch Editor
-    launch_editor(target_repo.path, cfg.system.editor_cmd)
+    if cfg.system.mock_mode:
+        logger.info(f"MOCK MODE: launch_editor({target_repo.path})")
+    else:
+        launch_editor(target_repo.path, cfg.system.editor_cmd)
     
     # 3. Display SITREP
     async def show_sitrep():
@@ -194,6 +220,8 @@ def list_repos():
     """List all managed repositories."""
     logger.info("Command: list")
     cfg = load_config()
+    setup_logging(cfg.system.log_path)
+    
     table = Table(title="Prime Directive Repositories")
     table.add_column("ID", style="cyan")
     table.add_column("Priority", style="magenta")
@@ -217,6 +245,8 @@ def status_command():
     """Show detailed status of all repositories."""
     logger.info("Command: status")
     cfg = load_config()
+    setup_logging(cfg.system.log_path)
+    
     table = Table(title="Prime Directive Status")
     table.add_column("Project", style="cyan")
     table.add_column("Priority", justify="center")
@@ -243,7 +273,10 @@ def status_command():
 
     for repo in sorted_repos:
         # 1. Git Status
-        git_st = get_status(repo.path)
+        if cfg.system.mock_mode:
+            git_st = {"branch": "mock", "is_dirty": False, "uncommitted_files": []}
+        else:
+            git_st = get_status(repo.path)
         
         status_icon = "🟢"
         status_text = "Clean"
@@ -282,44 +315,57 @@ def doctor():
     """Diagnose system dependencies and configuration."""
     logger.info("Command: doctor")
     cfg = load_config()
+    setup_logging(cfg.system.log_path)
+    
     console.print("[bold]Prime Directive Doctor[/bold]")
+    if cfg.system.mock_mode:
+        console.print("[bold yellow]MOCK MODE ENABLED[/bold yellow]")
     
     checks = []
     
     # 1. Tmux
-    tmux_path = shutil.which("tmux")
-    checks.append(("Tmux Installed", "✅" if tmux_path else "❌", tmux_path or "Not found"))
+    if cfg.system.mock_mode:
+        checks.append(("Tmux Installed", "✅", "Mocked"))
+    else:
+        tmux_path = shutil.which("tmux")
+        checks.append(("Tmux Installed", "✅" if tmux_path else "❌", tmux_path or "Not found"))
 
     # 2. Editor
-    editor_cmd = cfg.system.editor_cmd
-    editor_path = shutil.which(editor_cmd)
-    checks.append((f"Editor ({editor_cmd})", "✅" if editor_path else "❌", editor_path or "Not found in PATH"))
+    if cfg.system.mock_mode:
+        checks.append((f"Editor ({cfg.system.editor_cmd})", "✅", "Mocked"))
+    else:
+        editor_cmd = cfg.system.editor_cmd
+        editor_path = shutil.which(editor_cmd)
+        checks.append((f"Editor ({editor_cmd})", "✅" if editor_path else "❌", editor_path or "Not found in PATH"))
 
     # 3. AI Model (Ollama)
-    ai_status = "❌"
-    ai_msg = "Connection Failed"
-    try:
-        # Check connection
-        resp = requests.get("http://localhost:11434/api/tags", timeout=2)
-        if resp.status_code == 200:
-            models = resp.json().get("models", [])
-            model_names = [m["name"] for m in models]
-            target_model = cfg.system.ai_model
-            # Check for partial match (e.g. qwen2.5-coder:latest)
-            if any(target_model in name for name in model_names):
-                ai_status = "✅"
-                ai_msg = f"Connected & {target_model} found"
+    if cfg.system.mock_mode:
+        checks.append(("AI Engine (Ollama)", "✅", "Mocked"))
+    else:
+        ai_status = "❌"
+        ai_msg = "Connection Failed"
+        try:
+            # Check connection
+            resp = requests.get("http://localhost:11434/api/tags", timeout=2)
+            if resp.status_code == 200:
+                models = resp.json().get("models", [])
+                model_names = [m["name"] for m in models]
+                target_model = cfg.system.ai_model
+                # Check for partial match (e.g. qwen2.5-coder:latest)
+                if any(target_model in name for name in model_names):
+                    ai_status = "✅"
+                    ai_msg = f"Connected & {target_model} found"
+                else:
+                    ai_status = "⚠️"
+                    ai_msg = f"Connected but {target_model} missing (Pulling needed)"
             else:
-                ai_status = "⚠️"
-                ai_msg = f"Connected but {target_model} missing (Pulling needed)"
-        else:
-            ai_msg = f"API Error: {resp.status_code}"
-    except requests.exceptions.ConnectionError:
-        ai_msg = "Ollama not running (localhost:11434)"
-    except Exception as e:
-        ai_msg = f"Error: {str(e)}"
-    
-    checks.append(("AI Engine (Ollama)", ai_status, ai_msg))
+                ai_msg = f"API Error: {resp.status_code}"
+        except requests.exceptions.ConnectionError:
+            ai_msg = "Ollama not running (localhost:11434)"
+        except Exception as e:
+            ai_msg = f"Error: {str(e)}"
+        
+        checks.append(("AI Engine (Ollama)", ai_status, ai_msg))
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
@@ -338,6 +384,3 @@ def doctor():
     
     # Log results
     logger.info(f"Doctor checks: {checks}")
-
-if __name__ == "__main__":
-    app()
