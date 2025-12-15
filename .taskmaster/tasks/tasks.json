@@ -733,14 +733,61 @@
           19
         ],
         "status": "pending",
-        "subtasks": [
-          {
-            "id": 1,
-            "title": "Set Up Integration Test Harness in Mock Mode",
-            "description": "Create a test harness to run integration tests in mock mode for the freeze and switch operations.",
-            "dependencies": [],
-            "details": "Develop a test framework that simulates the production environment in a mock mode. This should include setting up necessary mock services and data to simulate the freeze and switch operations.",
-            "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 22,
+        "title": "Tier 1: Smart dependency detection + actionable guidance (no auto-install of system deps)",
+        "description": "Add dependency detection utilities and enhance pd doctor to provide copy-paste install/start/pull guidance for Ollama and optional OpenAI fallback.",
+        "details": "Implement core/dependencies.py with platform-aware install guidance (macOS/Linux/other) and checks for: Ollama installed, Ollama API running, model pulled (qwen2.5-coder), and OpenAI API key present. Enhance pd doctor output to clearly show install/start commands and model pull commands. Explicitly do NOT auto-install system binaries; only provide guidance.",
+        "testStrategy": "Unit tests for platform detection and doctor output behavior using mocks (shutil.which, requests.get). Manual: pd doctor prints actionable steps when Ollama is missing/not running/model missing.",
+        "priority": "high",
+        "dependencies": [
+          10
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 23,
+        "title": "Tier 2: AI provider manager with OpenAI fallback + cost/consent guardrails",
+        "description": "Introduce AI provider abstraction (Ollama primary, OpenAI fallback) with explicit user consent and budget controls.",
+        "details": "Create core/ai_providers.py defining provider interfaces for Ollama and OpenAI. Add Hydra config fields for primary/fallback providers/models, monthly budget, and require-confirmation flag. Implement selection logic: try Ollama first; if unavailable, fall back to OpenAI only if configured and within budget/consent settings. Ensure provider choice is clearly logged.",
+        "testStrategy": "Unit tests simulating: Ollama up, Ollama down with OpenAI key set, Ollama down without OpenAI key, and budget/consent blocking fallback. Verify freeze still produces a SITREP or a clear placeholder without crashing.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          22
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 24,
+        "title": "Tier 2: Usage tracking + budget enforcement for paid AI fallback",
+        "description": "Track OpenAI fallback usage in SQLite and enforce monthly budget limits to prevent bill shock.",
+        "details": "Implement a lightweight usage tracker (SQLite table in existing db or separate file) to record provider, timestamp, rough token counts/cost estimates, and outcome. Add budget checks used by the provider manager. Add a CLI command (e.g., pd ai-usage) or enhance doctor/status to show month-to-date cost.",
+        "testStrategy": "Unit tests for cost aggregation and budget blocking logic. Integration test: simulate multiple OpenAI fallbacks and verify budget enforcement stops further calls and returns a clear message.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          23
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 25,
+        "title": "Tier 3 (Optional): Auto-install Python-only dependencies (allowlist, venv-only)",
+        "description": "Optionally auto-install missing Python packages (e.g., openai, tenacity) inside the active venv using a strict allowlist; never install system binaries.",
+        "details": "Implement core/auto_installer.py that checks for allowlisted packages and installs them with pip inside the current interpreter environment. Add Hydra config flag auto_install_python_deps and keep auto_install_system_deps forced false. Integrate into OpenAI provider initialization if enabled.",
+        "testStrategy": "Unit tests that mock subprocess/pip calls and verify allowlist enforcement. Ensure feature is off by default and does not run in CI unless explicitly enabled.",
+        "priority": "low",
+        "dependencies": [
+          23
+        ],
+        "status": "pending",
+        "subtasks": []
             "testStrategy": "Verify that the test harness can execute freeze and switch operations without errors in a controlled mock environment."
           },
           {
