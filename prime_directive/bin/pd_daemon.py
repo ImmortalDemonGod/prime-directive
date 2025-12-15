@@ -7,6 +7,7 @@ import asyncio
 from datetime import datetime, timedelta
 from prime_directive.core.registry import load_registry
 from prime_directive.bin.pd import freeze_logic
+from prime_directive.core.db import dispose_engine
 
 app = typer.Typer()
 console = Console()
@@ -50,6 +51,12 @@ def main(
             console.print(f"[yellow]Skipping {repo_id}: Path not found[/yellow]")
 
     observer.start()
+    
+    async def run_freeze(repo_id, registry):
+        try:
+            await freeze_logic(repo_id, registry)
+        finally:
+            await dispose_engine()
 
     try:
         while True:
@@ -61,8 +68,7 @@ def main(
                 if delta.total_seconds() > inactivity_limit and not handler.is_frozen:
                     console.print(f"[blue]Inactivity detected in {repo_id} ({delta}). Freezing...[/blue]")
                     try:
-                        # We call freeze_logic directly. Note: freeze_logic calls asyncio.run inside it.
-                        freeze_logic(repo_id, registry)
+                        asyncio.run(run_freeze(repo_id, registry))
                         handler.is_frozen = True
                         console.print(f"[green]Repository {repo_id} is now FROZEN.[/green]")
                     except Exception as e:
