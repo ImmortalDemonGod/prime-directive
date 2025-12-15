@@ -39,7 +39,7 @@ def load_registry(config_path: str = "prime_directive/system/registry.yaml") -> 
         if fallback.exists():
             path = fallback
         else:
-             # Return default if no config found
+            # Return default if no config found
             return Registry()
 
     with open(path, "r") as f:
@@ -61,7 +61,7 @@ def load_registry(config_path: str = "prime_directive/system/registry.yaml") -> 
         # If keys are ids and values are data (without id inside), we need to inject id
         for repo_id, repo_data in data["repos"].items():
             if isinstance(repo_data, dict):
-                 if "id" not in repo_data:
-                     repo_data["id"] = repo_id
+                if "id" not in repo_data:
+                    repo_data["id"] = repo_id
     
     return Registry(**data)
