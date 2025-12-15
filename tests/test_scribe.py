@@ -41,3 +41,25 @@ def test_generate_sitrep_connection_error():
         )
         assert "Error generating SITREP" in result
         assert "Connection refused" in result
+
+def test_generate_sitrep_retries_then_success():
+    mock_response = Mock()
+    mock_response.json.return_value = {"response": "SITREP: Recovered. Next: Continue."}
+    mock_response.raise_for_status.return_value = None
+
+    side_effects = [
+        requests.exceptions.Timeout("Timed out"),
+        mock_response,
+    ]
+
+    with patch("requests.post", side_effect=side_effects) as mock_post:
+        result = generate_sitrep(
+            repo_id="test-repo",
+            git_state="clean",
+            terminal_logs="loading...",
+            max_retries=1,
+            backoff_seconds=0.0,
+        )
+
+        assert result == "SITREP: Recovered. Next: Continue."
+        assert mock_post.call_count == 2
