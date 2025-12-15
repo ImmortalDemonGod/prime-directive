@@ -1,7 +1,7 @@
 [project]
 name = "prime-directive"
 version = "0.1.0"
-description = "Add your description here"
+description = "AI-powered context preservation system for multi-repository development workflows"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
