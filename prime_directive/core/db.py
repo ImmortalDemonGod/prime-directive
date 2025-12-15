@@ -1,6 +1,7 @@
 import os
 import threading
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional, Dict, AsyncGenerator
 
 from sqlmodel import SQLModel, Field, Relationship
@@ -44,6 +45,18 @@ class ContextSnapshot(SQLModel, table=True):  # type: ignore[call-arg]
     __table_args__ = (
         Index("ix_contextsnapshot_repo_id_timestamp", "repo_id", "timestamp"),
     )
+
+
+class EventType(str, Enum):
+    SWITCH_IN = "SWITCH_IN"
+    COMMIT = "COMMIT"
+
+
+class EventLog(SQLModel, table=True):  # type: ignore[call-arg]
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=_utcnow)
+    repo_id: str = Field(index=True)
+    event_type: EventType = Field(index=True)
 
 
 # Database Connection
