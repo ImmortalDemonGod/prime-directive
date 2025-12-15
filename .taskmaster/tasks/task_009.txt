@@ -1,0 +1,11 @@
+# Task ID: 9
+# Title: Implement Windsurf Editor Control
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Launch Windsurf editor with correct flags using configurable editor_cmd
+# Details:
+In core/windsurf.py: def launch_editor(repo_path: str, editor_cmd: str): subprocess.Popen([editor_cmd, '-n', repo_path]) # -n = new window/instance (VSCode/Windsurf compatible per[1][3]). Windsurf confirmed as VSCode fork with identical CLI flags[1][2][6]. Reuse existing windows via Windsurf Hot Exit.
+
+# Test Strategy:
+Manual Test 3.2: pd switch black-box opens Windsurf at correct path (new window or reuse existing).

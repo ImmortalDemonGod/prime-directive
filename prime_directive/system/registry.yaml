@@ -1,0 +1,16 @@
+system:
+  editor_cmd: "windsurf"
+  ai_model: "qwen2.5-coder"
+  db_path: "data/prime.db"
+
+repos:
+  test-alpha:
+    id: "test-alpha"
+    path: "/Users/tomriddle1/prime-directive/tests/fixtures/repos/test-repo-alpha"
+    priority: 10
+    active_branch: "main"
+  test-beta:
+    id: "test-beta"
+    path: "/Users/tomriddle1/prime-directive/tests/fixtures/repos/test-repo-beta"
+    priority: 5
+    active_branch: "dev"

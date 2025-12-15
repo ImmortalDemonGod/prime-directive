@@ -1,0 +1,49 @@
+# Task ID: 16
+# Title: P0: Fix tmux attach blocking + remove shell injection risk
+# Status: pending
+# Dependencies: 8, 12
+# Priority: high
+# Description: Prevent pd switch workflow from hanging and eliminate shell-injection risk in tmux session creation.
+# Details:
+Audit-derived fixes in core/tmux.py: (1) Avoid blocking the Python process mid-switch via tmux attach-session; prefer exec-style attach (os.execvp) or ensure attach only happens at the very end if intended. (2) Remove shell injection risk from bash -c string interpolation; prefer tmux new-session -c <repo_path> and start shell without concatenated commands, or escape paths safely. Ensure behavior is correct both inside tmux (switch-client) and outside tmux (attach/exec).
+
+# Test Strategy:
+Add/extend tests to validate safe command construction and that switch can proceed to editor launch/SITREP display in non-tmux environments. Manual test: Monday morning warp scenario does not hang.
+
+# Subtasks:
+## 1. Audit tmux session creation for blocking issues [pending]
+### Dependencies: None
+### Description: Identify and document areas in core/tmux.py where tmux attach-session might block the Python process.
+### Details:
+Review the current implementation of tmux session creation and identify where the process might hang due to blocking calls. Document these areas for further action.
+
+## 2. Implement exec-style attach for tmux sessions [pending]
+### Dependencies: 16.1
+### Description: Replace blocking tmux attach-session calls with os.execvp to prevent the Python process from hanging.
+### Details:
+Modify the code to use os.execvp for attaching to tmux sessions, ensuring that the attach happens only at the end of the workflow if intended.
+
+## 3. Remove shell injection risk in tmux session creation [pending]
+### Dependencies: None
+### Description: Eliminate shell injection risks by using tmux new-session -c <repo_path> and avoiding command concatenation.
+### Details:
+Refactor the code to use tmux's -c option for setting the working directory and ensure that no shell command concatenation is used. Use shlex.quote for any necessary path handling.
+
+## 4. Ensure correct behavior inside tmux using switch-client [pending]
+### Dependencies: 16.2, 16.3
+### Description: Verify and adjust the behavior of the workflow when executed inside an existing tmux session using switch-client.
+### Details:
+Test and modify the workflow to ensure that it correctly uses tmux switch-client when inside a tmux session, without causing any blocking or security issues.
+
+## 5. Ensure correct behavior outside tmux using attach/exec [pending]
+### Dependencies: 16.2, 16.3
+### Description: Verify and adjust the behavior of the workflow when executed outside of a tmux session using attach/exec.
+### Details:
+Ensure that the workflow correctly attaches or executes a new tmux session when run outside of tmux, without blocking or security issues.
+
+## 6. Develop unit tests and mocks for tmux session management [pending]
+### Dependencies: 16.4, 16.5
+### Description: Create unit tests and mocks to verify the correct behavior of tmux session management in various scenarios.
+### Details:
+Develop comprehensive unit tests that cover both inside and outside tmux scenarios, ensuring that all code paths are tested for blocking and security issues.
+

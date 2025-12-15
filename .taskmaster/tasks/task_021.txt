@@ -1,0 +1,55 @@
+# Task ID: 21
+# Title: P2: Add integration/chaos tests for end-to-end workflow (Monday Morning Warp)
+# Status: pending
+# Dependencies: 16, 17, 19
+# Priority: low
+# Description: Add higher-level tests to validate freeze/switch/thaw end-to-end and resilience under dependency failures.
+# Details:
+Add integration tests for pd freeze + pd switch in mock mode; chaos test when Ollama is down to confirm graceful degradation; extend git parsing tests to cover renames/copies/conflicts; optional property-based tests for parsing robustness.
+
+# Test Strategy:
+CI-safe execution: tests should run without requiring tmux or Ollama (use mocks/mock_mode).
+
+# Subtasks:
+## 1. Set up Integration Test Harness in Mock Mode [pending]
+### Dependencies: None
+### Description: Create an integration test harness that operates in mock mode to simulate the end-to-end workflow without external dependencies.
+### Details:
+Develop a test harness that can simulate the entire workflow in a controlled environment. Ensure it can mock external services and dependencies to allow for isolated testing.
+
+## 2. Implement Freeze and Switch End-to-End Tests [pending]
+### Dependencies: 21.1
+### Description: Develop integration tests to validate the freeze and switch operations in the end-to-end workflow using the mock mode harness.
+### Details:
+Write tests that execute the freeze and switch operations, ensuring that the system behaves as expected through the entire workflow.
+
+## 3. Develop Chaos Test for Ollama Down Scenario [pending]
+### Dependencies: 21.1
+### Description: Create a chaos test to simulate the scenario where Ollama is down, ensuring the system degrades gracefully.
+### Details:
+Introduce a failure in the mock mode to simulate Ollama being down and observe how the system handles the failure.
+
+## 4. Extend Git Parsing Tests for Renames, Copies, and Conflicts [pending]
+### Dependencies: None
+### Description: Enhance existing git parsing tests to cover scenarios involving file renames, copies, and merge conflicts.
+### Details:
+Add test cases to the git parsing suite that specifically address the handling of renames, copies, and conflicts in git repositories.
+
+## 5. Implement Optional Property-Based Tests for Parsing Robustness [pending]
+### Dependencies: 21.4
+### Description: Introduce property-based tests to ensure robustness in parsing logic, focusing on edge cases and unexpected inputs.
+### Details:
+Use a property-based testing framework like Hypothesis to generate a wide range of inputs and validate the parsing logic against them.
+
+## 6. Document Integration and Chaos Testing Strategies [pending]
+### Dependencies: 21.1, 21.2, 21.3
+### Description: Create comprehensive documentation for the integration and chaos testing strategies implemented.
+### Details:
+Write detailed documentation explaining the purpose, setup, and execution of the integration and chaos tests, including any mock configurations.
+
+## 7. Integrate Tests into Continuous Integration Pipeline [pending]
+### Dependencies: 21.2, 21.3, 21.4, 21.5
+### Description: Ensure all new tests are integrated into the CI pipeline to run automatically on code changes.
+### Details:
+Modify the CI configuration to include the new integration, chaos, and parsing tests, ensuring they run in a CI-safe environment.
+

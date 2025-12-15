@@ -1,0 +1,11 @@
+# Task ID: 13
+# Title: Implement Shell Integration (zsh wrapper)
+# Status: done
+# Dependencies: 12
+# Priority: medium
+# Description: Create system/shell_integration.zsh with cd/tmux hijacking for seamless pd switch
+# Details:
+In ~/.zshrc: source path/to/shell_integration.zsh. function cd() { if [[ $1 == pd-* ]]; then pd switch ${1#pd-}; else builtin cd $@; fi }. Alias pd=~/path/to/bin/pd. Auto-attach tmux on pd switch.
+
+# Test Strategy:
+Manual Test 3.3: Source integration, type 'cd pd-rna-predict', verify enters tmux session.

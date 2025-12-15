@@ -1,0 +1,11 @@
+# Task ID: 11
+# Title: Implement Freeze Operation (Snapshot Current State)
+# Status: done
+# Dependencies: 3, 4, 5, 6, 7
+# Priority: high
+# Description: Create pd freeze: capture git/terminal/task state, generate AI SITREP, save to DB
+# Details:
+In bin/pd: @app.command() def freeze(repo_id: str): current_path=get_cwd_repo(), git_state=git_utils.get_status(), terminal=terminal.capture(), task=tasks.get_active_task(), sitrep=scribe.generate_sitrep(...), db.save_snapshot(repo_id, git_state..., sitrep). Timestamp=datetime.utcnow().
+
+# Test Strategy:
+Manual Test 2.3: In dirty repo run pd freeze, verify new DB row with AI summary.

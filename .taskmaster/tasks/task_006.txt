@@ -1,0 +1,11 @@
+# Task ID: 6
+# Title: Build AI Scribe Engine with Ollama Integration
+# Status: done
+# Dependencies: 3, 4, 5
+# Priority: high
+# Description: Implement core/scribe.py for generating SITREP summaries using Ollama Qwen2.5-Coder
+# Details:
+Use requests 2.32+ to POST to http://localhost:11434/api/generate. System prompt: 'You are a concise engineering assistant. Given git state, terminal logs, and active task, generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in 50 words max.' Include active task from tasks.py, git_status_summary, terminal logs. Model: qwen2.5-coder (per spec). Timeout 5s. def generate_sitrep(repo_id: str, git_state: str, terminal_logs: str, active_task: Optional[dict]) -> str.
+
+# Test Strategy:
+Manual: ollama serve, feed mock error traceback, verify coherent summary <50 words in <2s. Check prime.db ai_sitrep field.

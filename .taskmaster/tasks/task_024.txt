@@ -1,0 +1,49 @@
+# Task ID: 24
+# Title: Tier 2: Usage tracking + budget enforcement for paid AI fallback
+# Status: pending
+# Dependencies: 3, 23
+# Priority: medium
+# Description: Track OpenAI fallback usage in SQLite and enforce monthly budget limits to prevent bill shock.
+# Details:
+Implement a lightweight usage tracker (SQLite table in existing db or separate file) to record provider, timestamp, rough token counts/cost estimates, and outcome. Add budget checks used by the provider manager. Add a CLI command (e.g., pd ai-usage) or enhance doctor/status to show month-to-date cost.
+
+# Test Strategy:
+Unit tests for cost aggregation and budget blocking logic. Integration test: simulate multiple OpenAI fallbacks and verify budget enforcement stops further calls and returns a clear message.
+
+# Subtasks:
+## 1. Design SQLite Schema for Usage Tracking [pending]
+### Dependencies: None
+### Description: Create a schema for an SQLite table to track AI fallback usage, including fields for provider, timestamp, token counts, cost estimates, and outcome.
+### Details:
+Design a table with columns: id (primary key), provider (text), timestamp (datetime), token_count (integer), cost_estimate (real), and outcome (text). Ensure the table can efficiently handle queries for monthly aggregation.
+
+## 2. Implement Logging of Usage Data [pending]
+### Dependencies: 24.1
+### Description: Add functionality to log each usage event to the SQLite table whenever an AI fallback is used.
+### Details:
+Modify the provider manager to insert a new record into the SQLite table each time an AI fallback is triggered. Ensure all relevant data is captured accurately.
+
+## 3. Develop Monthly Usage Aggregation Logic [pending]
+### Dependencies: 24.2
+### Description: Create a function to aggregate usage data on a monthly basis, calculating total token counts and cost estimates.
+### Details:
+Implement a query that sums token counts and cost estimates for the current month, grouped by provider. Ensure the function can be called to retrieve these aggregates efficiently.
+
+## 4. Implement Budget Enforcement Mechanism [pending]
+### Dependencies: 24.3
+### Description: Add logic to enforce monthly budget limits based on aggregated usage data, preventing further usage if limits are exceeded.
+### Details:
+Define budget limits and implement checks in the provider manager to compare current usage against these limits. Trigger alerts or block further usage if limits are exceeded.
+
+## 5. Add CLI Command for Usage Reporting [pending]
+### Dependencies: 24.3
+### Description: Create a CLI command to display month-to-date usage and cost information, allowing users to monitor their usage against budget limits.
+### Details:
+Develop a command (e.g., 'pd ai-usage') that retrieves and displays aggregated usage data for the current month. Include details such as total tokens used and cost estimates.
+
+## 6. Develop Comprehensive Test Suite [pending]
+### Dependencies: 24.1, 24.2, 24.3, 24.4, 24.5
+### Description: Create a set of tests to cover all aspects of the usage tracking and budget enforcement features, ensuring robustness and reliability.
+### Details:
+Write unit and integration tests for each component: schema setup, logging, aggregation, budget checks, and CLI reporting. Use mock data to simulate various scenarios.
+

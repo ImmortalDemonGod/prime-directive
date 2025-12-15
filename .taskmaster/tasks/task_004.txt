@@ -1,0 +1,11 @@
+# Task ID: 4
+# Title: Implement Git State Detection
+# Status: done
+# Dependencies: 1
+# Priority: medium
+# Description: Create git_utils to capture branch, dirty status, and diff summary for any repository
+# Details:
+In core/git_utils.py: def get_status(repo_path: str) -> dict: Use subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD']) for branch, ['git', 'status', '--porcelain'] for dirty files, ['git', 'diff', '--stat'] for summary. Return {'branch': str, 'is_dirty': bool, 'uncommitted_files': list[str], 'diff_stat': str}. Handle non-git repos gracefully.
+
+# Test Strategy:
+pytest tests/test_git.py: Create temp git repo, make changes, verify get_status() returns correct dirty state and branch.

@@ -1,0 +1,11 @@
+# Task ID: 10
+# Title: Implement Core CLI Commands (list, status, doctor)
+# Status: done
+# Dependencies: 2, 3, 4, 6
+# Priority: high
+# Description: Build bin/pd CLI with Typer: pd list, pd status (rich table), pd doctor (health checks)
+# Details:
+Typer app: @app.command() def list(): rich table of repos from registry. def status(): Enhanced table with git_state=git_utils.get_status(), last_snapshot from DB, emoji status (🟢🔴🟡). def doctor(): Check shutil.which('tmux'), which(editor_cmd), requests.get('http://localhost:11434/api/tags') contains 'qwen2.5-coder', all registry paths exist.
+
+# Test Strategy:
+pd list shows registry table. pd doctor passes all checks when dependencies installed.

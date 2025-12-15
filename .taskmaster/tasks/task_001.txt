@@ -1,0 +1,11 @@
+# Task ID: 1
+# Title: Initialize Project Repository and Dependencies
+# Status: done
+# Dependencies: None
+# Priority: high
+# Description: Set up the prime-directive repository structure and install all required dependencies using uv for Python 3.11+
+# Details:
+Create repository structure exactly as specified: bin/, system/, core/, data/. Use `uv init prime-directive` then `uv add typer[all]>=0.12.0 sqlmodel>=0.0.22 watchdog>=5.0.2 rich>=13.9.0 requests>=2.32.0 pyyaml>=6.0.2`. Create pyproject.toml with [project.scripts]: pd=prime_directive.bin.pd:cli, pd-daemon=prime_directive.bin.pd_daemon:main. Initialize git and create .gitignore for data/ and __pycache__.
+
+# Test Strategy:
+Run `uv sync` and verify `pd --help` shows Typer CLI. Check `tree prime-directive/` matches exact structure. `pytest --version` works.

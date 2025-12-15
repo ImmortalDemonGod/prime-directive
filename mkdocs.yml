@@ -1,2 +1,8 @@
-site_name: prime_directive
-theme: readthedocs
+site_name: Prime Directive
+site_description: AI-powered context preservation system for multi-repository development
+theme:
+  name: readthedocs
+nav:
+  - Home: index.md
+  - Code Audit (2025-12-14): CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md
+  - Code Audit (2025-12-15): CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-15_01.md

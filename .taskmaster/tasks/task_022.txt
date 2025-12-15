@@ -1,0 +1,11 @@
+# Task ID: 22
+# Title: Tier 1: Smart dependency detection + actionable guidance (no auto-install of system deps)
+# Status: pending
+# Dependencies: 10
+# Priority: high
+# Description: Add dependency detection utilities and enhance pd doctor to provide copy-paste install/start/pull guidance for Ollama and optional OpenAI fallback.
+# Details:
+Implement core/dependencies.py with platform-aware install guidance (macOS/Linux/other) and checks for: Ollama installed, Ollama API running, model pulled (qwen2.5-coder), and OpenAI API key present. Enhance pd doctor output to clearly show install/start commands and model pull commands. Explicitly do NOT auto-install system binaries; only provide guidance.
+
+# Test Strategy:
+Unit tests for platform detection and doctor output behavior using mocks (shutil.which, requests.get). Manual: pd doctor prints actionable steps when Ollama is missing/not running/model missing.

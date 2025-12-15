@@ -1,0 +1,11 @@
+# Task ID: 25
+# Title: Tier 3 (Optional): Auto-install Python-only dependencies (allowlist, venv-only)
+# Status: pending
+# Dependencies: 23
+# Priority: low
+# Description: Optionally auto-install missing Python packages (e.g., openai, tenacity) inside the active venv using a strict allowlist; never install system binaries.
+# Details:
+Implement core/auto_installer.py that checks for allowlisted packages and installs them with pip inside the current interpreter environment. Add Hydra config flag auto_install_python_deps and keep auto_install_system_deps forced false. Integrate into OpenAI provider initialization if enabled.
+
+# Test Strategy:
+Unit tests that mock subprocess/pip calls and verify allowlist enforcement. Ensure feature is off by default and does not run in CI unless explicitly enabled.

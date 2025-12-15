@@ -1,0 +1,11 @@
+# Task ID: 12
+# Title: Implement Switch/Warp Protocol (Full Context Switch)
+# Status: done
+# Dependencies: 8, 9, 10, 11
+# Priority: high
+# Description: Core pd switch <repo>: freeze current -> thaw target with SITREP display
+# Details:
+def switch(repo_id: str): if current_repo(): freeze(current_repo()). target=tmux.ensure_session(repo_id, path), windsurf.launch_editor(path, editor_cmd). Print rich SITREP banner: last_snapshot=DB.get_latest(repo_id), f'>>> LAST ACTION: {snapshot.ai_sitrep}\n>>> GIT: {git_status}\n>>> NEXT: {next_step}'.
+
+# Test Strategy:
+Full E2E: pd switch repo1 (freeze), pd switch repo2 (thaw+display SITREP), verify tmux attaches correctly.

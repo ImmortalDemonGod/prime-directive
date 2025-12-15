@@ -1,0 +1,11 @@
+# Task ID: 3
+# Title: Setup SQLite Database Schema
+# Status: done
+# Dependencies: 1, 2
+# Priority: high
+# Description: Implement core/db.py with exact SQLModel schema for Repository and ContextSnapshot tables
+# Details:
+Use SQLModel 0.0.22+: class Repository(SQLModel, table=True) with id:str=Field(primary_key=True), path:str, priority:int, active_branch:str, last_snapshot_id:Optional[int]=Field(default=None). class ContextSnapshot(SQLModel, table=True) with id:int=Field(primary_key=True, index=True), repo_id:str, timestamp:datetime, git_status_summary:str, terminal_last_command:str, terminal_output_summary:str, ai_sitrep:str. Use SQLite URL: f'sqlite+aiosqlite:///{config.db_path}' with aiosqlite 0.21+. Create engine with create_engine(..., connect_args={'check_same_thread': False}).
+
+# Test Strategy:
+pytest tests/test_db.py: Create DB, insert Repository, insert ContextSnapshot, query back and verify data integrity and timestamps.

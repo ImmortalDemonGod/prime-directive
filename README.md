@@ -1,94 +1,176 @@
-> [!IMPORTANT]
-> This template is **archived**.  
-> UV can now [generate a sample project](https://docs.astral.sh/uv/guides/projects/#creating-a-new-project)  
-> I recommend using **UV** to bootstrap your peojects.  
-> [Copier](https://github.com/copier-org/copier) is a tools that can bootstrap projects from templates.  
+# Prime Directive
 
-
----
-
-
-# Python Project Template
-
-A low dependency and really simple to start project template for Python Projects.
-
-See also 
-- [Flask-Project-Template](https://github.com/rochacbruno/flask-project-template/) for a full feature Flask project including database, API, admin interface, etc.
-- [FastAPI-Project-Template](https://github.com/rochacbruno/fastapi-project-template/) The base to start an openapi project featuring: SQLModel, Typer, FastAPI, JWT Token Auth, Interactive Shell, Management Commands.
-
-### HOW TO USE THIS TEMPLATE
-
-> **DO NOT FORK** this is meant to be used from **[Use this template](https://github.com/rochacbruno/python-project-template/generate)** feature.
-
-1. Click on **[Use this template](https://github.com/rochacbruno/python-project-template/generate)**
-3. Give a name to your project  
-   (e.g. `my_awesome_project` recommendation is to use all lowercase and underscores separation for repo names.)
-3. Wait until the first run of CI finishes  
-   (Github Actions will process the template and commit to your new repo)
-4. If you want [codecov](https://about.codecov.io/sign-up/) Reports and Automatic Release to [PyPI](https://pypi.org)  
-  On the new repository `settings->secrets` add your `PYPI_API_TOKEN` and `CODECOV_TOKEN` (get the tokens on respective websites)
-4. Read the file [CONTRIBUTING.md](CONTRIBUTING.md)
-5. Then clone your new project and happy coding!
-
-> **NOTE**: **WAIT** until first CI run on github actions before cloning your new project.
-
-### What is included on this template?
-
-- 🖼️ Templates for starting multiple application types:
-  * **Basic low dependency** Python program (default) [use this template](https://github.com/rochacbruno/python-project-template/generate)
-  * **Flask** with database, admin interface, restapi and authentication [use this template](https://github.com/rochacbruno/flask-project-template/generate).
-  **or Run `make init` after cloning to generate a new project based on a template.**
-- 📦 A basic [setup.py](setup.py) file to provide installation, packaging and distribution for your project.  
-  Template uses setuptools because it's the de-facto standard for Python packages, you can run `make switch-to-poetry` later if you want.
-- 🤖 A [Makefile](Makefile) with the most useful commands to install, test, lint, format and release your project.
-- 📃 Documentation structure using [mkdocs](http://www.mkdocs.org)
-- 💬 Auto generation of change log using **gitchangelog** to keep a HISTORY.md file automatically based on your commit history on every release.
-- 🐋 A simple [Containerfile](Containerfile) to build a container image for your project.  
-  `Containerfile` is a more open standard for building container images than Dockerfile, you can use buildah or docker with this file.
-- 🧪 Testing structure using [pytest](https://docs.pytest.org/en/latest/)
-- ✅ Code linting using [flake8](https://flake8.pycqa.org/en/latest/)
-- 📊 Code coverage reports using [codecov](https://about.codecov.io/sign-up/)
-- 🛳️ Automatic release to [PyPI](https://pypi.org) using [twine](https://twine.readthedocs.io/en/latest/) and github actions.
-- 🎯 Entry points to execute your program using `python -m <prime_directive>` or `$ prime_directive` with basic CLI argument parsing.
-- 🔄 Continuous integration using [Github Actions](.github/workflows/) with jobs to lint, test and release your project on Linux, Mac and Windows environments.
-
-> Curious about architectural decisions on this template? read [ABOUT_THIS_TEMPLATE.md](ABOUT_THIS_TEMPLATE.md)  
-> If you want to contribute to this template please open an [issue](https://github.com/rochacbruno/python-project-template/issues) or fork and send a PULL REQUEST.
-
-[❤️ Sponsor this project](https://github.com/sponsors/rochacbruno/)
-
-<!--  DELETE THE LINES ABOVE THIS AND WRITE YOUR PROJECT README BELOW -->
-
----
-# prime_directive
-
-[![codecov](https://codecov.io/gh/ImmortalDemonGod/prime-directive/branch/main/graph/badge.svg?token=prime-directive_token_here)](https://codecov.io/gh/ImmortalDemonGod/prime-directive)
 [![CI](https://github.com/ImmortalDemonGod/prime-directive/actions/workflows/main.yml/badge.svg)](https://github.com/ImmortalDemonGod/prime-directive/actions/workflows/main.yml)
+[![codecov](https://codecov.io/gh/ImmortalDemonGod/prime-directive/branch/main/graph/badge.svg)](https://codecov.io/gh/ImmortalDemonGod/prime-directive)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
-Awesome prime_directive created by ImmortalDemonGod
+**Prime Directive** is an AI-powered context preservation system for developers who work across multiple repositories. It automatically captures and restores your development context—git state, terminal history, active tasks, and AI-generated situational reports—so you can seamlessly switch between projects without losing your train of thought.
 
-## Install it from PyPI
+## The Core User Story: "Monday Morning Warp"
 
-```bash
-pip install prime_directive
-```
-
-## Usage
-
-```py
-from prime_directive import BaseClass
-from prime_directive import base_function
-
-BaseClass().base_method()
-base_function()
-```
+You stop working on `rna-predict` on Friday night. You spend the weekend on `black-box`. Monday morning, you return to `rna-predict`:
 
 ```bash
-$ python -m prime_directive
-#or
-$ prime_directive
+$ pd switch rna-predict
+
+>>> WARPING TO RNA-PREDICT >>>
+
+ SITREP 
+>>> HUMAN NOTE: Fixing the SE(3) equivariant loss - test_rotation_invariance fails
+>>> AI SUMMARY: Working on equivariant.py line 142, the normalization epsilon is hardcoded...
+>>> TIMESTAMP: Friday 22:45
+```
+
+**The Amnesia Test**: Can you commit valid code within 5 minutes of `pd switch`? If yes, the system is working.
+
+> ⚠️ The `--note` flag is **mandatory** because AI can't read your mind. Your human insight is the most important piece of context.
+
+## Features
+
+- **Context Freezing** — Capture git status, terminal state, active tasks, and generate AI summaries before switching projects
+- **Context Restoration** — Instantly restore your previous context when returning to a project
+- **Multi-Repo Management** — Track and switch between multiple repositories with a unified CLI
+- **AI-Powered SITREPs** — Generate situational reports using Ollama (local) or OpenAI (fallback)
+- **Tmux Integration** — Automatic tmux session management per repository
+- **Task Master Integration** — Track active tasks from `.taskmaster/tasks.json`
+- **Daemon Mode** — Auto-freeze on inactivity to ensure context is always saved
+
+## Installation
+
+### Prerequisites
+
+- **Python 3.11+**
+- **tmux** — For terminal session management
+- **Ollama** (recommended) — For local AI-powered SITREP generation
+
+```bash
+# Install system dependencies (macOS)
+brew install tmux ollama
+
+# Start Ollama and pull a model
+brew services start ollama
+ollama pull qwen2.5-coder
+```
+
+### Install Prime Directive
+
+```bash
+# Install globally (recommended - works from any terminal)
+uv tool install /path/to/prime-directive
+
+# Or install in development mode
+uv pip install -e .
+```
+
+### Post-Installation Setup
+
+```bash
+# Create centralized config directory
+mkdir -p ~/.prime-directive
+
+# Copy your API keys
+echo 'OPENAI_API_KEY="sk-your-key-here"' > ~/.prime-directive/.env
+
+# Add to your shell (required for API keys)
+echo 'export OPENAI_API_KEY="$(grep OPENAI_API_KEY ~/.prime-directive/.env | cut -d= -f2 | tr -d \")"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+## Quick Start
+
+```bash
+# Check system status
+pd doctor
+
+# List tracked repositories
+pd list
+
+# Freeze current context (--note is REQUIRED)
+pd freeze my-project --note "What you were actually working on"
+
+# Switch to another repository (displays your note + AI summary)
+pd switch other-project
+
+# View status of a repository
+pd status my-project
+```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `pd doctor` | Check system dependencies and configuration |
+| `pd list` | List all tracked repositories with status |
+| `pd status` | Show detailed status of all repositories |
+| `pd freeze <repo> --note "..."` | Capture context with your human note (required) |
+| `pd switch <repo>` | Switch to a repository and display saved context |
+
+## Configuration
+
+Prime Directive uses [Hydra](https://hydra.cc/) for configuration. Edit `prime_directive/conf/config.yaml`:
+
+```yaml
+system:
+  editor_cmd: windsurf
+  ai_model: gpt-4o-mini          # Model to use for SITREP
+  ai_provider: openai            # Primary provider: "openai" or "ollama"
+  db_path: ~/.prime-directive/data/prime.db
+  log_path: ~/.prime-directive/logs/pd.log
+
+repos:
+  my-project:
+    id: my-project
+    path: /path/to/my-project
+    priority: 10
+    active_branch: main
+```
+
+### Data Storage
+
+All data is stored in `~/.prime-directive/`:
+
+| Path | Purpose |
+|------|---------|
+| `~/.prime-directive/.env` | API keys (OPENAI_API_KEY) |
+| `~/.prime-directive/data/prime.db` | Snapshots database |
+| `~/.prime-directive/logs/pd.log` | Application logs |
+
+## Architecture
+
+```
+prime_directive/
+├── bin/
+│   ├── pd.py           # Main CLI (Typer)
+│   └── pd_daemon.py    # Auto-freeze daemon
+├── core/
+│   ├── config.py       # Hydra configuration
+│   ├── db.py           # SQLModel database (async SQLite)
+│   ├── git_utils.py    # Git state capture
+│   ├── scribe.py       # AI SITREP generation
+│   ├── tasks.py        # Task Master integration
+│   ├── terminal.py     # Terminal state capture
+│   ├── tmux.py         # Tmux session management
+│   └── orchestrator.py # Context switch orchestration
+└── conf/
+    └── config.yaml     # Default Hydra config
 ```
 
 ## Development
 
-Read the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+```bash
+# Install dev dependencies
+uv pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Run linter
+make lint
+
+# Format code
+make fmt
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details.
