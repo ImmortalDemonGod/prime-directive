@@ -2,14 +2,22 @@ import typer
 import shutil
 import requests
 import os
+import sys
 from rich.console import Console
 from rich.table import Table
 from typing import Optional
 from pathlib import Path
 import asyncio
 from sqlalchemy import select
+from datetime import datetime
 
-from prime_directive.core.registry import load_registry, Registry
+# Hydra imports
+from hydra import compose, initialize
+from hydra.core.global_hydra import GlobalHydra
+from omegaconf import OmegaConf
+
+# Core imports
+from prime_directive.core.config import PrimeConfig, register_configs
 from prime_directive.core.git_utils import get_status
 from prime_directive.core.db import get_session, ContextSnapshot, init_db
 from prime_directive.core.terminal import capture_terminal_state
@@ -17,15 +25,50 @@ from prime_directive.core.tasks import get_active_task
 from prime_directive.core.scribe import generate_sitrep
 from prime_directive.core.tmux import ensure_session
 from prime_directive.core.windsurf import launch_editor
-from datetime import datetime
 
 app = typer.Typer()
+# Export cli for entry point
 cli = app
 console = Console()
 
-def freeze_logic(repo_id: str, registry: Registry):
+def load_config() -> PrimeConfig:
+    """Load configuration using Hydra."""
+    # Ensure any previous Hydra instance is cleared
+    GlobalHydra.instance().clear()
+    
+    # Register structured configs
+    register_configs()
+    
+    # Initialize Hydra
+    # config_path is relative to this file (prime_directive/bin/pd.py) -> ../conf
+    # We need to handle the case where we are running as a script vs installed package
+    # For relative path to work, we rely on __file__
+    try:
+        config_dir = Path(__file__).parent.parent / "conf"
+        # Hydra expects relative path from the calling script or absolute path
+        # Let's use absolute path to be safe if running from anywhere
+        with initialize(version_base=None, config_path=str(config_dir)):
+            cfg = compose(config_name="config")
+            # Validate/Cast to PrimeConfig structure
+            return OmegaConf.to_object(cfg)
+    except Exception as e:
+        # Fallback for when running from root or different context
+        # Try relative path assuming standard structure
+        try:
+            with initialize(version_base=None, config_path="../../prime_directive/conf"):
+                cfg = compose(config_name="config")
+                return OmegaConf.to_object(cfg)
+        except Exception:
+             console.print(f"[bold red]Error loading config:[/bold red] {e}")
+             sys.exit(1)
+
+def freeze_logic(repo_id: str, config: PrimeConfig):
     """Core freeze logic separated for reuse."""
-    repo_config = registry.repos[repo_id]
+    if repo_id not in config.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in configuration.")
+        return
+
+    repo_config = config.repos[repo_id]
     repo_path = repo_config.path
     
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
@@ -47,13 +90,13 @@ def freeze_logic(repo_id: str, registry: Registry):
         git_state=git_summary,
         terminal_logs=term_output,
         active_task=active_task,
-        model=registry.system.ai_model
+        model=config.system.ai_model
     )
     
     # 5. Save to DB
     async def save_snapshot():
-        await init_db(registry.system.db_path)
-        async for session in get_session(registry.system.db_path):
+        await init_db(config.system.db_path)
+        async for session in get_session(config.system.db_path):
             snapshot = ContextSnapshot(
                 repo_id=repo_id,
                 timestamp=datetime.utcnow(),
@@ -74,31 +117,26 @@ def freeze(repo_id: str):
     """
     Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
     """
-    registry = load_registry()
-    
-    if repo_id not in registry.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
-        raise typer.Exit(code=1)
-        
-    freeze_logic(repo_id, registry)
+    cfg = load_config()
+    freeze_logic(repo_id, cfg)
 
 @app.command("switch")
 def switch(repo_id: str):
     """
     Switch context to another repository (Freeze current -> Warp -> Thaw target).
     """
-    registry = load_registry()
+    cfg = load_config()
     
-    if repo_id not in registry.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
+    if repo_id not in cfg.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in configuration.")
         raise typer.Exit(code=1)
 
-    target_repo = registry.repos[repo_id]
+    target_repo = cfg.repos[repo_id]
 
     # 1. Detect and Freeze current repo
     cwd = os.getcwd()
     current_repo_id = None
-    for r_id, r_config in registry.repos.items():
+    for r_id, r_config in cfg.repos.items():
         # Check if CWD is inside the repo path
         if cwd.startswith(os.path.abspath(r_config.path)):
             current_repo_id = r_id
@@ -106,7 +144,7 @@ def switch(repo_id: str):
     
     if current_repo_id and current_repo_id != repo_id:
         console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
-        freeze_logic(current_repo_id, registry)
+        freeze_logic(current_repo_id, cfg)
     
     # 2. Thaw / Switch
     console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
@@ -115,12 +153,12 @@ def switch(repo_id: str):
     ensure_session(repo_id, target_repo.path)
     
     # Launch Editor
-    launch_editor(target_repo.path, registry.system.editor_cmd)
+    launch_editor(target_repo.path, cfg.system.editor_cmd)
     
     # 3. Display SITREP
     async def show_sitrep():
-        await init_db(registry.system.db_path)
-        async for session in get_session(registry.system.db_path):
+        await init_db(cfg.system.db_path)
+        async for session in get_session(cfg.system.db_path):
             stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
             result = await session.execute(stmt)
             snapshot = result.scalars().first()
@@ -129,7 +167,6 @@ def switch(repo_id: str):
             if snapshot:
                 console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
                 console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
-                # We could parse the git summary for more details if needed
             else:
                 console.print("[italic]No previous snapshot found.[/italic]")
                 
@@ -138,7 +175,7 @@ def switch(repo_id: str):
 @app.command("list")
 def list_repos():
     """List all managed repositories."""
-    registry = load_registry()
+    cfg = load_config()
     table = Table(title="Prime Directive Repositories")
     table.add_column("ID", style="cyan")
     table.add_column("Priority", style="magenta")
@@ -146,7 +183,7 @@ def list_repos():
     table.add_column("Path", style="yellow")
 
     # Sort by priority descending
-    sorted_repos = sorted(registry.repos.values(), key=lambda r: r.priority, reverse=True)
+    sorted_repos = sorted(cfg.repos.values(), key=lambda r: r.priority, reverse=True)
 
     for repo in sorted_repos:
         table.add_row(
@@ -160,7 +197,7 @@ def list_repos():
 @app.command("status")
 def status_command():
     """Show detailed status of all repositories."""
-    registry = load_registry()
+    cfg = load_config()
     table = Table(title="Prime Directive Status")
     table.add_column("Project", style="cyan")
     table.add_column("Priority", justify="center")
@@ -168,27 +205,22 @@ def status_command():
     table.add_column("Git Status", style="bold")
     table.add_column("Last Snapshot", style="blue")
 
-    sorted_repos = sorted(registry.repos.values(), key=lambda r: r.priority, reverse=True)
+    sorted_repos = sorted(cfg.repos.values(), key=lambda r: r.priority, reverse=True)
 
     async def fetch_last_snapshot_time(repo_id: str, db_path: str) -> str:
         try:
-            # Ensure DB exists/tables created (might be overkill to init every time but safe)
+            # Ensure DB exists/tables created
             await init_db(db_path)
             async for session in get_session(db_path):
-                # This query might need optimization or index, selecting latest by timestamp
                 stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
                 result = await session.execute(stmt)
                 snapshot = result.scalars().first()
                 if snapshot:
-                    # Simple relative time formatting could be added here
                     return snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
         except Exception:
             return "Unknown"
         return "Never"
 
-    # We need to run async DB calls. Since Typer is synchronous, we'll use asyncio.run for the batch?
-    # Or just run sequentially for now.
-    
     for repo in sorted_repos:
         # 1. Git Status
         git_st = get_status(repo.path)
@@ -204,11 +236,14 @@ def status_command():
         elif git_st["branch"] == "error":
              status_icon = "❌"
              status_text = "Error"
+        elif git_st["branch"] == "timeout":
+             status_icon = "⏱️"
+             status_text = "Timeout"
 
         git_display = f"{status_icon} {status_text}"
         
         # 2. Last Snapshot (Async wrapper)
-        last_snap = asyncio.run(fetch_last_snapshot_time(repo.id, registry.system.db_path))
+        last_snap = asyncio.run(fetch_last_snapshot_time(repo.id, cfg.system.db_path))
 
         priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
 
@@ -225,7 +260,7 @@ def status_command():
 @app.command("doctor")
 def doctor():
     """Diagnose system dependencies and configuration."""
-    registry = load_registry()
+    cfg = load_config()
     console.print("[bold]Prime Directive Doctor[/bold]")
     
     checks = []
@@ -235,7 +270,7 @@ def doctor():
     checks.append(("Tmux Installed", "✅" if tmux_path else "❌", tmux_path or "Not found"))
 
     # 2. Editor
-    editor_cmd = registry.system.editor_cmd
+    editor_cmd = cfg.system.editor_cmd
     editor_path = shutil.which(editor_cmd)
     checks.append((f"Editor ({editor_cmd})", "✅" if editor_path else "❌", editor_path or "Not found in PATH"))
 
@@ -248,7 +283,7 @@ def doctor():
         if resp.status_code == 200:
             models = resp.json().get("models", [])
             model_names = [m["name"] for m in models]
-            target_model = registry.system.ai_model
+            target_model = cfg.system.ai_model
             # Check for partial match (e.g. qwen2.5-coder:latest)
             if any(target_model in name for name in model_names):
                 ai_status = "✅"
@@ -267,7 +302,7 @@ def doctor():
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
-    for repo in registry.repos.values():
+    for repo in cfg.repos.values():
         exists = os.path.exists(repo.path)
         icon = "✅" if exists else "❌"
         console.print(f"  {icon} {repo.id}: {repo.path}")
