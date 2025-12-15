@@ -7,6 +7,8 @@ from sqlalchemy import text
 from prime_directive.core.db import (
     Repository,
     ContextSnapshot,
+    EventLog,
+    EventType,
     init_db,
     get_session,
     dispose_engine,
@@ -50,6 +52,16 @@ async def test_sqlite_journal_mode_wal(async_db_session):
     result = await async_db_session.execute(text("PRAGMA journal_mode;"))
     mode = result.scalar_one()
     assert str(mode).lower() == "wal"
+
+
+@pytest.mark.asyncio
+async def test_event_log_insert(async_db_session):
+    ev = EventLog(repo_id="test-repo", event_type=EventType.SWITCH_IN)
+    async_db_session.add(ev)
+    await async_db_session.commit()
+    await async_db_session.refresh(ev)
+
+    assert ev.id is not None
 
 
 @pytest.mark.asyncio
