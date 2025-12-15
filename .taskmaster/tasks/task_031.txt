@@ -1,0 +1,20 @@
+# Task ID: 31
+# Title: Implement Time to First Commit KPI Tracking
+# Status: pending
+# Dependencies: 3, 12
+# Priority: high
+# Description: Add EventLog table to core/db.py and implement logging and reporting for Time to First Commit (TTC) metric.
+# Details:
+1. Modify core/db.py to include a new table 'EventLog' with the following fields: id (primary key), timestamp (datetime), repo_id (string), event_type (enum with values SWITCH_IN, COMMIT).
+2. Instrument the 'pd switch' command to log a SWITCH_IN event to the EventLog table whenever a repository switch occurs.
+3. Create a new command 'pd install-hooks' that sets up a post-commit git hook in the repository. This hook should call a new internal command 'pd _internal-log-commit' to log a COMMIT event to the EventLog table.
+4. Implement a new command 'pd metrics' that calculates and reports the average and recent Time to First Commit (TTC) times by analyzing the EventLog entries. This command should output the TTC in a human-readable format and support filtering by repository.
+5. Ensure that the new EventLog table and logging mechanisms are integrated with existing database management and migration systems.
+
+# Test Strategy:
+1. Verify that the EventLog table is created correctly in the database schema.
+2. Test the 'pd switch' command to ensure it logs a SWITCH_IN event in the EventLog table.
+3. Run 'pd install-hooks' in a test repository and verify that the post-commit hook is correctly installed.
+4. Commit changes in the test repository and check that a COMMIT event is logged in the EventLog table.
+5. Execute the 'pd metrics' command and verify that it correctly calculates and displays the average and recent TTC times.
+6. Perform end-to-end testing by switching to a repository, making a commit, and checking the metrics output for accuracy.
