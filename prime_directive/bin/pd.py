@@ -111,7 +111,7 @@ async def freeze_logic(
             "diff_stat": "",
         }
     else:
-        git_st = get_status(repo_path)
+        git_st = await get_status(repo_path)
         git_summary = (
             f"Branch: {git_st['branch']}\n"
             f"Dirty: {git_st['is_dirty']}\n"
@@ -127,7 +127,7 @@ async def freeze_logic(
         last_cmd = "mock_cmd"
         term_output = "MOCK: Terminal output"
     else:
-        last_cmd, term_output = capture_terminal_state(repo_id)
+        last_cmd, term_output = await capture_terminal_state(repo_id)
 
     logger.debug(f"Terminal state: cmd={last_cmd}")
 
@@ -142,7 +142,7 @@ async def freeze_logic(
         logger.info("MOCK MODE: Skipping AI generation")
         sitrep = "MOCK: SITREP generated without AI."
     else:
-        sitrep = generate_sitrep(
+        sitrep = await generate_sitrep(
             repo_id=repo_id,
             git_state=git_summary,
             terminal_logs=term_output,
@@ -338,7 +338,7 @@ def status_command():
                             "uncommitted_files": [],
                         }
                     else:
-                        git_st = get_status(repo.path)
+                        git_st = await get_status(repo.path)
 
                     status_icon = "🟢"
                     status_text = "Clean"
