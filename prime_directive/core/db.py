@@ -53,8 +53,6 @@ _async_engines: Dict[str, AsyncEngine] = {}
 
 
 def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
-    global _async_engines
-
     # Expand ~ to home directory
     db_path = os.path.expanduser(db_path)
 
