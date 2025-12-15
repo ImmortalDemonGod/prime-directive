@@ -1,7 +1,7 @@
 import pytest
 import pytest_asyncio
 from sqlmodel import select
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from prime_directive.core.db import Repository, ContextSnapshot, init_db, get_session, dispose_engine
 
@@ -49,7 +49,7 @@ async def test_snapshot_creation(async_db_session):
 
     snapshot = ContextSnapshot(
         repo_id="test-repo",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         git_status_summary="clean",
         terminal_last_command="ls",
         terminal_output_summary="file1 file2",
@@ -72,7 +72,7 @@ async def test_snapshot_creation(async_db_session):
 async def test_snapshot_fk_enforced(async_db_session):
     snapshot = ContextSnapshot(
         repo_id="missing-repo",
-        timestamp=datetime.utcnow(),
+        timestamp=datetime.now(timezone.utc),
         git_status_summary="clean",
         terminal_last_command="ls",
         terminal_output_summary="file1 file2",
