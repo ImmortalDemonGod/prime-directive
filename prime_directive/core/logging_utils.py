@@ -3,12 +3,13 @@ import logging.config
 import yaml
 import os
 
-def setup_logging(log_file="data/logs/pd.log"):
+def setup_logging(log_file="~/.prime-directive/logs/pd.log"):
     """
     Configure logging to file.
     
     Note: Console output is handled by Typer/Rich, so only file logging is configured here.
     """
+    log_file = os.path.expanduser(log_file)
     log_dir = os.path.dirname(log_file)
     if log_dir:
         os.makedirs(log_dir, exist_ok=True)
