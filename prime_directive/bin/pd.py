@@ -14,7 +14,7 @@ from datetime import datetime
 # Hydra imports
 from hydra import compose, initialize
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 
 # Core imports
 from prime_directive.core.config import PrimeConfig, register_configs
@@ -25,13 +25,14 @@ from prime_directive.core.tasks import get_active_task
 from prime_directive.core.scribe import generate_sitrep
 from prime_directive.core.tmux import ensure_session
 from prime_directive.core.windsurf import launch_editor
+from prime_directive.core.logging_utils import setup_logging
 
 app = typer.Typer()
 # Export cli for entry point
 cli = app
 console = Console()
 
-def load_config() -> PrimeConfig:
+def load_config() -> DictConfig:
     """Load configuration using Hydra."""
     # Ensure any previous Hydra instance is cleared
     GlobalHydra.instance().clear()
@@ -40,29 +41,26 @@ def load_config() -> PrimeConfig:
     register_configs()
     
     # Initialize Hydra
-    # config_path is relative to this file (prime_directive/bin/pd.py) -> ../conf
-    # We need to handle the case where we are running as a script vs installed package
-    # For relative path to work, we rely on __file__
     try:
         config_dir = Path(__file__).parent.parent / "conf"
         # Hydra expects relative path from the calling script or absolute path
-        # Let's use absolute path to be safe if running from anywhere
         with initialize(version_base=None, config_path=str(config_dir)):
             cfg = compose(config_name="config")
-            # Validate/Cast to PrimeConfig structure
-            return OmegaConf.to_object(cfg)
+            return cfg
     except Exception as e:
         # Fallback for when running from root or different context
-        # Try relative path assuming standard structure
         try:
             with initialize(version_base=None, config_path="../../prime_directive/conf"):
                 cfg = compose(config_name="config")
-                return OmegaConf.to_object(cfg)
-        except Exception:
-             console.print(f"[bold red]Error loading config:[/bold red] {e}")
+                return cfg
+        except Exception as inner_e:
+             console.print(f"[bold red]Error loading config:[/bold red] {e} | {inner_e}")
              sys.exit(1)
 
-def freeze_logic(repo_id: str, config: PrimeConfig):
+# Initialize logging globally
+setup_logging()
+
+def freeze_logic(repo_id: str, config: DictConfig):
     """Core freeze logic separated for reuse."""
     if repo_id not in config.repos:
         console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in configuration.")
