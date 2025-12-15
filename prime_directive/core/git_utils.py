@@ -41,13 +41,14 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             text=True,
             check=False
         )
-        status_output = status_proc.stdout.strip()
-        is_dirty = len(status_output) > 0
-        uncommitted_files = []
-        if is_dirty:
-            # Parse porcelain output for filenames (simple split might not handle spaces correctly but ok for MVP)
-            # Porcelain format: XY PATH
-            uncommitted_files = [line[3:] for line in status_output.splitlines() if len(line) > 3]
+        status_output = status_proc.stdout
+        
+        # Parse porcelain output for filenames
+        # Porcelain format: XY PATH (XY are status codes, space separated from path)
+        # We process lines directly to handle " M file" correctly (leading space is significant)
+        lines = status_output.splitlines()
+        uncommitted_files = [line[3:] for line in lines if len(line) > 3]
+        is_dirty = len(uncommitted_files) > 0
 
         # Get diff stat
         diff_proc = subprocess.run(
