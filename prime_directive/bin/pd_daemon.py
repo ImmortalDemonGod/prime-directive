@@ -26,7 +26,10 @@ class AutoFreezeHandler(FileSystemEventHandler):
         # Activity detected, reset state
         self.last_modified = datetime.now()
         if self.is_frozen:
-            # console.print(f"[green]Activity detected in {self.repo_id}. Unfreezing state...[/green]")
+            # console.print(
+            #     f"[green]Activity detected in {self.repo_id}. "
+            #     "Unfreezing state...[/green]"
+            # )
             self.is_frozen = False
 
 
@@ -42,9 +45,11 @@ def main(
     ),
 ):
     """
-    Background daemon to monitor repositories and auto-freeze context on inactivity.
+    Background daemon to monitor repositories and auto-freeze context on
+    inactivity.
     """
-    console.print("[bold green]Starting Prime Directive Daemon...[/bold green]")
+    msg = "[bold green]Starting Prime Directive Daemon...[/bold green]"
+    console.print(msg)
     cfg = load_config()
     observer = Observer()
     handlers = {}
@@ -56,7 +61,9 @@ def main(
             handlers[repo_id] = handler
             observer.schedule(handler, repo_config.path, recursive=True)
         else:
-            console.print(f"[yellow]Skipping {repo_id}: Path not found[/yellow]")
+            console.print(
+                f"[yellow]Skipping {repo_id}: Path not found[/yellow]"
+            )
 
     observer.start()
 
@@ -73,7 +80,10 @@ def main(
             for repo_id, handler in handlers.items():
                 # Check inactivity
                 delta = now - handler.last_modified
-                if delta.total_seconds() > inactivity_limit and not handler.is_frozen:
+                if (
+                    delta.total_seconds() > inactivity_limit
+                    and not handler.is_frozen
+                ):
                     console.print(
                         f"[blue]Inactivity detected in {repo_id} ({delta}). "
                         "Freezing...[/blue]"
@@ -81,14 +91,20 @@ def main(
                     try:
                         asyncio.run(run_freeze(repo_id, cfg))
                         handler.is_frozen = True
-                        console.print(f"[green]Repository {repo_id} is now FROZEN.[/green]")
+                        console.print(
+                            f"[green]Repository {repo_id} is now "
+                            "FROZEN.[/green]"
+                        )
                     except (OSError, ValueError) as e:
-                        console.print(f"[red]Error freezing {repo_id}: {e}[/red]")
+                        console.print(
+                            f"[red]Error freezing {repo_id}: {e}[/red]"
+                        )
 
     except KeyboardInterrupt:
         observer.stop()
     finally:
         observer.join()
+
 
 if __name__ == "__main__":
     app()
