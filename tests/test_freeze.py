@@ -9,7 +9,13 @@ runner = CliRunner()
 @pytest.fixture
 def mock_config():
     return OmegaConf.create({
-        "system": {"editor_cmd": "code", "ai_model": "gpt-4", "db_path": ":memory:"},
+        "system": {
+            "editor_cmd": "code", 
+            "ai_model": "gpt-4", 
+            "db_path": ":memory:",
+            "log_path": "pd.log",
+            "mock_mode": False
+        },
         "repos": {
             "test-repo": {"id": "test-repo", "path": "/tmp/test-repo", "priority": 10, "active_branch": "main"}
         }
