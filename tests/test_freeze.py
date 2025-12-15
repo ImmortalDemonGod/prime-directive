@@ -13,6 +13,7 @@ def mock_config(tmp_path):
         "system": {
             "editor_cmd": "code", 
             "ai_model": "gpt-4", 
+            "ai_provider": "ollama",
             "ai_fallback_provider": "none",
             "ai_fallback_model": "gpt-4o-mini",
             "ai_require_confirmation": True,
@@ -88,6 +89,8 @@ def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mo
     snapshot = mock_session.add.call_args_list[-1][0][0]
     assert snapshot.repo_id == "test-repo"
     assert snapshot.human_note == "Testing freeze command"
+
+    mock_init_db.assert_awaited_once()
 
 @patch("prime_directive.bin.pd.load_config")
 def test_freeze_command_invalid_repo(mock_load, mock_config):
