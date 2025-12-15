@@ -8,23 +8,19 @@ pd() {
     command pd "$@"
 }
 
-pd-cd() {
-    # Check if the directory starts with pd-
-    if [[ "$1" == pd-* ]]; then
-        # Extract the repo ID
-        local repo_id="${1#pd-}"
-        echo "Switching to Prime Directive context: $repo_id"
-        pd switch "$repo_id"
-        # pd switch handles tmux attachment, so we don't need to do anything else here usually.
-        # But if pd switch just sets up state, we might need to attach here.
-        # The python implementation of 'switch' executes 'tmux attach', so control is handed over.
-    else
-        builtin cd "$@"
-    fi
+# Hooks into directory changes to detect Prime Directive repositories
+pd_chpwd() {
+    # This is a placeholder for context detection.
+    # To enable auto-detection, we would check if $PWD matches a registered repo.
+    # Since invoking python on every cd is slow, we recommend using 'pd switch' explicitly.
+    # However, if you want active monitoring, uncomment the line below:
+    # pd status --check-current
+    true
 }
 
-# Alias cd to pd-cd
-alias cd=pd-cd
+# Register the hook
+autoload -Uz add-zsh-hook
+add-zsh-hook chpwd pd_chpwd
 
 # Completion for pd command (basic)
 _pd_completion() {
