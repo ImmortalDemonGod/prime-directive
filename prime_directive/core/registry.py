@@ -54,7 +54,8 @@ def load_registry(
                 repos_dict[repo["id"]] = repo
         data["repos"] = repos_dict
     elif "repos" in data and isinstance(data["repos"], dict):
-        # If keys are ids and values are data (without id inside), we need to inject id
+        # If keys are ids and values are data (without id inside), we need to
+        # inject id
         for repo_id, repo_data in data["repos"].items():
             if isinstance(repo_data, dict):
                 if "id" not in repo_data:
