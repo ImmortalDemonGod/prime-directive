@@ -1,11 +1,11 @@
+import asyncio
 import os
 from typing import Optional
-import time
 
-import requests
+import httpx
 
 
-def generate_ollama(
+async def generate_ollama(
     *,
     api_url: str,
     model: str,
@@ -26,29 +26,26 @@ def generate_ollama(
     attempts = max_retries + 1
     for attempt in range(attempts):
         try:
-            response = requests.post(
-                api_url,
-                json=payload,
-                timeout=timeout_seconds,
-            )
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                response = await client.post(api_url, json=payload)
             response.raise_for_status()
             data = response.json()
             content = data.get("response")
             if not isinstance(content, str) or not content.strip():
                 raise ValueError("No response field in Ollama payload")
             return content
-        except (requests.exceptions.RequestException, ValueError) as e:
+        except (httpx.HTTPError, ValueError) as e:
             last_error = e
             if attempt >= attempts - 1:
                 break
             if backoff_seconds > 0:
-                time.sleep(backoff_seconds * (2**attempt))
+                await asyncio.sleep(backoff_seconds * (2**attempt))
 
     assert last_error is not None
     raise last_error
 
 
-def generate_openai_chat(
+async def generate_openai_chat(
     *,
     api_url: str,
     api_key: str,
@@ -72,12 +69,8 @@ def generate_openai_chat(
         "max_tokens": max_tokens,
     }
 
-    response = requests.post(
-        api_url,
-        json=payload,
-        headers=headers,
-        timeout=timeout_seconds,
-    )
+    async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+        response = await client.post(api_url, json=payload, headers=headers)
     response.raise_for_status()
     data = response.json()
 
