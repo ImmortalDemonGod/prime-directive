@@ -12,9 +12,72 @@ from sqlalchemy import select
 from prime_directive.core.registry import load_registry
 from prime_directive.core.git_utils import get_status
 from prime_directive.core.db import get_session, ContextSnapshot, init_db
+from prime_directive.core.terminal import capture_terminal_state
+from prime_directive.core.tasks import get_active_task
+from prime_directive.core.scribe import generate_sitrep
+from datetime import datetime
 
 app = typer.Typer()
 console = Console()
+
+@app.command("freeze")
+def freeze(repo_id: str):
+    """
+    Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
+    """
+    registry = load_registry()
+    
+    if repo_id not in registry.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
+        raise typer.Exit(code=1)
+        
+    repo_config = registry.repos[repo_id]
+    repo_path = repo_config.path
+    
+    console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
+    
+    # 1. Capture Git State
+    git_st = get_status(repo_path)
+    git_summary = f"Branch: {git_st['branch']}\nDirty: {git_st['is_dirty']}\nFiles: {git_st['uncommitted_files']}\nDiff: {git_st.get('diff_stat', '')}"
+    
+    # 2. Capture Terminal State
+    # Note: This captures the *current* terminal (where pd is run) or the tmux session.
+    # Ideally we want the tmux session associated with the repo.
+    # capture_terminal_state() captures the current tmux pane if active.
+    # If we are running `pd freeze` from within the repo's context, this works.
+    last_cmd, term_output = capture_terminal_state()
+    
+    # 3. Capture Active Task
+    active_task = get_active_task(repo_path)
+    
+    # 4. Generate AI SITREP
+    console.print("Generating AI SITREP...")
+    sitrep = generate_sitrep(
+        repo_id=repo_id,
+        git_state=git_summary,
+        terminal_logs=term_output,
+        active_task=active_task,
+        model=registry.system.ai_model
+    )
+    
+    # 5. Save to DB
+    async def save_snapshot():
+        await init_db(registry.system.db_path)
+        async for session in get_session(registry.system.db_path):
+            snapshot = ContextSnapshot(
+                repo_id=repo_id,
+                timestamp=datetime.utcnow(),
+                git_status_summary=git_summary,
+                terminal_last_command=last_cmd,
+                terminal_output_summary=term_output,
+                ai_sitrep=sitrep
+            )
+            session.add(snapshot)
+            await session.commit()
+            console.print(f"[bold green]Snapshot saved.[/bold green] ID: {snapshot.id}")
+            console.print(f"[italic]{sitrep}[/italic]")
+
+    asyncio.run(save_snapshot())
 
 @app.command("list")
 def list_repos():
