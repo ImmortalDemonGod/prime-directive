@@ -1,6 +1,6 @@
 # Task ID: 17
 # Title: P0: Make Ollama SITREP generation resilient (retry/backoff + configurable timeout)
-# Status: pending
+# Status: done
 # Dependencies: 6, 11
 # Priority: high
 # Description: Improve scribe robustness so freeze/switch degrade gracefully when Ollama is down or slow.
@@ -11,43 +11,43 @@ Implement in core/scribe.py: configurable timeout via Hydra (e.g., system.ollama
 Add tests that simulate timeouts/connection errors and assert freeze still succeeds with a fallback SITREP and does not crash.
 
 # Subtasks:
-## 1. Implement Configurable Timeout [pending]
+## 1. Implement Configurable Timeout [done]
 ### Dependencies: None
 ### Description: Add a configurable timeout setting for Ollama SITREP generation using Hydra.
 ### Details:
 Modify core/scribe.py to include a new configuration parameter 'system.ollama_timeout_seconds' using Hydra. Ensure this parameter can be easily adjusted via configuration files.
 
-## 2. Implement Retry with Exponential Backoff [pending]
+## 2. Implement Retry with Exponential Backoff [done]
 ### Dependencies: 17.1
 ### Description: Add retry logic with exponential backoff for transient errors during SITREP generation.
 ### Details:
 Use the Tenacity library to implement retry logic in core/scribe.py. Configure it to handle specific transient errors and apply exponential backoff strategy.
 
-## 3. Define Error Handling Strategy [pending]
+## 3. Define Error Handling Strategy [done]
 ### Dependencies: 17.2
 ### Description: Establish a clear error handling strategy to distinguish between SITREP failures and successful responses.
 ### Details:
 Introduce a new typed exception or structured result in core/scribe.py to differentiate between errors and valid SITREP responses. Update callers to handle these appropriately.
 
-## 4. Integrate Fallback SITREP Mechanism [pending]
+## 4. Integrate Fallback SITREP Mechanism [done]
 ### Dependencies: 17.3
 ### Description: Ensure that snapshots still save with a fallback SITREP if Ollama fails.
 ### Details:
 Modify pd.py to implement a fallback mechanism that triggers when SITREP generation fails, ensuring snapshots are saved with a default or cached SITREP.
 
-## 5. CLI Integration for Freeze and Switch [pending]
+## 5. CLI Integration for Freeze and Switch [done]
 ### Dependencies: 17.4
 ### Description: Update CLI commands for freeze and switch to handle new SITREP generation logic.
 ### Details:
 Modify CLI command implementations to incorporate the new timeout, retry, and error handling logic. Ensure user feedback is clear and informative.
 
-## 6. Develop Unit Tests for SITREP Generation [pending]
+## 6. Develop Unit Tests for SITREP Generation [done]
 ### Dependencies: 17.5
 ### Description: Create comprehensive unit tests for the SITREP generation process, covering all new features.
 ### Details:
 Develop unit tests in the test suite to cover configurable timeout, retry logic, error handling, and fallback mechanisms.
 
-## 7. Conduct Chaos Testing [pending]
+## 7. Conduct Chaos Testing [done]
 ### Dependencies: 17.6
 ### Description: Perform chaos testing to validate the resilience of the SITREP generation process under failure conditions.
 ### Details:
