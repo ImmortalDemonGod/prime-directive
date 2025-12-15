@@ -1,0 +1,11 @@
+# Task ID: 5
+# Title: Implement Task Master Adapter
+# Status: done
+# Dependencies: 1
+# Priority: medium
+# Description: Create core/tasks.py to parse .taskmaster/tasks.json and extract active/in-progress tasks
+# Details:
+def get_active_task(repo_path: str) -> Optional[dict]: Check for .taskmaster/tasks.json, load JSON, filter tasks where status=='in-progress', return highest priority or most recent. Schema matches user_json_schema exactly. Handle missing file gracefully (return None).
+
+# Test Strategy:
+Create mock tasks.json with in-progress tasks, verify get_active_task() returns correct highest priority task.
