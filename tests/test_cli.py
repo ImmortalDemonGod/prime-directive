@@ -59,7 +59,7 @@ def test_list_command(mock_load, mock_config):
 
 
 @patch("prime_directive.bin.pd.load_config")
-@patch("prime_directive.bin.pd.get_status")
+@patch("prime_directive.bin.pd.get_status", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session")
 @patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
