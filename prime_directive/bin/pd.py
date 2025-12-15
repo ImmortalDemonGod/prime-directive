@@ -70,7 +70,7 @@ def freeze_logic(repo_id: str, config: DictConfig):
         msg = f"Repository '{repo_id}' not found in configuration."
         console.print(f"[bold red]Error:[/bold red] {msg}")
         logger.error(msg)
-        return
+        raise typer.Exit(code=1)
 
     repo_config = config.repos[repo_id]
     repo_path = repo_config.path
