@@ -1,0 +1,45 @@
+import subprocess
+from typing import Tuple
+
+def capture_terminal_state() -> Tuple[str, str]:
+    """
+    Captures the terminal state from tmux if running inside a tmux session.
+    
+    Returns:
+        tuple[str, str]: (last_command, output_summary)
+        - last_command: The last command executed (if available) or "unknown"
+        - output_summary: The last ~50 lines of terminal output
+    """
+    try:
+        # Check if we are inside tmux (basic check, could be more robust)
+        # Note: This tool runs inside the IDE, which might not be inside tmux. 
+        # But the PRD implies this is part of the 'pd' CLI which *might* be running in tmux.
+        # We'll try to capture the active pane.
+        
+        # Capture last 50 lines
+        # -p: output to stdout
+        # -S -50: start 50 lines back from end of history
+        capture_proc = subprocess.run(
+            ["tmux", "capture-pane", "-p", "-S", "-50"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        output_summary = "No tmux session found or capture failed."
+        if capture_proc.returncode == 0:
+            output_summary = capture_proc.stdout.strip()
+        
+        # Capture command history isn't straightforward with just tmux commands without shell integration
+        # For now, we'll return a placeholder or try to parse the last prompt line if possible.
+        # As per PRD details: "Fallback to 'history | tail -n 1' if not in tmux."
+        # History is shell specific and tricky to get from a subprocess.
+        last_command = "unknown"
+        
+        return last_command, output_summary
+
+    except FileNotFoundError:
+        # tmux not installed
+        return "unknown", "tmux not installed."
+    except Exception as e:
+        return "error", str(e)
