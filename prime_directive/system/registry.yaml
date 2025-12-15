@@ -4,18 +4,13 @@ system:
   db_path: "data/prime.db"
 
 repos:
-  black-box:
-    id: "black-box"
-    path: "/Users/tomriddle1/black-box"
+  test-alpha:
+    id: "test-alpha"
+    path: "/Users/tomriddle1/prime-directive/tests/fixtures/repos/test-repo-alpha"
     priority: 10
     active_branch: "main"
-  rna-predict:
-    id: "rna-predict"
-    path: "/Users/tomriddle1/rna-predict"
-    priority: 8
-    active_branch: "exp/diffusion"
-  cultivation-os:
-    id: "cultivation-os"
-    path: "/Users/tomriddle1/cultivation-os"
-    priority: 6
+  test-beta:
+    id: "test-beta"
+    path: "/Users/tomriddle1/prime-directive/tests/fixtures/repos/test-repo-beta"
+    priority: 5
     active_branch: "dev"
