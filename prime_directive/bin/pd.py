@@ -3,6 +3,7 @@ import shutil
 import requests
 import os
 import sys
+import logging
 from rich.console import Console
 from rich.table import Table
 from typing import Optional
@@ -31,6 +32,7 @@ app = typer.Typer()
 # Export cli for entry point
 cli = app
 console = Console()
+logger = logging.getLogger("prime_directive")
 
 def load_config() -> DictConfig:
     """Load configuration using Hydra."""
@@ -54,7 +56,9 @@ def load_config() -> DictConfig:
                 cfg = compose(config_name="config")
                 return cfg
         except Exception as inner_e:
-             console.print(f"[bold red]Error loading config:[/bold red] {e} | {inner_e}")
+             msg = f"Error loading config: {e} | {inner_e}"
+             console.print(f"[bold red]{msg}[/bold red]")
+             logger.critical(msg)
              sys.exit(1)
 
 # Initialize logging globally
@@ -63,23 +67,29 @@ setup_logging()
 def freeze_logic(repo_id: str, config: DictConfig):
     """Core freeze logic separated for reuse."""
     if repo_id not in config.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in configuration.")
+        msg = f"Repository '{repo_id}' not found in configuration."
+        console.print(f"[bold red]Error:[/bold red] {msg}")
+        logger.error(msg)
         return
 
     repo_config = config.repos[repo_id]
     repo_path = repo_config.path
     
+    logger.info(f"Freezing context for {repo_id} at {repo_path}")
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
     
     # 1. Capture Git State
     git_st = get_status(repo_path)
     git_summary = f"Branch: {git_st['branch']}\nDirty: {git_st['is_dirty']}\nFiles: {git_st['uncommitted_files']}\nDiff: {git_st.get('diff_stat', '')}"
+    logger.debug(f"Git state for {repo_id}: {git_st}")
     
     # 2. Capture Terminal State
     last_cmd, term_output = capture_terminal_state()
+    logger.debug(f"Terminal state: cmd={last_cmd}")
     
     # 3. Capture Active Task
     active_task = get_active_task(repo_path)
+    logger.debug(f"Active task: {active_task}")
     
     # 4. Generate AI SITREP
     console.print("Generating AI SITREP...")
@@ -90,6 +100,7 @@ def freeze_logic(repo_id: str, config: DictConfig):
         active_task=active_task,
         model=config.system.ai_model
     )
+    logger.info(f"Generated SITREP for {repo_id}")
     
     # 5. Save to DB
     async def save_snapshot():
@@ -105,8 +116,10 @@ def freeze_logic(repo_id: str, config: DictConfig):
             )
             session.add(snapshot)
             await session.commit()
-            console.print(f"[bold green]Snapshot saved.[/bold green] ID: {snapshot.id}")
+            msg = f"Snapshot saved. ID: {snapshot.id}"
+            console.print(f"[bold green]{msg}[/bold green]")
             console.print(f"[italic]{sitrep}[/italic]")
+            logger.info(f"{msg}. SITREP: {sitrep}")
 
     asyncio.run(save_snapshot())
 
@@ -115,6 +128,7 @@ def freeze(repo_id: str):
     """
     Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
     """
+    logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
     freeze_logic(repo_id, cfg)
 
@@ -123,10 +137,13 @@ def switch(repo_id: str):
     """
     Switch context to another repository (Freeze current -> Warp -> Thaw target).
     """
+    logger.info(f"Command: switch {repo_id}")
     cfg = load_config()
     
     if repo_id not in cfg.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in configuration.")
+        msg = f"Repository '{repo_id}' not found in configuration."
+        console.print(f"[bold red]Error:[/bold red] {msg}")
+        logger.error(msg)
         raise typer.Exit(code=1)
 
     target_repo = cfg.repos[repo_id]
@@ -142,10 +159,12 @@ def switch(repo_id: str):
     
     if current_repo_id and current_repo_id != repo_id:
         console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
+        logger.info(f"Auto-freezing current repo: {current_repo_id}")
         freeze_logic(current_repo_id, cfg)
     
     # 2. Thaw / Switch
     console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
+    logger.info(f"Switching to {repo_id}")
     
     # Ensure Tmux Session
     ensure_session(repo_id, target_repo.path)
@@ -173,6 +192,7 @@ def switch(repo_id: str):
 @app.command("list")
 def list_repos():
     """List all managed repositories."""
+    logger.info("Command: list")
     cfg = load_config()
     table = Table(title="Prime Directive Repositories")
     table.add_column("ID", style="cyan")
@@ -195,6 +215,7 @@ def list_repos():
 @app.command("status")
 def status_command():
     """Show detailed status of all repositories."""
+    logger.info("Command: status")
     cfg = load_config()
     table = Table(title="Prime Directive Status")
     table.add_column("Project", style="cyan")
@@ -215,7 +236,8 @@ def status_command():
                 snapshot = result.scalars().first()
                 if snapshot:
                     return snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error fetching snapshot for {repo_id}: {e}")
             return "Unknown"
         return "Never"
 
@@ -258,6 +280,7 @@ def status_command():
 @app.command("doctor")
 def doctor():
     """Diagnose system dependencies and configuration."""
+    logger.info("Command: doctor")
     cfg = load_config()
     console.print("[bold]Prime Directive Doctor[/bold]")
     
@@ -312,6 +335,9 @@ def doctor():
     for name, icon, msg in checks:
         table.add_row(name, icon, msg)
     console.print(table)
+    
+    # Log results
+    logger.info(f"Doctor checks: {checks}")
 
 if __name__ == "__main__":
     app()
