@@ -5,17 +5,16 @@ from watchdog.events import FileSystemEventHandler
 from rich.console import Console
 import asyncio
 from datetime import datetime, timedelta
-from prime_directive.core.registry import load_registry
-from prime_directive.bin.pd import freeze_logic
+from prime_directive.bin.pd import freeze_logic, load_config
 from prime_directive.core.db import dispose_engine
 
 app = typer.Typer()
 console = Console()
 
 class AutoFreezeHandler(FileSystemEventHandler):
-    def __init__(self, repo_id: str, registry):
+    def __init__(self, repo_id: str, cfg):
         self.repo_id = repo_id
-        self.registry = registry
+        self.cfg = cfg
         self.last_modified = datetime.now()
         self.is_frozen = False
         
@@ -37,14 +36,14 @@ def main(
     Background daemon to monitor repositories and auto-freeze context on inactivity.
     """
     console.print("[bold green]Starting Prime Directive Daemon...[/bold green]")
-    registry = load_registry()
+    cfg = load_config()
     observer = Observer()
     handlers = {}
 
-    for repo_id, repo_config in registry.repos.items():
+    for repo_id, repo_config in cfg.repos.items():
         if os.path.exists(repo_config.path):
             console.print(f"Monitoring {repo_id} at {repo_config.path}")
-            handler = AutoFreezeHandler(repo_id, registry)
+            handler = AutoFreezeHandler(repo_id, cfg)
             handlers[repo_id] = handler
             observer.schedule(handler, repo_config.path, recursive=True)
         else:
@@ -52,9 +51,9 @@ def main(
 
     observer.start()
     
-    async def run_freeze(repo_id, registry):
+    async def run_freeze(repo_id, cfg):
         try:
-            await freeze_logic(repo_id, registry)
+            await freeze_logic(repo_id, cfg)
         finally:
             await dispose_engine()
 
@@ -68,7 +67,7 @@ def main(
                 if delta.total_seconds() > inactivity_limit and not handler.is_frozen:
                     console.print(f"[blue]Inactivity detected in {repo_id} ({delta}). Freezing...[/blue]")
                     try:
-                        asyncio.run(run_freeze(repo_id, registry))
+                        asyncio.run(run_freeze(repo_id, cfg))
                         handler.is_frozen = True
                         console.print(f"[green]Repository {repo_id} is now FROZEN.[/green]")
                     except Exception as e:
@@ -78,7 +77,7 @@ def main(
         observer.stop()
     observer.join()
 
-import os # Missing import added
+import os 
 
 if __name__ == "__main__":
     app()
