@@ -2,9 +2,12 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock, call
 from prime_directive.bin.pd import app
-from prime_directive.core.orchestrator import detect_current_repo_id
+from prime_directive.core.orchestrator import detect_current_repo_id, switch_logic
 from omegaconf import OmegaConf
 from datetime import datetime
+import logging
+
+from prime_directive.core.db import EventLog, EventType
 
 runner = CliRunner()
 
@@ -93,6 +96,69 @@ def test_detect_current_repo_id_prefers_longest_prefix():
     }
     cwd = "/tmp/work/project/subdir"
     assert detect_current_repo_id(cwd, repos) == "inner"
+
+
+@pytest.mark.asyncio
+async def test_switch_logic_logs_switch_in_event(tmp_path):
+    cfg = OmegaConf.create(
+        {
+            "system": {
+                "mock_mode": True,
+                "db_path": str(tmp_path / "test.db"),
+                "editor_cmd": "code",
+            },
+            "repos": {
+                "target-repo": {
+                    "id": "target-repo",
+                    "path": "/tmp/target-repo",
+                    "priority": 1,
+                    "active_branch": "main",
+                }
+            },
+        }
+    )
+
+    freeze_fn = AsyncMock()
+    ensure_session_fn = MagicMock()
+    launch_editor_fn = MagicMock()
+    init_db_fn = AsyncMock()
+    dispose_engine_fn = AsyncMock()
+    console = MagicMock()
+    logger = logging.getLogger("test")
+
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = None
+    session.execute = AsyncMock(return_value=mock_result)
+
+    async def get_session_fn(_db_path: str):
+        yield session
+
+    await switch_logic(
+        "target-repo",
+        cfg,
+        cwd=str(tmp_path),
+        freeze_fn=freeze_fn,
+        ensure_session_fn=ensure_session_fn,
+        launch_editor_fn=launch_editor_fn,
+        init_db_fn=init_db_fn,
+        get_session_fn=get_session_fn,
+        dispose_engine_fn=dispose_engine_fn,
+        console=console,
+        logger=logger,
+    )
+
+    init_db_fn.assert_awaited_once()
+    session.commit.assert_awaited()
+    assert session.add.called
+
+    added_obj = session.add.call_args[0][0]
+    assert isinstance(added_obj, EventLog)
+    assert added_obj.repo_id == "target-repo"
+    assert added_obj.event_type == EventType.SWITCH_IN
 
 
 @patch("prime_directive.bin.pd.load_config")
