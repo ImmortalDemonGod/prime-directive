@@ -116,7 +116,11 @@ async def freeze_logic(repo_id: str, config: DictConfig):
             git_state=git_summary,
             terminal_logs=term_output,
             active_task=active_task,
-            model=config.system.ai_model
+            model=config.system.ai_model,
+            api_url=config.system.ollama_api_url,
+            timeout_seconds=config.system.ollama_timeout_seconds,
+            max_retries=config.system.ollama_max_retries,
+            backoff_seconds=config.system.ollama_backoff_seconds,
         )
     logger.info(f"Generated SITREP for {repo_id}")
     
