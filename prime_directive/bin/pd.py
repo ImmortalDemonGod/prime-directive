@@ -23,6 +23,8 @@ from prime_directive.core.config import register_configs
 from prime_directive.core.git_utils import GitStatus, get_status
 from prime_directive.core.db import (
     ContextSnapshot,
+    EventLog,
+    EventType,
     dispose_engine,
     get_session,
     init_db,
@@ -274,6 +276,137 @@ def switch(repo_id: str):
 
     if needs_shell_attach:
         raise typer.Exit(code=_EXIT_CODE_SHELL_ATTACH)
+
+
+@app.command("install-hooks")
+def install_hooks(repo_id: Optional[str] = None):
+    cfg = load_config()
+    setup_logging(cfg.system.log_path)
+
+    if repo_id is not None and repo_id not in cfg.repos:
+        msg = f"Repository '{repo_id}' not found in configuration."
+        console.print(f"[bold red]Error:[/bold red] {msg}")
+        logger.error(msg)
+        raise typer.Exit(code=1)
+
+    target_repo_ids = [repo_id] if repo_id is not None else list(cfg.repos.keys())
+
+    for rid in target_repo_ids:
+        repo_path = cfg.repos[rid].path
+        git_dir = os.path.join(repo_path, ".git")
+        hooks_dir = os.path.join(git_dir, "hooks")
+        hook_path = os.path.join(hooks_dir, "post-commit")
+
+        if not os.path.isdir(git_dir):
+            msg = f"{rid}: not a git repo (missing .git): {repo_path}"
+            console.print(f"[bold red]Error:[/bold red] {msg}")
+            logger.error(msg)
+            raise typer.Exit(code=1)
+
+        os.makedirs(hooks_dir, exist_ok=True)
+
+        script = (
+            "#!/bin/sh\n"
+            f"command pd _internal-log-commit {rid} >/dev/null 2>&1 || true\n"
+        )
+        with open(hook_path, "w", encoding="utf-8") as f:
+            f.write(script)
+
+        os.chmod(hook_path, 0o755)
+
+        console.print(f"[green]Installed post-commit hook:[/green] {hook_path}")
+        logger.info(f"Installed post-commit hook for {rid}: {hook_path}")
+
+
+@app.command("_internal-log-commit", hidden=True)
+def internal_log_commit(repo_id: str):
+    cfg = load_config()
+    setup_logging(cfg.system.log_path)
+
+    async def run_internal():
+        try:
+            await init_db(cfg.system.db_path)
+            async for session in get_session(cfg.system.db_path):
+                session.add(EventLog(repo_id=repo_id, event_type=EventType.COMMIT))
+                await session.commit()
+        finally:
+            await dispose_engine()
+
+    asyncio.run(run_internal())
+
+
+def _format_seconds(seconds: float) -> str:
+    seconds_int = int(round(seconds))
+    hours, rem = divmod(seconds_int, 3600)
+    minutes, secs = divmod(rem, 60)
+    if hours > 0:
+        return f"{hours}h{minutes:02d}m{secs:02d}s"
+    if minutes > 0:
+        return f"{minutes}m{secs:02d}s"
+    return f"{secs}s"
+
+
+@app.command("metrics")
+def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
+    cfg = load_config()
+    setup_logging(cfg.system.log_path)
+
+    if repo_id is not None and repo_id not in cfg.repos:
+        msg = f"Repository '{repo_id}' not found in configuration."
+        console.print(f"[bold red]Error:[/bold red] {msg}")
+        logger.error(msg)
+        raise typer.Exit(code=1)
+
+    async def run_metrics():
+        try:
+            await init_db(cfg.system.db_path)
+
+            target_repo_ids = [repo_id] if repo_id is not None else list(cfg.repos.keys())
+
+            table = Table(title="Prime Directive Metrics")
+            table.add_column("Repo", style="cyan")
+            table.add_column("TTC avg", style="green")
+            table.add_column("TTC recent", style="magenta")
+            table.add_column("Samples", justify="right")
+
+            async for session in get_session(cfg.system.db_path):
+                for rid in target_repo_ids:
+                    stmt = (
+                        select(EventLog)
+                        .where(EventLog.repo_id == rid)
+                        .order_by(EventLog.timestamp.asc())
+                    )
+                    result = await session.execute(stmt)
+                    events = list(result.scalars().all())
+
+                    deltas: list[float] = []
+                    last_switch_ts: Optional[datetime] = None
+                    for ev in events:
+                        if ev.event_type == EventType.SWITCH_IN:
+                            last_switch_ts = ev.timestamp
+                        elif ev.event_type == EventType.COMMIT and last_switch_ts is not None:
+                            delta = (ev.timestamp - last_switch_ts).total_seconds()
+                            if delta >= 0:
+                                deltas.append(delta)
+                            last_switch_ts = None
+
+                    if deltas:
+                        avg = sum(deltas) / len(deltas)
+                        recent = deltas[-1]
+                        table.add_row(
+                            rid,
+                            _format_seconds(avg),
+                            _format_seconds(recent),
+                            str(len(deltas)),
+                        )
+                    else:
+                        table.add_row(rid, "-", "-", "0")
+
+            console.print(table)
+        finally:
+            await dispose_engine()
+
+    asyncio.run(run_metrics())
 
 
 @app.command("list")
