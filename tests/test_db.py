@@ -2,8 +2,8 @@ import pytest
 import pytest_asyncio
 from sqlmodel import select
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 from prime_directive.core.db import Repository, ContextSnapshot, init_db, get_session, dispose_engine
-import os
 
 @pytest_asyncio.fixture
 async def async_db_session(tmp_path):
@@ -79,5 +79,5 @@ async def test_snapshot_fk_enforced(async_db_session):
         ai_sitrep="All good",
     )
     async_db_session.add(snapshot)
-    with pytest.raises(Exception):
+    with pytest.raises(IntegrityError):
         await async_db_session.commit()
