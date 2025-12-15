@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Optional
+
+from typing import Dict
 from hydra.core.config_store import ConfigStore
+
 
 @dataclass
 class SystemConfig:
@@ -21,6 +23,7 @@ class SystemConfig:
     log_path: str = "data/logs/pd.log"
     mock_mode: bool = False
 
+
 @dataclass
 class RepoConfig:
     id: str
@@ -28,10 +31,12 @@ class RepoConfig:
     priority: int
     active_branch: str = "main"
 
+
 @dataclass
 class PrimeConfig:
     system: SystemConfig = field(default_factory=SystemConfig)
     repos: Dict[str, RepoConfig] = field(default_factory=dict)
+
 
 def register_configs():
     cs = ConfigStore.instance()
