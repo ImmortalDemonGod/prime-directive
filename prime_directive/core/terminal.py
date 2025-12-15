@@ -23,7 +23,8 @@ def capture_terminal_state() -> Tuple[str, str]:
             ["tmux", "capture-pane", "-p", "-S", "-50"],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
+            timeout=2
         )
         
         output_summary = "No tmux session found or capture failed."
@@ -38,6 +39,8 @@ def capture_terminal_state() -> Tuple[str, str]:
         
         return last_command, output_summary
 
+    except subprocess.TimeoutExpired:
+        return "unknown", "Terminal capture timed out."
     except FileNotFoundError:
         # tmux not installed
         return "unknown", "tmux not installed."
