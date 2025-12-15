@@ -1,0 +1,21 @@
+system:
+  editor_cmd: "windsurf"
+  ai_model: "qwen2.5-coder"
+  db_path: "data/prime.db"
+
+repos:
+  black-box:
+    id: "black-box"
+    path: "/Users/tomriddle1/black-box"
+    priority: 10
+    active_branch: "main"
+  rna-predict:
+    id: "rna-predict"
+    path: "/Users/tomriddle1/rna-predict"
+    priority: 8
+    active_branch: "exp/diffusion"
+  cultivation-os:
+    id: "cultivation-os"
+    path: "/Users/tomriddle1/cultivation-os"
+    priority: 6
+    active_branch: "dev"
