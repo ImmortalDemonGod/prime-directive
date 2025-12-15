@@ -3,15 +3,19 @@ from typing import List, Dict, Union
 import os
 import re
 
-def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
+
+GitStatus = Dict[str, Union[str, bool, List[str]]]
+
+
+def get_status(repo_path: str) -> GitStatus:
     """
     Capture git status for a repository.
-    
+
     Returns:
         dict: {
-            'branch': str, 
-            'is_dirty': bool, 
-            'uncommitted_files': list[str], 
+            'branch': str,
+            'is_dirty': bool,
+            'uncommitted_files': list[str],
             'diff_stat': str
         }
     """
@@ -33,7 +37,10 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             check=False,
             timeout=5
         )
-        branch = branch_proc.stdout.strip() if branch_proc.returncode == 0 else "unknown"
+        if branch_proc.returncode == 0:
+            branch = branch_proc.stdout.strip()
+        else:
+            branch = "unknown"
 
         # Get status (porcelain)
         status_proc = subprocess.run(
@@ -45,7 +52,7 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             timeout=5
         )
         status_output = status_proc.stdout
-        
+
         # Parse porcelain output for filenames
         # Porcelain format: XY PATH (XY are status codes, space separated from path)
         # Regex captures: (Group 1: Status XY) (Group 2: Path)
@@ -55,7 +62,7 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             match = re.match(r"^(.{2}) (.*)$", line)
             if match:
                 uncommitted_files.append(match.group(2))
-        
+
         is_dirty = len(uncommitted_files) > 0
 
         # Get diff stat
@@ -80,7 +87,7 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             "branch": "timeout",
             "is_dirty": False,
             "uncommitted_files": [],
-            "diff_stat": "Git command timed out"
+            "diff_stat": "Git command timed out",
         }
     except Exception as e:
         # Fallback for any execution errors
