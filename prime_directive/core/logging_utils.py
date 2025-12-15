@@ -5,7 +5,9 @@ import os
 
 def setup_logging(log_file="data/logs/pd.log"):
     """
-    Configure logging to file and console.
+    Configure logging to file.
+    
+    Note: Console output is handled by Typer/Rich, so only file logging is configured here.
     """
     log_dir = os.path.dirname(log_file)
     if log_dir:
