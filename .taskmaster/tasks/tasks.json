@@ -733,7 +733,86 @@
           19
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set up Integration Test Harness in Mock Mode",
+            "description": "Create an integration test harness that operates in mock mode to simulate the end-to-end workflow without external dependencies.",
+            "dependencies": [],
+            "details": "Develop a test harness that can simulate the entire workflow in a controlled environment. Ensure it can mock external services and dependencies to allow for isolated testing.",
+            "status": "pending",
+            "testStrategy": "Verify the harness can run basic workflow simulations without real external service calls."
+          },
+          {
+            "id": 2,
+            "title": "Implement Freeze and Switch End-to-End Tests",
+            "description": "Develop integration tests to validate the freeze and switch operations in the end-to-end workflow using the mock mode harness.",
+            "dependencies": [
+              1
+            ],
+            "details": "Write tests that execute the freeze and switch operations, ensuring that the system behaves as expected through the entire workflow.",
+            "status": "pending",
+            "testStrategy": "Run the tests in the mock mode harness and verify that the operations complete successfully without errors."
+          },
+          {
+            "id": 3,
+            "title": "Develop Chaos Test for Ollama Down Scenario",
+            "description": "Create a chaos test to simulate the scenario where Ollama is down, ensuring the system degrades gracefully.",
+            "dependencies": [
+              1
+            ],
+            "details": "Introduce a failure in the mock mode to simulate Ollama being down and observe how the system handles the failure.",
+            "status": "pending",
+            "testStrategy": "Check that the system continues to operate with reduced functionality and logs appropriate error messages."
+          },
+          {
+            "id": 4,
+            "title": "Extend Git Parsing Tests for Renames, Copies, and Conflicts",
+            "description": "Enhance existing git parsing tests to cover scenarios involving file renames, copies, and merge conflicts.",
+            "dependencies": [],
+            "details": "Add test cases to the git parsing suite that specifically address the handling of renames, copies, and conflicts in git repositories.",
+            "status": "pending",
+            "testStrategy": "Run the extended test suite and ensure all new scenarios are correctly parsed and handled."
+          },
+          {
+            "id": 5,
+            "title": "Implement Optional Property-Based Tests for Parsing Robustness",
+            "description": "Introduce property-based tests to ensure robustness in parsing logic, focusing on edge cases and unexpected inputs.",
+            "dependencies": [
+              4
+            ],
+            "details": "Use a property-based testing framework like Hypothesis to generate a wide range of inputs and validate the parsing logic against them.",
+            "status": "pending",
+            "testStrategy": "Verify that the parsing logic handles all generated inputs without errors or unexpected behavior."
+          },
+          {
+            "id": 6,
+            "title": "Document Integration and Chaos Testing Strategies",
+            "description": "Create comprehensive documentation for the integration and chaos testing strategies implemented.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Write detailed documentation explaining the purpose, setup, and execution of the integration and chaos tests, including any mock configurations.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for completeness and clarity, ensuring it can be followed by other developers."
+          },
+          {
+            "id": 7,
+            "title": "Integrate Tests into Continuous Integration Pipeline",
+            "description": "Ensure all new tests are integrated into the CI pipeline to run automatically on code changes.",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Modify the CI configuration to include the new integration, chaos, and parsing tests, ensuring they run in a CI-safe environment.",
+            "status": "pending",
+            "testStrategy": "Trigger the CI pipeline and verify that all tests execute successfully and report results as expected."
+          }
+        ]
       },
       {
         "id": 22,
@@ -774,7 +853,76 @@
           23
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design SQLite Schema for Usage Tracking",
+            "description": "Create a schema for an SQLite table to track AI fallback usage, including fields for provider, timestamp, token counts, cost estimates, and outcome.",
+            "dependencies": [],
+            "details": "Design a table with columns: id (primary key), provider (text), timestamp (datetime), token_count (integer), cost_estimate (real), and outcome (text). Ensure the table can efficiently handle queries for monthly aggregation.",
+            "status": "pending",
+            "testStrategy": "Verify the table creation with a migration script and check that all fields are correctly set up."
+          },
+          {
+            "id": 2,
+            "title": "Implement Logging of Usage Data",
+            "description": "Add functionality to log each usage event to the SQLite table whenever an AI fallback is used.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify the provider manager to insert a new record into the SQLite table each time an AI fallback is triggered. Ensure all relevant data is captured accurately.",
+            "status": "pending",
+            "testStrategy": "Simulate AI fallback usage and verify that records are correctly inserted into the database."
+          },
+          {
+            "id": 3,
+            "title": "Develop Monthly Usage Aggregation Logic",
+            "description": "Create a function to aggregate usage data on a monthly basis, calculating total token counts and cost estimates.",
+            "dependencies": [
+              2
+            ],
+            "details": "Implement a query that sums token counts and cost estimates for the current month, grouped by provider. Ensure the function can be called to retrieve these aggregates efficiently.",
+            "status": "pending",
+            "testStrategy": "Test the aggregation function with sample data to ensure it returns correct monthly totals."
+          },
+          {
+            "id": 4,
+            "title": "Implement Budget Enforcement Mechanism",
+            "description": "Add logic to enforce monthly budget limits based on aggregated usage data, preventing further usage if limits are exceeded.",
+            "dependencies": [
+              3
+            ],
+            "details": "Define budget limits and implement checks in the provider manager to compare current usage against these limits. Trigger alerts or block further usage if limits are exceeded.",
+            "status": "pending",
+            "testStrategy": "Set a budget limit and simulate usage to test that the system correctly enforces the limit and prevents overuse."
+          },
+          {
+            "id": 5,
+            "title": "Add CLI Command for Usage Reporting",
+            "description": "Create a CLI command to display month-to-date usage and cost information, allowing users to monitor their usage against budget limits.",
+            "dependencies": [
+              3
+            ],
+            "details": "Develop a command (e.g., 'pd ai-usage') that retrieves and displays aggregated usage data for the current month. Include details such as total tokens used and cost estimates.",
+            "status": "pending",
+            "testStrategy": "Run the CLI command and verify that it outputs accurate and complete usage data."
+          },
+          {
+            "id": 6,
+            "title": "Develop Comprehensive Test Suite",
+            "description": "Create a set of tests to cover all aspects of the usage tracking and budget enforcement features, ensuring robustness and reliability.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Write unit and integration tests for each component: schema setup, logging, aggregation, budget checks, and CLI reporting. Use mock data to simulate various scenarios.",
+            "status": "pending",
+            "testStrategy": "Execute the test suite to confirm that all components function correctly and handle edge cases as expected."
+          }
+        ]
       },
       {
         "id": 25,
@@ -788,81 +936,11 @@
         ],
         "status": "pending",
         "subtasks": []
-            "testStrategy": "Verify that the test harness can execute freeze and switch operations without errors in a controlled mock environment."
-          },
-          {
-            "id": 2,
-            "title": "Implement Integration Tests for Freeze and Switch Operations",
-            "description": "Develop integration tests to validate the freeze and switch operations within the mock environment.",
-            "dependencies": [
-              1
-            ],
-            "details": "Write test cases that execute the freeze and switch operations, ensuring they complete successfully and validate the expected outcomes.",
-            "status": "pending",
-            "testStrategy": "Run the tests in the mock environment and confirm that all assertions pass, indicating correct behavior."
-          },
-          {
-            "id": 3,
-            "title": "Develop Chaos Tests for Ollama Downtime",
-            "description": "Create chaos tests to simulate Ollama service downtime and verify system resilience and graceful degradation.",
-            "dependencies": [
-              1
-            ],
-            "details": "Introduce a mechanism to simulate Ollama being down and observe how the system handles this failure. Ensure that the system degrades gracefully without crashing.",
-            "status": "pending",
-            "testStrategy": "Confirm that the system continues to operate with reduced functionality and logs appropriate error messages during Ollama downtime."
-          },
-          {
-            "id": 4,
-            "title": "Extend Git Parsing Tests for Renames, Copies, and Conflicts",
-            "description": "Enhance existing git parsing tests to include scenarios for file renames, copies, and merge conflicts.",
-            "dependencies": [],
-            "details": "Identify and implement test cases that cover the parsing of git operations involving renames, copies, and conflicts. Ensure these cases are accurately handled by the parsing logic.",
-            "status": "pending",
-            "testStrategy": "Run the extended test suite and verify that all scenarios are parsed correctly without errors."
-          },
-          {
-            "id": 5,
-            "title": "Implement Optional Property-Based Tests for Parsing Robustness",
-            "description": "Introduce property-based testing to ensure robustness of the git parsing logic under various input conditions.",
-            "dependencies": [
-              4
-            ],
-            "details": "Use a property-based testing framework like Hypothesis to generate diverse input scenarios for git parsing and validate the parsing logic's robustness.",
-            "status": "pending",
-            "testStrategy": "Ensure that the property-based tests do not reveal any parsing errors or unexpected behavior across a wide range of inputs."
-          },
-          {
-            "id": 6,
-            "title": "Ensure CI-Safe Execution of Tests",
-            "description": "Modify tests to ensure they can be executed safely within the CI environment without dependencies on tmux or Ollama.",
-            "dependencies": [
-              2,
-              3,
-              4,
-              5
-            ],
-            "details": "Review and adjust test configurations to remove dependencies on external tools like tmux and Ollama, ensuring they run smoothly in a CI pipeline.",
-            "status": "pending",
-            "testStrategy": "Run the entire test suite in the CI environment and verify that all tests pass without requiring external dependencies."
-          },
-          {
-            "id": 7,
-            "title": "Document Test Strategies and Results",
-            "description": "Compile documentation detailing the test strategies, execution results, and any identified issues or improvements.",
-            "dependencies": [
-              6
-            ],
-            "details": "Create comprehensive documentation that outlines the test strategies used, the results obtained from test executions, and any areas for future improvement.",
-            "status": "pending",
-            "testStrategy": "Review the documentation for completeness and clarity, ensuring it accurately reflects the testing process and outcomes."
-          }
-        ]
       }
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T02:10:00.000Z",
+      "updated": "2025-12-15T02:15:00.000Z",
       "description": "Tasks for master context"
     }
   }
