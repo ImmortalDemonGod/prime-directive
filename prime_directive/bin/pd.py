@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
-from typing import Optional
+from typing import Any, Optional, cast
 
 from dotenv import load_dotenv
 from rich.console import Console
@@ -20,7 +20,7 @@ from omegaconf import DictConfig
 
 # Core imports
 from prime_directive.core.config import register_configs
-from prime_directive.core.git_utils import get_status
+from prime_directive.core.git_utils import GitStatus, get_status
 from prime_directive.core.db import (
     ContextSnapshot,
     dispose_engine,
@@ -74,6 +74,7 @@ def load_config() -> DictConfig:
         logger.critical(msg)
         sys.exit(1)
 
+
 # Initialize logging globally with default, will be re-configured if needed
 setup_logging()
 
@@ -99,6 +100,7 @@ async def freeze_logic(
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
 
     # 1. Capture Git State (Sync/Blocking)
+    git_st: GitStatus
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping actual git status check")
         git_summary = "MOCK: Branch: main\nDirty: False"
@@ -166,7 +168,9 @@ async def freeze_logic(
         # Ensure Repository exists (FK constraint)
         from prime_directive.core.db import Repository
         from sqlalchemy import select as sql_select
-        stmt = sql_select(Repository).where(Repository.id == repo_id)
+
+        repo_id_col = cast(Any, Repository.id)
+        stmt = sql_select(Repository).where(repo_id_col == repo_id)
         result = await session.execute(stmt)
         existing_repo = result.scalars().first()
         if not existing_repo:
@@ -215,9 +219,11 @@ def freeze(
     generate an AI SITREP.
 
     The --note is MANDATORY. This is YOUR context that the AI will miss.
-    Without it, you lose the most important piece of information: what YOU knew.
+    Without it, you lose the most important piece of information: what YOU
+    knew.
 
-    Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit review"
+    Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit
+    review"
     """
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
@@ -237,7 +243,8 @@ def freeze(
 @app.command("switch")
 def switch(repo_id: str):
     """
-    Switch context to another repository (Freeze current -> Warp -> Thaw target).
+    Switch context to another repository (Freeze current -> Warp -> Thaw
+    target).
     """
     logger.info(f"Command: switch {repo_id}")
     cfg = load_config()
@@ -363,14 +370,19 @@ def status_command():
                         result = await session.execute(stmt)
                         snapshot = result.scalars().first()
                         if snapshot:
-                            last_snap_str = snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
+                            ts_fmt = "%Y-%m-%d %H:%M"
+                            last_snap_str = snapshot.timestamp.strftime(ts_fmt)
                     except (OSError, ValueError) as e:
                         logger.warning(
                             f"Error fetching snapshot for {repo.id}: {e}"
                         )
                         last_snap_str = "Error"
 
-                    priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
+                    if repo.priority >= 8:
+                        priority_prefix = "🔥"
+                    else:
+                        priority_prefix = "⚡"
+                    priority_display = f"{priority_prefix} {repo.priority}"
                     if isinstance(git_st["branch"], str):
                         branch_display = git_st["branch"]
                     else:
