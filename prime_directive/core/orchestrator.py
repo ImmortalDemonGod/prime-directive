@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional, cast
 import asyncio
 
 from sqlalchemy import select
@@ -23,14 +23,12 @@ def _is_path_prefix(prefix: str, path: str) -> bool:
 
 
 def detect_current_repo_id(cwd: str, repos: Any) -> Optional[str]:
-    """Detect current repo by choosing the longest matching repo path prefix."""
+    """Detect current repo by longest matching repo path prefix."""
     best_repo_id: Optional[str] = None
     best_len = -1
 
     for repo_id, repo_cfg in repos.items():
-        repo_path = getattr(repo_cfg, "path", None) or repo_cfg.get(
-            "path"
-        )
+        repo_path = getattr(repo_cfg, "path", None) or repo_cfg.get("path")
         if not repo_path:
             continue
 
@@ -76,7 +74,8 @@ async def switch_logic(
         target_path = target_repo.path
 
         console.print(
-            f"[bold green]>>> WARPING TO {target_repo_id.upper()} >>>[/bold green]"
+            f"[bold green]>>> WARPING TO {target_repo_id.upper()} >>>"
+            "[/bold green]"
         )
         logger.info(f"Switching to {target_repo_id}")
 
@@ -89,10 +88,12 @@ async def switch_logic(
 
         await init_db_fn(cfg.system.db_path)
         async for session in get_session_fn(cfg.system.db_path):
+            repo_id_col = cast(Any, ContextSnapshot.repo_id)
+            ts_col = cast(Any, ContextSnapshot.timestamp)
             stmt = (
                 select(ContextSnapshot)
-                .where(ContextSnapshot.repo_id == target_repo_id)
-                .order_by(ContextSnapshot.timestamp.desc())
+                .where(repo_id_col == target_repo_id)
+                .order_by(ts_col.desc())
                 .limit(1)
             )
             result = await session.execute(stmt)
