@@ -452,7 +452,7 @@
         "dependencies": [
           3
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -460,7 +460,7 @@
             "description": "Implement a foreign key constraint from ContextSnapshot.repo_id to Repository.id to ensure referential integrity.",
             "dependencies": [],
             "details": "Modify the core/db.py to include a foreign key constraint in the SQLModel definition for ContextSnapshot. Ensure that the foreign key is correctly defined to prevent orphaned snapshots.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Create test cases to insert a ContextSnapshot with a valid and invalid repo_id, ensuring that the invalid insertions are rejected."
           },
           {
@@ -471,7 +471,7 @@
               1
             ],
             "details": "Update the SQLModel definitions to include relationship attributes. This will allow for easier navigation and querying between related tables.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write tests to verify that relationship attributes allow for correct data retrieval and manipulation between ContextSnapshot and Repository."
           },
           {
@@ -482,7 +482,7 @@
               1
             ],
             "details": "Modify the database schema to include an index on the (repo_id, timestamp) columns. This will improve the performance of queries that retrieve the latest snapshot for a given repository.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Benchmark query performance before and after index creation to ensure a noticeable improvement in retrieval times."
           },
           {
@@ -491,7 +491,7 @@
             "description": "Ensure that the database engine lifecycle is managed safely when multiple db_path values are used.",
             "dependencies": [],
             "details": "Update the database connection logic to dispose of old engines or manage engines keyed by db_path. This will prevent resource leaks and ensure that each db_path uses a distinct engine.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate scenarios with multiple db_path values and verify that engines are correctly disposed of or reused as appropriate."
           },
           {
@@ -503,7 +503,7 @@
               3
             ],
             "details": "Create migration scripts using a tool like Alembic to apply the new constraints and indexes. Ensure that the migration can be applied to existing databases without data loss.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the migration process on a copy of the production database to ensure that it applies cleanly and maintains data integrity."
           },
           {
@@ -516,7 +516,7 @@
               3
             ],
             "details": "Review and update the test suite to ensure that all new constraints, relationships, and indexes are adequately tested. Add new tests where necessary.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the full test suite to ensure all tests pass and that new tests cover the intended functionality."
           },
           {
@@ -530,7 +530,7 @@
               5
             ],
             "details": "Revise the database schema documentation to include details of the new foreign key constraints, relationships, and indexes. Document the rationale and expected performance improvements.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Review the documentation for accuracy and completeness. Ensure that it is understandable to new developers and stakeholders."
           }
         ]
@@ -940,7 +940,7 @@
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T02:36:02.518Z",
+      "updated": "2025-12-15T02:37:47.415Z",
       "description": "Tasks for master context"
     }
   }
