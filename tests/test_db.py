@@ -3,6 +3,7 @@ import pytest_asyncio
 from sqlmodel import select
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy import text
 from prime_directive.core.db import (
     Repository,
     ContextSnapshot,
@@ -42,6 +43,13 @@ async def test_repository_crud(async_db_session):
     assert fetched_repo.id == "test-repo"
     assert fetched_repo.path == "/tmp/test"
     assert fetched_repo.active_branch == "main"
+
+
+@pytest.mark.asyncio
+async def test_sqlite_journal_mode_wal(async_db_session):
+    result = await async_db_session.execute(text("PRAGMA journal_mode;"))
+    mode = result.scalar_one()
+    assert str(mode).lower() == "wal"
 
 
 @pytest.mark.asyncio
