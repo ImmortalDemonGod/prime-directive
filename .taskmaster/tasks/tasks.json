@@ -831,14 +831,14 @@
         "id": 23,
         "title": "Tier 2: AI provider manager with OpenAI fallback + cost/consent guardrails",
         "description": "Introduce AI provider abstraction (Ollama primary, OpenAI fallback) with explicit user consent and budget controls.",
-        "details": "Create core/ai_providers.py defining provider interfaces for Ollama and OpenAI. Add Hydra config fields for primary/fallback providers/models, monthly budget, and require-confirmation flag. Implement selection logic: try Ollama first; if unavailable, fall back to OpenAI only if configured and within budget/consent settings. Ensure provider choice is clearly logged.",
+        "details": "Create core/ai_providers.py defining provider interfaces for Ollama and OpenAI. Add Hydra config fields for primary/fallback providers/models, monthly budget, and require-confirmation flag. Implement selection logic: try Ollama first; if unavailable, fall back to OpenAI only if configured and within budget/consent settings. Ensure provider choice is clearly logged.\n<info added on 2025-12-15T04:00:37.349Z>\nFixed all 41 nitpick and 20 actionable comments from PR_ISSUES_DEC14_2025.md CodeRabbit review. Key fixes include narrowing blind Exception catches, fixing unused variables, adding f-string conversion flags, addressing datetime.utcnow deprecation, adding task validation in tasks.py, resolving Hydra config path issue, incorporating python-dotenv for .env loading, and switching from Ollama to OpenAI as the primary provider. All 53 tests pass.\n</info added on 2025-12-15T04:00:37.349Z>",
         "testStrategy": "Unit tests simulating: Ollama up, Ollama down with OpenAI key set, Ollama down without OpenAI key, and budget/consent blocking fallback. Verify freeze still produces a SITREP or a clear placeholder without crashing.",
         "priority": "high",
         "dependencies": [
           6,
           22
         ],
-        "status": "done",
+        "status": "in-progress",
         "subtasks": []
       },
       {
@@ -940,7 +940,7 @@
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T03:07:13.975Z",
+      "updated": "2025-12-15T04:00:21.346Z",
       "description": "Tasks for master context"
     }
   }
