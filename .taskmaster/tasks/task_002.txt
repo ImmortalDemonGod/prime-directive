@@ -1,0 +1,11 @@
+# Task ID: 2
+# Title: Implement Registry Configuration Parser
+# Status: done
+# Dependencies: 1
+# Priority: high
+# Description: Create system/registry.yaml parser that loads repository mappings with extended schema including editor_cmd
+# Details:
+In core/registry.py: Load system/registry.yaml with schema {system: {editor_cmd: str='windsurf', ai_model: str='qwen2.5-coder', db_path: str}, repos: [{id: str, path: str, priority: int}]}. Use pydantic v2.9+ BaseModel for validation. Default editor_cmd='windsurf' (verified as VSCode fork with identical CLI: windsurf <path> works per 2025 comparisons[1][2]). Validate all repo paths exist.
+
+# Test Strategy:
+Create test registry.yaml with 2 repos. `pd list` outputs rich table with ID, path, priority. pytest tests/test_registry.py verifies parsing.
