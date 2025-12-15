@@ -44,16 +44,14 @@ def test_ensure_session_exists_inside_tmux(mock_run, mock_which):
     switch_call = mock_run.call_args_list[1]
     assert switch_call[0][0] == ["tmux", "switch-client", "-t", "pd-test-repo"]
 
-@patch("shutil.which")
 @patch("subprocess.run")
 @patch.dict(os.environ, {"TMUX": "something"}, clear=True)
-def test_detach_current(mock_run, mock_which):
+def test_detach_current(mock_run):
     detach_current()
     mock_run.assert_called_once_with(["tmux", "detach-client"], timeout=2)
 
-@patch("shutil.which")
 @patch("subprocess.run")
 @patch.dict(os.environ, {}, clear=True)
-def test_detach_current_no_tmux(mock_run, mock_which):
+def test_detach_current_no_tmux(mock_run):
     detach_current()
     mock_run.assert_not_called()
