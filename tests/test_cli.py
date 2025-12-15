@@ -48,7 +48,11 @@ def test_status_command(mock_async_run, mock_get_status, mock_load, mock_config)
         "diff_stat": ""
     }
     
-    mock_async_run.return_value = "2025-01-01 12:00"
+    def async_run_side_effect(coro):
+        coro.close() # Close the coroutine to avoid RuntimeWarning
+        return "2025-01-01 12:00"
+    
+    mock_async_run.side_effect = async_run_side_effect
 
     result = runner.invoke(app, ["status"])
     assert result.exit_code == 0
