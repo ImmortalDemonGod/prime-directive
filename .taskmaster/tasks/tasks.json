@@ -205,12 +205,617 @@
           13
         ],
         "status": "in-progress",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Prepare Environment for Integration Testing",
+            "description": "Set up the testing environment to ensure all dependencies and configurations are ready for the integration tests.",
+            "dependencies": [],
+            "details": "Ensure that all necessary services are running and accessible. Verify that the latest code is checked out and all dependencies are installed. Confirm that the testing environment mirrors the production environment as closely as possible.",
+            "status": "pending",
+            "testStrategy": "Verify that all services are running and accessible by executing a simple connectivity test."
+          },
+          {
+            "id": 2,
+            "title": "Execute Manual Tests 1.1-3.3",
+            "description": "Run the specified manual tests to verify basic functionality before proceeding with Amnesia and Crash tests.",
+            "dependencies": [
+              1
+            ],
+            "details": "Follow the manual test scripts for tests 1.1 through 3.3. Document any deviations or unexpected results. Ensure that each test passes as expected before moving on.",
+            "status": "pending",
+            "testStrategy": "Record the results of each test and compare them against expected outcomes documented in the test scripts."
+          },
+          {
+            "id": 3,
+            "title": "Conduct Amnesia Test",
+            "description": "Perform the Amnesia Test to verify system behavior after a period of inactivity.",
+            "dependencies": [
+              2
+            ],
+            "details": "Work on repo1 for 30 minutes, then switch away for 24 hours. After 24 hours, switch back to repo1 and commit code within 5 minutes. Document the state of the system before and after the inactivity period.",
+            "status": "pending",
+            "testStrategy": "Ensure that the system state is consistent with expectations after the 24-hour period and that the commit is successful without errors."
+          },
+          {
+            "id": 4,
+            "title": "Conduct Crash Test",
+            "description": "Perform the Crash Test to verify system recovery after an unexpected shutdown.",
+            "dependencies": [
+              3
+            ],
+            "details": "Simulate a crash by killing the terminal session. Use 'pd switch' to restore the session and verify that the exact state is restored. Document the steps taken and the state of the system before and after the crash.",
+            "status": "pending",
+            "testStrategy": "Check that all data and session states are restored accurately and that no data is lost or corrupted."
+          },
+          {
+            "id": 5,
+            "title": "Document Test Results and Observations",
+            "description": "Compile a detailed report of the test results, including any issues encountered and their resolutions.",
+            "dependencies": [
+              4
+            ],
+            "details": "Create a comprehensive document that includes the results of all tests conducted, any anomalies observed, and steps taken to resolve issues. Include screenshots or logs as necessary to support findings.",
+            "status": "pending",
+            "testStrategy": "Review the document for completeness and accuracy. Ensure that all findings are clearly explained and supported by evidence."
+          },
+          {
+            "id": 6,
+            "title": "Review and Finalize Test Documentation",
+            "description": "Conduct a peer review of the test documentation to ensure accuracy and completeness.",
+            "dependencies": [
+              5
+            ],
+            "details": "Have a team member review the test documentation for clarity, accuracy, and completeness. Address any feedback or corrections needed.",
+            "status": "pending",
+            "testStrategy": "Ensure that the final document is approved by the reviewer and is ready for submission or archiving."
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "title": "P0: Fix tmux attach blocking + remove shell injection risk",
+        "description": "Prevent pd switch workflow from hanging and eliminate shell-injection risk in tmux session creation.",
+        "details": "Audit-derived fixes in core/tmux.py: (1) Avoid blocking the Python process mid-switch via tmux attach-session; prefer exec-style attach (os.execvp) or ensure attach only happens at the very end if intended. (2) Remove shell injection risk from bash -c string interpolation; prefer tmux new-session -c <repo_path> and start shell without concatenated commands, or escape paths safely. Ensure behavior is correct both inside tmux (switch-client) and outside tmux (attach/exec).",
+        "testStrategy": "Add/extend tests to validate safe command construction and that switch can proceed to editor launch/SITREP display in non-tmux environments. Manual test: Monday morning warp scenario does not hang.",
+        "priority": "high",
+        "dependencies": [
+          8,
+          12
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Audit tmux session creation for blocking issues",
+            "description": "Identify and document areas in core/tmux.py where tmux attach-session might block the Python process.",
+            "dependencies": [],
+            "details": "Review the current implementation of tmux session creation and identify where the process might hang due to blocking calls. Document these areas for further action.",
+            "status": "pending",
+            "testStrategy": "Run the current workflow and log any instances where the process hangs to verify the identified blocking points."
+          },
+          {
+            "id": 2,
+            "title": "Implement exec-style attach for tmux sessions",
+            "description": "Replace blocking tmux attach-session calls with os.execvp to prevent the Python process from hanging.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify the code to use os.execvp for attaching to tmux sessions, ensuring that the attach happens only at the end of the workflow if intended.",
+            "status": "pending",
+            "testStrategy": "Test the workflow to ensure that the process does not hang and that the session attaches correctly at the intended point."
+          },
+          {
+            "id": 3,
+            "title": "Remove shell injection risk in tmux session creation",
+            "description": "Eliminate shell injection risks by using tmux new-session -c <repo_path> and avoiding command concatenation.",
+            "dependencies": [],
+            "details": "Refactor the code to use tmux's -c option for setting the working directory and ensure that no shell command concatenation is used. Use shlex.quote for any necessary path handling.",
+            "status": "pending",
+            "testStrategy": "Conduct security tests to ensure that no shell injection vulnerabilities exist in the session creation process."
+          },
+          {
+            "id": 4,
+            "title": "Ensure correct behavior inside tmux using switch-client",
+            "description": "Verify and adjust the behavior of the workflow when executed inside an existing tmux session using switch-client.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Test and modify the workflow to ensure that it correctly uses tmux switch-client when inside a tmux session, without causing any blocking or security issues.",
+            "status": "pending",
+            "testStrategy": "Run the workflow inside a tmux session and confirm that it switches clients correctly without hanging or security risks."
+          },
+          {
+            "id": 5,
+            "title": "Ensure correct behavior outside tmux using attach/exec",
+            "description": "Verify and adjust the behavior of the workflow when executed outside of a tmux session using attach/exec.",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "Ensure that the workflow correctly attaches or executes a new tmux session when run outside of tmux, without blocking or security issues.",
+            "status": "pending",
+            "testStrategy": "Run the workflow outside of a tmux session and confirm that it attaches or executes correctly without hanging or security risks."
+          },
+          {
+            "id": 6,
+            "title": "Develop unit tests and mocks for tmux session management",
+            "description": "Create unit tests and mocks to verify the correct behavior of tmux session management in various scenarios.",
+            "dependencies": [
+              4,
+              5
+            ],
+            "details": "Develop comprehensive unit tests that cover both inside and outside tmux scenarios, ensuring that all code paths are tested for blocking and security issues.",
+            "status": "pending",
+            "testStrategy": "Run the unit tests to ensure all scenarios are covered and that the code behaves as expected in each case."
+          }
+        ]
+      },
+      {
+        "id": 17,
+        "title": "P0: Make Ollama SITREP generation resilient (retry/backoff + configurable timeout)",
+        "description": "Improve scribe robustness so freeze/switch degrade gracefully when Ollama is down or slow.",
+        "details": "Implement in core/scribe.py: configurable timeout via Hydra (e.g., system.ollama_timeout_seconds). Add retry with exponential backoff for transient errors. Change error strategy so callers can distinguish failure from a real SITREP (typed exception or structured result), and in pd.py ensure snapshots still save with fallback SITREP if Ollama fails.",
+        "testStrategy": "Add tests that simulate timeouts/connection errors and assert freeze still succeeds with a fallback SITREP and does not crash.",
+        "priority": "high",
+        "dependencies": [
+          6,
+          11
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement Configurable Timeout",
+            "description": "Add a configurable timeout setting for Ollama SITREP generation using Hydra.",
+            "dependencies": [],
+            "details": "Modify core/scribe.py to include a new configuration parameter 'system.ollama_timeout_seconds' using Hydra. Ensure this parameter can be easily adjusted via configuration files.",
+            "status": "pending",
+            "testStrategy": "Create unit tests to verify that the timeout configuration is correctly read and applied in the SITREP generation process."
+          },
+          {
+            "id": 2,
+            "title": "Implement Retry with Exponential Backoff",
+            "description": "Add retry logic with exponential backoff for transient errors during SITREP generation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Use the Tenacity library to implement retry logic in core/scribe.py. Configure it to handle specific transient errors and apply exponential backoff strategy.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to simulate transient errors and verify that retries occur with the correct backoff intervals."
+          },
+          {
+            "id": 3,
+            "title": "Define Error Handling Strategy",
+            "description": "Establish a clear error handling strategy to distinguish between SITREP failures and successful responses.",
+            "dependencies": [
+              2
+            ],
+            "details": "Introduce a new typed exception or structured result in core/scribe.py to differentiate between errors and valid SITREP responses. Update callers to handle these appropriately.",
+            "status": "pending",
+            "testStrategy": "Develop tests to ensure that errors are correctly classified and handled by the calling functions."
+          },
+          {
+            "id": 4,
+            "title": "Integrate Fallback SITREP Mechanism",
+            "description": "Ensure that snapshots still save with a fallback SITREP if Ollama fails.",
+            "dependencies": [
+              3
+            ],
+            "details": "Modify pd.py to implement a fallback mechanism that triggers when SITREP generation fails, ensuring snapshots are saved with a default or cached SITREP.",
+            "status": "pending",
+            "testStrategy": "Test the fallback mechanism by simulating SITREP generation failures and verifying that snapshots are saved correctly."
+          },
+          {
+            "id": 5,
+            "title": "CLI Integration for Freeze and Switch",
+            "description": "Update CLI commands for freeze and switch to handle new SITREP generation logic.",
+            "dependencies": [
+              4
+            ],
+            "details": "Modify CLI command implementations to incorporate the new timeout, retry, and error handling logic. Ensure user feedback is clear and informative.",
+            "status": "pending",
+            "testStrategy": "Perform integration tests to ensure CLI commands behave correctly under various SITREP generation scenarios."
+          },
+          {
+            "id": 6,
+            "title": "Develop Unit Tests for SITREP Generation",
+            "description": "Create comprehensive unit tests for the SITREP generation process, covering all new features.",
+            "dependencies": [
+              5
+            ],
+            "details": "Develop unit tests in the test suite to cover configurable timeout, retry logic, error handling, and fallback mechanisms.",
+            "status": "pending",
+            "testStrategy": "Ensure all new and existing tests pass, and edge cases are covered."
+          },
+          {
+            "id": 7,
+            "title": "Conduct Chaos Testing",
+            "description": "Perform chaos testing to validate the resilience of the SITREP generation process under failure conditions.",
+            "dependencies": [
+              6
+            ],
+            "details": "Introduce controlled failures and delays in the SITREP generation process to test the robustness of the implemented features.",
+            "status": "pending",
+            "testStrategy": "Use chaos engineering tools to simulate failures and verify that the system degrades gracefully and recovers as expected."
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "title": "P1: DB integrity + performance improvements (FKs, indexes, relationships)",
+        "description": "Add schema constraints and query optimizations to prevent orphaned snapshots and improve latest-snapshot queries.",
+        "details": "Update core/db.py: add FK constraint from ContextSnapshot.repo_id -> Repository.id and define relationships if helpful. Add index to optimize (repo_id, timestamp) latest-snapshot retrieval. Ensure engine lifecycle is safe if multiple db_path values are used (dispose old engine or key engines by path).",
+        "testStrategy": "Extend tests/test_db.py to cover FK behavior (no orphan snapshots) and validate latest-snapshot query correctness.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add Foreign Key Constraint",
+            "description": "Implement a foreign key constraint from ContextSnapshot.repo_id to Repository.id to ensure referential integrity.",
+            "dependencies": [],
+            "details": "Modify the core/db.py to include a foreign key constraint in the SQLModel definition for ContextSnapshot. Ensure that the foreign key is correctly defined to prevent orphaned snapshots.",
+            "status": "pending",
+            "testStrategy": "Create test cases to insert a ContextSnapshot with a valid and invalid repo_id, ensuring that the invalid insertions are rejected."
+          },
+          {
+            "id": 2,
+            "title": "Define Relationships in SQLModel",
+            "description": "Define relationships in SQLModel to facilitate ORM operations between ContextSnapshot and Repository.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update the SQLModel definitions to include relationship attributes. This will allow for easier navigation and querying between related tables.",
+            "status": "pending",
+            "testStrategy": "Write tests to verify that relationship attributes allow for correct data retrieval and manipulation between ContextSnapshot and Repository."
+          },
+          {
+            "id": 3,
+            "title": "Add Index for Latest Snapshot Query",
+            "description": "Create an index on the (repo_id, timestamp) columns to optimize queries for retrieving the latest snapshot.",
+            "dependencies": [
+              1
+            ],
+            "details": "Modify the database schema to include an index on the (repo_id, timestamp) columns. This will improve the performance of queries that retrieve the latest snapshot for a given repository.",
+            "status": "pending",
+            "testStrategy": "Benchmark query performance before and after index creation to ensure a noticeable improvement in retrieval times."
+          },
+          {
+            "id": 4,
+            "title": "Implement Engine Lifecycle Management",
+            "description": "Ensure that the database engine lifecycle is managed safely when multiple db_path values are used.",
+            "dependencies": [],
+            "details": "Update the database connection logic to dispose of old engines or manage engines keyed by db_path. This will prevent resource leaks and ensure that each db_path uses a distinct engine.",
+            "status": "pending",
+            "testStrategy": "Simulate scenarios with multiple db_path values and verify that engines are correctly disposed of or reused as appropriate."
+          },
+          {
+            "id": 5,
+            "title": "Plan Migration and Backward Compatibility",
+            "description": "Develop a migration plan to apply schema changes without disrupting existing data or applications.",
+            "dependencies": [
+              1,
+              3
+            ],
+            "details": "Create migration scripts using a tool like Alembic to apply the new constraints and indexes. Ensure that the migration can be applied to existing databases without data loss.",
+            "status": "pending",
+            "testStrategy": "Test the migration process on a copy of the production database to ensure that it applies cleanly and maintains data integrity."
+          },
+          {
+            "id": 6,
+            "title": "Update Tests for Schema Changes",
+            "description": "Revise existing tests and add new tests to cover the updated schema constraints and performance improvements.",
+            "dependencies": [
+              1,
+              2,
+              3
+            ],
+            "details": "Review and update the test suite to ensure that all new constraints, relationships, and indexes are adequately tested. Add new tests where necessary.",
+            "status": "pending",
+            "testStrategy": "Run the full test suite to ensure all tests pass and that new tests cover the intended functionality."
+          },
+          {
+            "id": 7,
+            "title": "Document Schema and Performance Improvements",
+            "description": "Update the project documentation to reflect the new schema constraints, relationships, and performance optimizations.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              5
+            ],
+            "details": "Revise the database schema documentation to include details of the new foreign key constraints, relationships, and indexes. Document the rationale and expected performance improvements.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for accuracy and completeness. Ensure that it is understandable to new developers and stakeholders."
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "title": "P1: Introduce Orchestrator for atomic switch semantics + nested repo detection",
+        "description": "Centralize freeze/switch/thaw into an orchestration layer with clearer failure semantics.",
+        "details": "Create core/orchestrator.py (or similar) that coordinates freeze -> session/editor -> sitrep display with consistent error handling. Improve current repo detection to handle nested repo paths by selecting the longest matching repo path. Add transaction-like semantics: if session/editor operations fail, avoid leaving user in a half-switched state; ensure DB engine cleanup is consistent.",
+        "testStrategy": "Add unit tests for nested repo detection (longest-prefix match) and failure paths (ensure_session failure does not crash and resources are cleaned up).",
+        "priority": "medium",
+        "dependencies": [
+          11,
+          12
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Design Orchestrator API",
+            "description": "Create a clear API for the orchestrator that will manage freeze, switch, and thaw operations with consistent error handling.",
+            "dependencies": [],
+            "details": "Define the methods and interfaces for the orchestrator in a new file, core/orchestrator.py. Ensure the API supports transaction-like semantics to handle failures gracefully.",
+            "status": "pending",
+            "testStrategy": "Review the API design with the team and create mock implementations to validate the interface."
+          },
+          {
+            "id": 2,
+            "title": "Implement Orchestrator Core Logic",
+            "description": "Develop the core logic for the orchestrator to manage the sequence of operations: freeze, session/editor, and sitrep display.",
+            "dependencies": [
+              1
+            ],
+            "details": "Implement the orchestrator methods defined in the API. Ensure each step is atomic and includes error handling to rollback changes if necessary.",
+            "status": "pending",
+            "testStrategy": "Write unit tests for each orchestrator method to ensure they handle errors and rollback correctly."
+          },
+          {
+            "id": 3,
+            "title": "Refactor Existing Logic into Orchestrator",
+            "description": "Move existing logic from pd.py into the orchestrator to centralize control flow and error handling.",
+            "dependencies": [
+              2
+            ],
+            "details": "Identify and extract relevant logic from pd.py and integrate it into the orchestrator. Ensure that the orchestrator is the single point of control for these operations.",
+            "status": "pending",
+            "testStrategy": "Run existing tests to ensure functionality remains unchanged after refactoring."
+          },
+          {
+            "id": 4,
+            "title": "Enhance Nested Repo Detection",
+            "description": "Improve repository detection to handle nested repo paths by selecting the longest matching repo path.",
+            "dependencies": [
+              3
+            ],
+            "details": "Modify the repo detection logic to iterate through potential repo paths and select the longest valid path. Update the orchestrator to use this enhanced detection.",
+            "status": "pending",
+            "testStrategy": "Create test cases with nested repo structures to verify the correct path is selected."
+          },
+          {
+            "id": 5,
+            "title": "Implement Failure Semantics and Rollback",
+            "description": "Ensure that the orchestrator implements transaction-like semantics to avoid leaving users in a half-switched state.",
+            "dependencies": [
+              2
+            ],
+            "details": "Develop rollback mechanisms within the orchestrator to revert changes if any step in the process fails. Ensure consistent DB engine cleanup.",
+            "status": "pending",
+            "testStrategy": "Simulate failures at each step and verify that the system rolls back to a consistent state."
+          },
+          {
+            "id": 6,
+            "title": "Order Tmux/Editor Operations",
+            "description": "Ensure that tmux and editor operations are ordered correctly within the orchestrator.",
+            "dependencies": [
+              2
+            ],
+            "details": "Review the sequence of operations involving tmux and editors to ensure they are executed in the correct order. Adjust the orchestrator logic as needed.",
+            "status": "pending",
+            "testStrategy": "Test with various tmux and editor configurations to ensure operations are ordered and executed correctly."
+          },
+          {
+            "id": 7,
+            "title": "Develop Unit and Integration Tests",
+            "description": "Create comprehensive unit and integration tests for the orchestrator to ensure all functionalities work as expected.",
+            "dependencies": [
+              3,
+              4,
+              5,
+              6
+            ],
+            "details": "Develop tests that cover all orchestrator functionalities, including error handling, rollback, and nested repo detection.",
+            "status": "pending",
+            "testStrategy": "Execute the full suite of tests and validate that all pass, ensuring the orchestrator behaves correctly in all scenarios."
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "title": "P1: Unify configuration system (Hydra vs registry.yaml) to remove duplication",
+        "description": "Resolve architectural duplication from multiple configuration sources and ensure daemon/CLI use the same config pipeline.",
+        "details": "Audit calls out multiple config systems (Hydra structured config, registry YAML parsing). Decide on a single source of truth and refactor remaining modules (including daemon) to load config consistently. Remove redundant config code/files only if safe and update docs/tests accordingly.",
+        "testStrategy": "Tests should confirm CLI and daemon load identical repo/system settings (mock_mode, db_path, editor_cmd) from the single config source.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          14
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Inventory Current Configuration Sources",
+            "description": "Identify and document all current configuration sources, including Hydra and registry.yaml, used across the system.",
+            "dependencies": [],
+            "details": "Conduct a thorough audit of the codebase to list all configuration files and systems in use. Document their usage, scope, and any interdependencies.",
+            "status": "pending",
+            "testStrategy": "Review the documentation to ensure all configuration sources are accounted for and correctly described."
+          },
+          {
+            "id": 2,
+            "title": "Decide on a Single Source of Truth",
+            "description": "Determine which configuration system will be the single source of truth for the application.",
+            "dependencies": [
+              1
+            ],
+            "details": "Evaluate the pros and cons of Hydra and registry.yaml. Consider factors such as flexibility, ease of use, and integration with existing systems. Make a decision and document the rationale.",
+            "status": "pending",
+            "testStrategy": "Validate the decision with stakeholders and ensure it aligns with project goals."
+          },
+          {
+            "id": 3,
+            "title": "Refactor pd.py to Use the Unified Configuration System",
+            "description": "Refactor the pd.py module to load configuration from the chosen source of truth.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update pd.py to remove any direct references to deprecated configuration systems. Implement loading and parsing logic using the unified configuration system.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that pd.py correctly loads and applies configuration settings."
+          },
+          {
+            "id": 4,
+            "title": "Refactor pd_daemon.py to Use the Unified Configuration System",
+            "description": "Refactor the pd_daemon.py module to load configuration from the chosen source of truth.",
+            "dependencies": [
+              2
+            ],
+            "details": "Update pd_daemon.py to ensure it uses the unified configuration system. Remove any legacy configuration code.",
+            "status": "pending",
+            "testStrategy": "Conduct integration tests to ensure pd_daemon.py operates correctly with the new configuration system."
+          },
+          {
+            "id": 5,
+            "title": "Refactor Core and Registry Usage",
+            "description": "Update core and registry modules to utilize the unified configuration system.",
+            "dependencies": [
+              2
+            ],
+            "details": "Identify all instances where core and registry modules interact with configuration systems. Refactor these to use the unified configuration system.",
+            "status": "pending",
+            "testStrategy": "Perform regression tests on core and registry functionalities to ensure no disruptions occur."
+          },
+          {
+            "id": 6,
+            "title": "Deprecate and Remove Redundant Configuration Code",
+            "description": "Safely deprecate and remove any redundant configuration code and files.",
+            "dependencies": [
+              3,
+              4,
+              5
+            ],
+            "details": "Identify redundant configuration files and code. Ensure they are no longer in use before removing them. Update any references in the codebase.",
+            "status": "pending",
+            "testStrategy": "Run a full suite of tests to confirm that removing the redundant code does not affect system functionality."
+          },
+          {
+            "id": 7,
+            "title": "Update Documentation and Add Tests",
+            "description": "Update all relevant documentation to reflect the new configuration system and add tests to verify consistent application of configurations.",
+            "dependencies": [
+              6
+            ],
+            "details": "Revise user and developer documentation to describe the new configuration system. Add comprehensive tests to ensure configurations are applied consistently across all modules.",
+            "status": "pending",
+            "testStrategy": "Review documentation for accuracy and completeness. Ensure new tests cover all configuration scenarios."
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "title": "P2: Add integration/chaos tests for end-to-end workflow (Monday Morning Warp)",
+        "description": "Add higher-level tests to validate freeze/switch/thaw end-to-end and resilience under dependency failures.",
+        "details": "Add integration tests for pd freeze + pd switch in mock mode; chaos test when Ollama is down to confirm graceful degradation; extend git parsing tests to cover renames/copies/conflicts; optional property-based tests for parsing robustness.",
+        "testStrategy": "CI-safe execution: tests should run without requiring tmux or Ollama (use mocks/mock_mode).",
+        "priority": "low",
+        "dependencies": [
+          16,
+          17,
+          19
+        ],
+        "status": "pending",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Set Up Integration Test Harness in Mock Mode",
+            "description": "Create a test harness to run integration tests in mock mode for the freeze and switch operations.",
+            "dependencies": [],
+            "details": "Develop a test framework that simulates the production environment in a mock mode. This should include setting up necessary mock services and data to simulate the freeze and switch operations.",
+            "status": "pending",
+            "testStrategy": "Verify that the test harness can execute freeze and switch operations without errors in a controlled mock environment."
+          },
+          {
+            "id": 2,
+            "title": "Implement Integration Tests for Freeze and Switch Operations",
+            "description": "Develop integration tests to validate the freeze and switch operations within the mock environment.",
+            "dependencies": [
+              1
+            ],
+            "details": "Write test cases that execute the freeze and switch operations, ensuring they complete successfully and validate the expected outcomes.",
+            "status": "pending",
+            "testStrategy": "Run the tests in the mock environment and confirm that all assertions pass, indicating correct behavior."
+          },
+          {
+            "id": 3,
+            "title": "Develop Chaos Tests for Ollama Downtime",
+            "description": "Create chaos tests to simulate Ollama service downtime and verify system resilience and graceful degradation.",
+            "dependencies": [
+              1
+            ],
+            "details": "Introduce a mechanism to simulate Ollama being down and observe how the system handles this failure. Ensure that the system degrades gracefully without crashing.",
+            "status": "pending",
+            "testStrategy": "Confirm that the system continues to operate with reduced functionality and logs appropriate error messages during Ollama downtime."
+          },
+          {
+            "id": 4,
+            "title": "Extend Git Parsing Tests for Renames, Copies, and Conflicts",
+            "description": "Enhance existing git parsing tests to include scenarios for file renames, copies, and merge conflicts.",
+            "dependencies": [],
+            "details": "Identify and implement test cases that cover the parsing of git operations involving renames, copies, and conflicts. Ensure these cases are accurately handled by the parsing logic.",
+            "status": "pending",
+            "testStrategy": "Run the extended test suite and verify that all scenarios are parsed correctly without errors."
+          },
+          {
+            "id": 5,
+            "title": "Implement Optional Property-Based Tests for Parsing Robustness",
+            "description": "Introduce property-based testing to ensure robustness of the git parsing logic under various input conditions.",
+            "dependencies": [
+              4
+            ],
+            "details": "Use a property-based testing framework like Hypothesis to generate diverse input scenarios for git parsing and validate the parsing logic's robustness.",
+            "status": "pending",
+            "testStrategy": "Ensure that the property-based tests do not reveal any parsing errors or unexpected behavior across a wide range of inputs."
+          },
+          {
+            "id": 6,
+            "title": "Ensure CI-Safe Execution of Tests",
+            "description": "Modify tests to ensure they can be executed safely within the CI environment without dependencies on tmux or Ollama.",
+            "dependencies": [
+              2,
+              3,
+              4,
+              5
+            ],
+            "details": "Review and adjust test configurations to remove dependencies on external tools like tmux and Ollama, ensuring they run smoothly in a CI pipeline.",
+            "status": "pending",
+            "testStrategy": "Run the entire test suite in the CI environment and verify that all tests pass without requiring external dependencies."
+          },
+          {
+            "id": 7,
+            "title": "Document Test Strategies and Results",
+            "description": "Compile documentation detailing the test strategies, execution results, and any identified issues or improvements.",
+            "dependencies": [
+              6
+            ],
+            "details": "Create comprehensive documentation that outlines the test strategies used, the results obtained from test executions, and any areas for future improvement.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for completeness and clarity, ensuring it accurately reflects the testing process and outcomes."
+          }
+        ]
       }
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T01:52:57.342Z",
+      "updated": "2025-12-15T02:10:00.000Z",
       "description": "Tasks for master context"
     }
   }
