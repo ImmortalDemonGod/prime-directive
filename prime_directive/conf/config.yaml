@@ -1,6 +1,10 @@
 system:
   editor_cmd: windsurf
   ai_model: qwen2.5-coder
+  ollama_api_url: http://localhost:11434/api/generate
+  ollama_timeout_seconds: 5.0
+  ollama_max_retries: 2
+  ollama_backoff_seconds: 0.5
   db_path: data/prime.db
   log_path: data/logs/pd.log
   mock_mode: true
