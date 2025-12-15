@@ -21,7 +21,12 @@ from omegaconf import DictConfig
 # Core imports
 from prime_directive.core.config import register_configs
 from prime_directive.core.git_utils import get_status
-from prime_directive.core.db import get_session, ContextSnapshot, init_db, dispose_engine
+from prime_directive.core.db import (
+    ContextSnapshot,
+    dispose_engine,
+    get_session,
+    init_db,
+)
 from prime_directive.core.terminal import capture_terminal_state
 from prime_directive.core.tasks import get_active_task
 from prime_directive.core.scribe import generate_sitrep
@@ -29,7 +34,10 @@ from prime_directive.core.tmux import ensure_session
 from prime_directive.core.windsurf import launch_editor
 from prime_directive.core.logging_utils import setup_logging
 from prime_directive.core.orchestrator import run_switch
-from prime_directive.core.dependencies import get_ollama_status, has_openai_api_key
+from prime_directive.core.dependencies import (
+    get_ollama_status,
+    has_openai_api_key,
+)
 
 # Load .env from multiple locations (in order of priority)
 # 1. Current working directory
@@ -45,14 +53,15 @@ cli = app
 console = Console()
 logger = logging.getLogger("prime_directive")
 
+
 def load_config() -> DictConfig:
     """Load configuration using Hydra."""
     # Ensure any previous Hydra instance is cleared
     GlobalHydra.instance().clear()
-    
+
     # Register structured configs
     register_configs()
-    
+
     # Initialize Hydra - use relative path from this module's location
     # ../conf is relative to prime_directive/bin/pd.py -> prime_directive/conf
     try:
@@ -68,13 +77,18 @@ def load_config() -> DictConfig:
 # Initialize logging globally with default, will be re-configured if needed
 setup_logging()
 
-async def freeze_logic(repo_id: str, config: DictConfig, human_note: Optional[str] = None):
+
+async def freeze_logic(
+    repo_id: str,
+    config: DictConfig,
+    human_note: Optional[str] = None,
+):
     """Core freeze logic separated for reuse (Async)."""
     if repo_id not in config.repos:
         msg = f"Repository '{repo_id}' not found in configuration."
         console.print(f"[bold red]Error:[/bold red] {msg}")
         logger.error(msg)
-        # We can't raise Typer.Exit in async easily if we want to clean up, 
+        # We can't raise Typer.Exit in async easily if we want to clean up,
         # but for now we'll just return or raise an exception.
         raise ValueError(msg)
 
@@ -119,7 +133,8 @@ async def freeze_logic(repo_id: str, config: DictConfig, human_note: Optional[st
     active_task = get_active_task(repo_path)
     logger.debug(f"Active task: {active_task}")
 
-    # 4. Generate AI SITREP (Blocking Network Call - could be made async with httpx)
+    # 4. Generate AI SITREP (Blocking Network Call - could be made async
+    # with httpx)
     console.print("Generating AI SITREP...")
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping AI generation")
@@ -196,11 +211,12 @@ def freeze(
     ),
 ):
     """
-    Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
-    
+    Snapshot the current state of a repository (Git, Terminal, Task) and
+    generate an AI SITREP.
+
     The --note is MANDATORY. This is YOUR context that the AI will miss.
     Without it, you lose the most important piece of information: what YOU knew.
-    
+
     Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit review"
     """
     logger.info(f"Command: freeze {repo_id}")
@@ -273,7 +289,7 @@ def list_repos():
             repo.id,
             str(repo.priority),
             repo.active_branch or "N/A",
-            repo.path
+            repo.path,
         )
     console.print(table)
 
@@ -292,7 +308,11 @@ def status_command():
     table.add_column("Git Status", style="bold")
     table.add_column("Last Snapshot", style="blue")
 
-    sorted_repos = sorted(cfg.repos.values(), key=lambda r: r.priority, reverse=True)
+    sorted_repos = sorted(
+        cfg.repos.values(),
+        key=lambda r: r.priority,
+        reverse=True,
+    )
 
     async def run_status():
         try:
@@ -317,7 +337,8 @@ def status_command():
                     status_text = "Clean"
                     if git_st["is_dirty"]:
                         status_icon = "🔴"
-                        status_text = f"Dirty ({len(git_st['uncommitted_files'])})"
+                        dirty_count = len(git_st["uncommitted_files"])
+                        status_text = f"Dirty ({dirty_count})"
                     elif git_st["branch"] == "unknown":
                         status_icon = "⚪"
                         status_text = "Not Git"
@@ -344,7 +365,9 @@ def status_command():
                         if snapshot:
                             last_snap_str = snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
                     except (OSError, ValueError) as e:
-                        logger.warning(f"Error fetching snapshot for {repo.id}: {e}")
+                        logger.warning(
+                            f"Error fetching snapshot for {repo.id}: {e}"
+                        )
                         last_snap_str = "Error"
 
                     priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
@@ -358,7 +381,7 @@ def status_command():
                         priority_display,
                         branch_display,
                         git_display,
-                        last_snap_str
+                        last_snap_str,
                     )
         finally:
             await dispose_engine()
