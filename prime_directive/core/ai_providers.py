@@ -11,6 +11,8 @@ def generate_ollama(
     prompt: str,
     system: str,
     timeout_seconds: float,
+    max_retries: int = 0,
+    backoff_seconds: float = 0.0,
 ) -> str:
     payload = {
         "model": model,
@@ -19,10 +21,28 @@ def generate_ollama(
         "stream": False,
     }
 
-    response = requests.post(api_url, json=payload, timeout=timeout_seconds)
-    response.raise_for_status()
-    data = response.json()
-    return data.get("response", "Error: No response from AI model.")
+    last_error: Optional[Exception] = None
+    attempts = max_retries + 1
+    for attempt in range(attempts):
+        try:
+            response = requests.post(api_url, json=payload, timeout=timeout_seconds)
+            response.raise_for_status()
+            data = response.json()
+            content = data.get("response")
+            if not isinstance(content, str) or not content.strip():
+                raise ValueError("No response field in Ollama payload")
+            return content
+        except (requests.exceptions.RequestException, ValueError) as e:
+            last_error = e
+            if attempt >= attempts - 1:
+                break
+            if backoff_seconds > 0:
+                import time
+
+                time.sleep(backoff_seconds * (2**attempt))
+
+    assert last_error is not None
+    raise last_error
 
 
 def generate_openai_chat(
@@ -55,15 +75,15 @@ def generate_openai_chat(
 
     choices = data.get("choices")
     if not choices:
-        return "Error: No response from AI model."
+        raise ValueError("No choices in AI response")
 
     message = choices[0].get("message")
     if not isinstance(message, dict):
-        return "Error: No response from AI model."
+        raise ValueError("No message object in AI response")
 
     content = message.get("content")
     if not isinstance(content, str) or not content.strip():
-        return "Error: No response from AI model."
+        raise ValueError("No content in AI response")
 
     return content.strip()
 
