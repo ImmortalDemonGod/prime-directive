@@ -1,0 +1,11 @@
+# Task ID: 7
+# Title: Implement Terminal State Capture
+# Status: done
+# Dependencies: 3
+# Priority: medium
+# Description: Capture last 50 lines of active terminal and last command for freeze operation
+# Details:
+In core/terminal.py: def capture_terminal_state() -> tuple[str, str]: Use subprocess.run(['tmux', 'capture-pane', '-p', '-S', '-50']) for last 50 lines, ['tmux', 'show-buffer'] or history parsing for last command. Fallback to 'history | tail -n 1' if not in tmux. Return (last_command: str, output_summary: str).
+
+# Test Strategy:
+Manual: Run echo 'test error', pd freeze, verify terminal_output_summary contains 'test error' in DB.
