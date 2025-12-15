@@ -4,4 +4,5 @@ theme:
   name: readthedocs
 nav:
   - Home: index.md
-  - Code Audit: CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md
+  - Code Audit (2025-12-14): CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md
+  - Code Audit (2025-12-15): CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-15_01.md
