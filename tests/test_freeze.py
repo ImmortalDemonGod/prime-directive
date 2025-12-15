@@ -43,10 +43,10 @@ def mock_config(tmp_path):
 
 
 @patch("prime_directive.bin.pd.load_config")
-@patch("prime_directive.bin.pd.get_status")
-@patch("prime_directive.bin.pd.capture_terminal_state")
+@patch("prime_directive.bin.pd.get_status", new_callable=AsyncMock)
+@patch("prime_directive.bin.pd.capture_terminal_state", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_active_task")
-@patch("prime_directive.bin.pd.generate_sitrep")
+@patch("prime_directive.bin.pd.generate_sitrep", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session")  # Mocking the async generator
 def test_freeze_command(
