@@ -7,10 +7,10 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     """
     Retrieves the active task from the Task Master tasks.json file in the given
     repository.
-    
+
     Args:
         repo_path (str): Path to the repository root.
-        
+
     Returns:
         Optional[Dict[str, Any]]: The active task dictionary or None if no task
         is active or file not found.
@@ -34,11 +34,7 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     in_progress_tasks = []
 
     # Priority mapping
-    priority_map = {
-        "high": 3,
-        "medium": 2,
-        "low": 1
-    }
+    priority_map = {"high": 3, "medium": 2, "low": 1}
 
     # Iterate through all tags (e.g., "master")
     for tag_data in data.values():
@@ -63,7 +59,8 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
 
     # Sort by priority (desc) then by ID (desc, assuming higher ID is more
     # recent/relevant).
-    # Task ID can be int or str. Let's try to convert to int for sorting if possible.
+    # Task ID can be int or str. Let's try to convert to int for sorting if
+    # possible.
     def sort_key(item):
         p_val, t = item
         t_id = t.get("id", 0)
