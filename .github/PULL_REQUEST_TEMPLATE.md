@@ -1,15 +1,18 @@
-### Summary :memo:
-_Write an overview about it._
+## Summary
 
-### Details
-_Describe more what you did on changes._
-1. (...)
-2. (...)
+Brief description of changes.
 
-### Bugfixes :bug: (delete if dind't have any)
--
+## Changes
 
-### Checks
-- [ ] Closed #798
-- [ ] Tested Changes
-- [ ] Stakeholder Approval
+- Change 1
+- Change 2
+
+## Testing
+
+- [ ] Tests pass (`pytest`)
+- [ ] Linting passes (`make lint`)
+- [ ] Manually tested affected commands
+
+## Related Issues
+
+Closes #
