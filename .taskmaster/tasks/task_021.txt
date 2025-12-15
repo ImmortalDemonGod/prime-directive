@@ -11,45 +11,45 @@ Add integration tests for pd freeze + pd switch in mock mode; chaos test when Ol
 CI-safe execution: tests should run without requiring tmux or Ollama (use mocks/mock_mode).
 
 # Subtasks:
-## 1. Set Up Integration Test Harness in Mock Mode [pending]
+## 1. Set up Integration Test Harness in Mock Mode [pending]
 ### Dependencies: None
-### Description: Create a test harness to run integration tests in mock mode for the freeze and switch operations.
+### Description: Create an integration test harness that operates in mock mode to simulate the end-to-end workflow without external dependencies.
 ### Details:
-Develop a test framework that simulates the production environment in a mock mode. This should include setting up necessary mock services and data to simulate the freeze and switch operations.
+Develop a test harness that can simulate the entire workflow in a controlled environment. Ensure it can mock external services and dependencies to allow for isolated testing.
 
-## 2. Implement Integration Tests for Freeze and Switch Operations [pending]
+## 2. Implement Freeze and Switch End-to-End Tests [pending]
 ### Dependencies: 21.1
-### Description: Develop integration tests to validate the freeze and switch operations within the mock environment.
+### Description: Develop integration tests to validate the freeze and switch operations in the end-to-end workflow using the mock mode harness.
 ### Details:
-Write test cases that execute the freeze and switch operations, ensuring they complete successfully and validate the expected outcomes.
+Write tests that execute the freeze and switch operations, ensuring that the system behaves as expected through the entire workflow.
 
-## 3. Develop Chaos Tests for Ollama Downtime [pending]
+## 3. Develop Chaos Test for Ollama Down Scenario [pending]
 ### Dependencies: 21.1
-### Description: Create chaos tests to simulate Ollama service downtime and verify system resilience and graceful degradation.
+### Description: Create a chaos test to simulate the scenario where Ollama is down, ensuring the system degrades gracefully.
 ### Details:
-Introduce a mechanism to simulate Ollama being down and observe how the system handles this failure. Ensure that the system degrades gracefully without crashing.
+Introduce a failure in the mock mode to simulate Ollama being down and observe how the system handles the failure.
 
 ## 4. Extend Git Parsing Tests for Renames, Copies, and Conflicts [pending]
 ### Dependencies: None
-### Description: Enhance existing git parsing tests to include scenarios for file renames, copies, and merge conflicts.
+### Description: Enhance existing git parsing tests to cover scenarios involving file renames, copies, and merge conflicts.
 ### Details:
-Identify and implement test cases that cover the parsing of git operations involving renames, copies, and conflicts. Ensure these cases are accurately handled by the parsing logic.
+Add test cases to the git parsing suite that specifically address the handling of renames, copies, and conflicts in git repositories.
 
 ## 5. Implement Optional Property-Based Tests for Parsing Robustness [pending]
 ### Dependencies: 21.4
-### Description: Introduce property-based testing to ensure robustness of the git parsing logic under various input conditions.
+### Description: Introduce property-based tests to ensure robustness in parsing logic, focusing on edge cases and unexpected inputs.
 ### Details:
-Use a property-based testing framework like Hypothesis to generate diverse input scenarios for git parsing and validate the parsing logic's robustness.
+Use a property-based testing framework like Hypothesis to generate a wide range of inputs and validate the parsing logic against them.
 
-## 6. Ensure CI-Safe Execution of Tests [pending]
+## 6. Document Integration and Chaos Testing Strategies [pending]
+### Dependencies: 21.1, 21.2, 21.3
+### Description: Create comprehensive documentation for the integration and chaos testing strategies implemented.
+### Details:
+Write detailed documentation explaining the purpose, setup, and execution of the integration and chaos tests, including any mock configurations.
+
+## 7. Integrate Tests into Continuous Integration Pipeline [pending]
 ### Dependencies: 21.2, 21.3, 21.4, 21.5
-### Description: Modify tests to ensure they can be executed safely within the CI environment without dependencies on tmux or Ollama.
+### Description: Ensure all new tests are integrated into the CI pipeline to run automatically on code changes.
 ### Details:
-Review and adjust test configurations to remove dependencies on external tools like tmux and Ollama, ensuring they run smoothly in a CI pipeline.
-
-## 7. Document Test Strategies and Results [pending]
-### Dependencies: 21.6
-### Description: Compile documentation detailing the test strategies, execution results, and any identified issues or improvements.
-### Details:
-Create comprehensive documentation that outlines the test strategies used, the results obtained from test executions, and any areas for future improvement.
+Modify the CI configuration to include the new integration, chaos, and parsing tests, ensuring they run in a CI-safe environment.
 
