@@ -6,6 +6,12 @@ from hydra.core.config_store import ConfigStore
 class SystemConfig:
     editor_cmd: str = "windsurf"
     ai_model: str = "qwen2.5-coder"
+    ai_fallback_provider: str = "none"
+    ai_fallback_model: str = "gpt-4o-mini"
+    ai_require_confirmation: bool = True
+    openai_api_url: str = "https://api.openai.com/v1/chat/completions"
+    openai_timeout_seconds: float = 10.0
+    openai_max_tokens: int = 150
     ollama_api_url: str = "http://localhost:11434/api/generate"
     ollama_timeout_seconds: float = 5.0
     ollama_max_retries: int = 2
