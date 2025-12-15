@@ -1,6 +1,6 @@
 # Task ID: 19
 # Title: P1: Introduce Orchestrator for atomic switch semantics + nested repo detection
-# Status: pending
+# Status: done
 # Dependencies: 11, 12
 # Priority: medium
 # Description: Centralize freeze/switch/thaw into an orchestration layer with clearer failure semantics.
@@ -11,43 +11,43 @@ Create core/orchestrator.py (or similar) that coordinates freeze -> session/edit
 Add unit tests for nested repo detection (longest-prefix match) and failure paths (ensure_session failure does not crash and resources are cleaned up).
 
 # Subtasks:
-## 1. Design Orchestrator API [pending]
+## 1. Design Orchestrator API [done]
 ### Dependencies: None
 ### Description: Create a clear API for the orchestrator that will manage freeze, switch, and thaw operations with consistent error handling.
 ### Details:
 Define the methods and interfaces for the orchestrator in a new file, core/orchestrator.py. Ensure the API supports transaction-like semantics to handle failures gracefully.
 
-## 2. Implement Orchestrator Core Logic [pending]
+## 2. Implement Orchestrator Core Logic [done]
 ### Dependencies: 19.1
 ### Description: Develop the core logic for the orchestrator to manage the sequence of operations: freeze, session/editor, and sitrep display.
 ### Details:
 Implement the orchestrator methods defined in the API. Ensure each step is atomic and includes error handling to rollback changes if necessary.
 
-## 3. Refactor Existing Logic into Orchestrator [pending]
+## 3. Refactor Existing Logic into Orchestrator [done]
 ### Dependencies: 19.2
 ### Description: Move existing logic from pd.py into the orchestrator to centralize control flow and error handling.
 ### Details:
 Identify and extract relevant logic from pd.py and integrate it into the orchestrator. Ensure that the orchestrator is the single point of control for these operations.
 
-## 4. Enhance Nested Repo Detection [pending]
+## 4. Enhance Nested Repo Detection [done]
 ### Dependencies: 19.3
 ### Description: Improve repository detection to handle nested repo paths by selecting the longest matching repo path.
 ### Details:
 Modify the repo detection logic to iterate through potential repo paths and select the longest valid path. Update the orchestrator to use this enhanced detection.
 
-## 5. Implement Failure Semantics and Rollback [pending]
+## 5. Implement Failure Semantics and Rollback [done]
 ### Dependencies: 19.2
 ### Description: Ensure that the orchestrator implements transaction-like semantics to avoid leaving users in a half-switched state.
 ### Details:
 Develop rollback mechanisms within the orchestrator to revert changes if any step in the process fails. Ensure consistent DB engine cleanup.
 
-## 6. Order Tmux/Editor Operations [pending]
+## 6. Order Tmux/Editor Operations [done]
 ### Dependencies: 19.2
 ### Description: Ensure that tmux and editor operations are ordered correctly within the orchestrator.
 ### Details:
 Review the sequence of operations involving tmux and editors to ensure they are executed in the correct order. Adjust the orchestrator logic as needed.
 
-## 7. Develop Unit and Integration Tests [pending]
+## 7. Develop Unit and Integration Tests [done]
 ### Dependencies: 19.3, 19.4, 19.5, 19.6
 ### Description: Create comprehensive unit and integration tests for the orchestrator to ensure all functionalities work as expected.
 ### Details:
