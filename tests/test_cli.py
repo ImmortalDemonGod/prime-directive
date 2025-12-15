@@ -74,7 +74,7 @@ def test_status_command(mock_dispose, mock_get_session, mock_init_db, mock_get_s
     mock_session.execute.return_value = mock_result 
     
     # Define async generator for get_session
-    async def async_gen(*args, **kwargs):
+    async def async_gen(_db_path=None):
         yield mock_session
     
     # side_effect needs to be the function itself if it's a generator? 
@@ -103,8 +103,10 @@ def test_doctor_command(mock_exists, mock_get, mock_which, mock_load, mock_confi
     
     # Mock shutil.which
     def which_side_effect(cmd):
-        if cmd == "tmux": return "/usr/bin/tmux"
-        if cmd == "code": return "/usr/bin/code"
+        if cmd == "tmux":
+            return "/usr/bin/tmux"
+        if cmd == "code":
+            return "/usr/bin/code"
         return None
     mock_which.side_effect = which_side_effect
     
