@@ -283,7 +283,7 @@
           8,
           12
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -291,7 +291,7 @@
             "description": "Identify and document areas in core/tmux.py where tmux attach-session might block the Python process.",
             "dependencies": [],
             "details": "Review the current implementation of tmux session creation and identify where the process might hang due to blocking calls. Document these areas for further action.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the current workflow and log any instances where the process hangs to verify the identified blocking points."
           },
           {
@@ -302,7 +302,7 @@
               1
             ],
             "details": "Modify the code to use os.execvp for attaching to tmux sessions, ensuring that the attach happens only at the end of the workflow if intended.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the workflow to ensure that the process does not hang and that the session attaches correctly at the intended point."
           },
           {
@@ -311,7 +311,7 @@
             "description": "Eliminate shell injection risks by using tmux new-session -c <repo_path> and avoiding command concatenation.",
             "dependencies": [],
             "details": "Refactor the code to use tmux's -c option for setting the working directory and ensure that no shell command concatenation is used. Use shlex.quote for any necessary path handling.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Conduct security tests to ensure that no shell injection vulnerabilities exist in the session creation process."
           },
           {
@@ -323,7 +323,7 @@
               3
             ],
             "details": "Test and modify the workflow to ensure that it correctly uses tmux switch-client when inside a tmux session, without causing any blocking or security issues.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the workflow inside a tmux session and confirm that it switches clients correctly without hanging or security risks."
           },
           {
@@ -335,7 +335,7 @@
               3
             ],
             "details": "Ensure that the workflow correctly attaches or executes a new tmux session when run outside of tmux, without blocking or security issues.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the workflow outside of a tmux session and confirm that it attaches or executes correctly without hanging or security risks."
           },
           {
@@ -347,7 +347,7 @@
               5
             ],
             "details": "Develop comprehensive unit tests that cover both inside and outside tmux scenarios, ensuring that all code paths are tested for blocking and security issues.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the unit tests to ensure all scenarios are covered and that the code behaves as expected in each case."
           }
         ]
@@ -363,7 +363,7 @@
           6,
           11
         ],
-        "status": "pending",
+        "status": "in-progress",
         "subtasks": [
           {
             "id": 1,
@@ -940,7 +940,7 @@
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T02:21:56.541Z",
+      "updated": "2025-12-15T02:32:14.125Z",
       "description": "Tasks for master context"
     }
   }
