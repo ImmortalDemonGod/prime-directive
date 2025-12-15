@@ -6,6 +6,25 @@
 
 **Prime Directive** is an AI-powered context preservation system for developers who work across multiple repositories. It automatically captures and restores your development context—git state, terminal history, active tasks, and AI-generated situational reports—so you can seamlessly switch between projects without losing your train of thought.
 
+## The Core User Story: "Monday Morning Warp"
+
+You stop working on `rna-predict` on Friday night. You spend the weekend on `black-box`. Monday morning, you return to `rna-predict`:
+
+```bash
+$ pd switch rna-predict
+
+>>> WARPING TO RNA-PREDICT >>>
+
+ SITREP 
+>>> HUMAN NOTE: Fixing the SE(3) equivariant loss - test_rotation_invariance fails
+>>> AI SUMMARY: Working on equivariant.py line 142, the normalization epsilon is hardcoded...
+>>> TIMESTAMP: Friday 22:45
+```
+
+**The Amnesia Test**: Can you commit valid code within 5 minutes of `pd switch`? If yes, the system is working.
+
+> ⚠️ The `--note` flag is **mandatory** because AI can't read your mind. Your human insight is the most important piece of context.
+
 ## Features
 
 - **Context Freezing** — Capture git status, terminal state, active tasks, and generate AI summaries before switching projects
@@ -36,11 +55,25 @@ ollama pull qwen2.5-coder
 ### Install Prime Directive
 
 ```bash
-# Using uv (recommended)
-uv pip install -e .
+# Install globally (recommended - works from any terminal)
+uv tool install /path/to/prime-directive
 
-# Or using pip
-pip install -e .
+# Or install in development mode
+uv pip install -e .
+```
+
+### Post-Installation Setup
+
+```bash
+# Create centralized config directory
+mkdir -p ~/.prime-directive
+
+# Copy your API keys
+echo 'OPENAI_API_KEY="sk-your-key-here"' > ~/.prime-directive/.env
+
+# Add to your shell (required for API keys)
+echo 'export OPENAI_API_KEY="$(grep OPENAI_API_KEY ~/.prime-directive/.env | cut -d= -f2 | tr -d \")"' >> ~/.zshrc
+source ~/.zshrc
 ```
 
 ## Quick Start
@@ -52,10 +85,10 @@ pd doctor
 # List tracked repositories
 pd list
 
-# Freeze current context before switching
-pd freeze my-project
+# Freeze current context (--note is REQUIRED)
+pd freeze my-project --note "What you were actually working on"
 
-# Switch to another repository (auto-freezes current, restores target)
+# Switch to another repository (displays your note + AI summary)
 pd switch other-project
 
 # View status of a repository
@@ -68,9 +101,9 @@ pd status my-project
 |---------|-------------|
 | `pd doctor` | Check system dependencies and configuration |
 | `pd list` | List all tracked repositories with status |
-| `pd status <repo>` | Show detailed status of a repository |
-| `pd freeze <repo>` | Capture and save current context |
-| `pd switch <repo>` | Switch to a repository (freeze current + restore target) |
+| `pd status` | Show detailed status of all repositories |
+| `pd freeze <repo> --note "..."` | Capture context with your human note (required) |
+| `pd switch <repo>` | Switch to a repository and display saved context |
 
 ## Configuration
 
@@ -78,23 +111,29 @@ Prime Directive uses [Hydra](https://hydra.cc/) for configuration. Edit `prime_d
 
 ```yaml
 system:
-  db_path: data/prime.db
-  log_level: INFO
   editor_cmd: windsurf
-  ai_model: qwen2.5-coder
-  ollama_api_url: http://localhost:11434/api/generate
-  ai_fallback_provider: openai
-  ai_require_confirmation: true
+  ai_model: gpt-4o-mini          # Model to use for SITREP
+  ai_provider: openai            # Primary provider: "openai" or "ollama"
+  db_path: ~/.prime-directive/data/prime.db
+  log_path: ~/.prime-directive/logs/pd.log
+
+repos:
+  my-project:
+    id: my-project
+    path: /path/to/my-project
+    priority: 10
+    active_branch: main
 ```
 
-### Environment Variables
+### Data Storage
 
-Create a `.env` file for sensitive configuration:
+All data is stored in `~/.prime-directive/`:
 
-```bash
-# Optional: OpenAI fallback (when Ollama is unavailable)
-OPENAI_API_KEY=sk-...
-```
+| Path | Purpose |
+|------|---------|
+| `~/.prime-directive/.env` | API keys (OPENAI_API_KEY) |
+| `~/.prime-directive/data/prime.db` | Snapshots database |
+| `~/.prime-directive/logs/pd.log` | Application logs |
 
 ## Architecture
 
