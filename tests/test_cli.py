@@ -2,34 +2,36 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, Mock, MagicMock
 from prime_directive.bin.pd import app
-from prime_directive.core.registry import Registry, RepoConfig, SystemConfig
+from omegaconf import OmegaConf
 
 runner = CliRunner()
 
 @pytest.fixture
-def mock_registry():
-    return Registry(
-        system=SystemConfig(editor_cmd="code", ai_model="gpt-4"),
-        repos={
-            "repo1": RepoConfig(id="repo1", path="/tmp/repo1", priority=10, active_branch="main"),
-            "repo2": RepoConfig(id="repo2", path="/tmp/repo2", priority=5, active_branch="dev")
+def mock_config():
+    # Use OmegaConf to create a DictConfig that supports dot access
+    conf_dict = {
+        "system": {"editor_cmd": "code", "ai_model": "gpt-4", "db_path": ":memory:"},
+        "repos": {
+            "repo1": {"id": "repo1", "path": "/tmp/repo1", "priority": 10, "active_branch": "main"},
+            "repo2": {"id": "repo2", "path": "/tmp/repo2", "priority": 5, "active_branch": "dev"}
         }
-    )
+    }
+    return OmegaConf.create(conf_dict)
 
-@patch("prime_directive.bin.pd.load_registry")
-def test_list_command(mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+@patch("prime_directive.bin.pd.load_config")
+def test_list_command(mock_load, mock_config):
+    mock_load.return_value = mock_config
     result = runner.invoke(app, ["list"])
     assert result.exit_code == 0
     assert "repo1" in result.stdout
     assert "repo2" in result.stdout
     assert "10" in result.stdout  # Priority
 
-@patch("prime_directive.bin.pd.load_registry")
+@patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.get_status")
-@patch("prime_directive.bin.pd.asyncio.run") # Mocking asyncio.run to avoid actual DB calls in unit test
-def test_status_command(mock_async_run, mock_get_status, mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+@patch("prime_directive.bin.pd.asyncio.run")
+def test_status_command(mock_async_run, mock_get_status, mock_load, mock_config):
+    mock_load.return_value = mock_config
     
     # Mock get_status return values
     mock_get_status.return_value = {
@@ -48,12 +50,12 @@ def test_status_command(mock_async_run, mock_get_status, mock_load, mock_registr
     assert "Clean" in result.stdout
     assert "2025-01-01 12:00" in result.stdout
 
-@patch("prime_directive.bin.pd.load_registry")
+@patch("prime_directive.bin.pd.load_config")
 @patch("shutil.which")
 @patch("requests.get")
 @patch("os.path.exists")
-def test_doctor_command(mock_exists, mock_get, mock_which, mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+def test_doctor_command(mock_exists, mock_get, mock_which, mock_load, mock_config):
+    mock_load.return_value = mock_config
     
     # Mock shutil.which
     def which_side_effect(cmd):
@@ -65,7 +67,7 @@ def test_doctor_command(mock_exists, mock_get, mock_which, mock_load, mock_regis
     # Mock requests.get (Ollama)
     mock_response = Mock()
     mock_response.status_code = 200
-    mock_response.json.return_value = {"models": [{"name": "gpt-4:latest"}]} # Matches mock_registry model
+    mock_response.json.return_value = {"models": [{"name": "gpt-4:latest"}]} # Matches mock_config model
     mock_get.return_value = mock_response
     
     # Mock os.path.exists
