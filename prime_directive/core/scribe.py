@@ -2,12 +2,20 @@ import requests
 import time
 from typing import Optional, Dict, Any
 
+from prime_directive.core.ai_providers import generate_openai_chat, get_openai_api_key
+
 def generate_sitrep(
     repo_id: str,
     git_state: str,
     terminal_logs: str,
     active_task: Optional[Dict[str, Any]] = None,
     model: str = "qwen2.5-coder",
+    fallback_provider: str = "none",
+    fallback_model: str = "gpt-4o-mini",
+    require_confirmation: bool = True,
+    openai_api_url: str = "https://api.openai.com/v1/chat/completions",
+    openai_timeout_seconds: float = 10.0,
+    openai_max_tokens: int = 150,
     api_url: str = "http://localhost:11434/api/generate",
     timeout_seconds: float = 5.0,
     max_retries: int = 0,
@@ -22,9 +30,15 @@ def generate_sitrep(
         terminal_logs (str): Recent terminal output.
         active_task (Optional[dict]): The current active task dictionary.
         model (str): The Ollama model to use.
+        fallback_provider (str): The fallback provider to use if Ollama fails.
+        fallback_model (str): The fallback model to use if Ollama fails.
+        require_confirmation (bool): Whether to require confirmation for OpenAI fallback.
+        openai_api_url (str): The OpenAI API endpoint.
+        openai_timeout_seconds (float): The timeout in seconds for the OpenAI API request.
+        openai_max_tokens (int): The maximum number of tokens for the OpenAI API request.
         api_url (str): The Ollama API endpoint.
-        timeout_seconds (float): The timeout in seconds for the API request.
-        max_retries (int): The maximum number of retries for the API request.
+        timeout_seconds (float): The timeout in seconds for the Ollama API request.
+        max_retries (int): The maximum number of retries for the Ollama API request.
         backoff_seconds (float): The backoff time in seconds between retries.
         
     Returns:
@@ -76,4 +90,25 @@ def generate_sitrep(
             if backoff_seconds > 0:
                 time.sleep(backoff_seconds * (2 ** attempt))
 
-    return f"Error generating SITREP: {str(last_error)}"
+    if fallback_provider != "openai":
+        return f"Error generating SITREP: {str(last_error)}"
+
+    if require_confirmation:
+        return "Error generating SITREP: OpenAI fallback requires confirmation"
+
+    api_key = get_openai_api_key()
+    if not api_key:
+        return "Error generating SITREP: OpenAI fallback requested but OPENAI_API_KEY not set"
+
+    try:
+        return generate_openai_chat(
+            api_url=openai_api_url,
+            api_key=api_key,
+            model=fallback_model,
+            system=system_prompt,
+            prompt=prompt,
+            timeout_seconds=openai_timeout_seconds,
+            max_tokens=openai_max_tokens,
+        )
+    except requests.exceptions.RequestException as e:
+        return f"Error generating SITREP: {str(e)}"
