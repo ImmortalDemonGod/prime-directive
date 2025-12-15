@@ -936,11 +936,279 @@
         ],
         "status": "pending",
         "subtasks": []
+      },
+      {
+        "id": 26,
+        "title": "Fix Shell Integration and Process Hierarchy",
+        "description": "Resolve the fragile process hierarchy issue caused by the pd switch command, ensuring tmux sessions are not orphaned if Python exits unexpectedly.",
+        "details": "The current implementation of the pd switch command results in a fragile process hierarchy where Python remains the parent of the tmux client. This can lead to orphaned tmux sessions if Python exits unexpectedly. To address this, modify pd.py to exit with a specific status code or write a token file upon successful execution. Update shell_integration.zsh to trap this status code or token file, and execute tmux switch-client at the shell level, effectively removing Python from the process chain. This change will ensure that tmux sessions are managed independently of the Python process, improving the robustness of the session management.",
+        "testStrategy": "1. Modify pd.py to exit with a specific status code or write a token file upon successful execution.\\n2. Update shell_integration.zsh to trap the status code or check for the token file.\\n3. Execute tmux switch-client at the shell level based on the trapped status or token file.\\n4. Test by running pd switch and forcibly terminating the Python process to ensure the tmux session remains active and is not orphaned.\\n5. Verify that the shell integration correctly handles the status code or token file and executes the tmux switch-client command.",
+        "status": "pending",
+        "dependencies": [
+          13,
+          16
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 27,
+        "title": "Clean Up Technical Debt: Code Removal, WAL Mode, Refactoring, and Alembic Setup",
+        "description": "Refactor windsurf.py to accept configurable editor_args from Hydra config instead of using the hardcoded -n flag. This change will improve compatibility with editors other than VSCode, such as vim.",
+        "status": "pending",
+        "dependencies": [
+          20
+        ],
+        "priority": "medium",
+        "details": "1. **Refactor windsurf.py**: Update `windsurf.py` to accept configurable `editor_args` from the Hydra configuration instead of using the hardcoded `-n` flag. This will improve compatibility with editors that do not support the `-n` flag, such as vim. \n\n2. **Update Configuration**: Add an `editor_args` field to `config.yaml` to allow users to specify their preferred editor arguments. Ensure that the application reads this configuration correctly and applies it when launching the editor.",
+        "testStrategy": "1. **Refactor windsurf.py**: Test the `windsurf.py` functionality with different editors by specifying various `editor_args` in the Hydra configuration. Ensure that the application launches the editor correctly without the `-n` flag.\n\n2. **Configuration Verification**: Verify that the `editor_args` field in `config.yaml` is correctly parsed and applied by the application. Test with multiple configurations to ensure flexibility and correctness.",
+        "subtasks": []
+      },
+      {
+        "id": 28,
+        "title": "Fix Async I/O Architecture",
+        "description": "Replace blocking I/O calls with asynchronous alternatives to improve performance and prevent freezes.",
+        "details": "1. Replace `requests.post` in `ai_providers.py` with `httpx.AsyncClient.post` to make HTTP requests asynchronously. Ensure that the function calling it is also async and handle the response appropriately.\n2. Replace `time.sleep` in `ai_providers.py` with `asyncio.sleep` or use the `tenacity` library for retries with backoff, ensuring that the function is async.\n3. In `git_utils.py` and `terminal.py`, replace `subprocess.run` with `asyncio.create_subprocess_exec` to execute shell commands asynchronously. Ensure that the output is captured correctly using `await process.communicate()`.\n4. Make `generate_sitrep` in `scribe.py` an async function to support the changes and ensure it integrates seamlessly with the rest of the system.\n5. Update any calling code to handle the new async functions, including adding `await` where necessary.",
+        "testStrategy": "1. Write unit tests for `ai_providers.py` to ensure that HTTP requests are made asynchronously and responses are handled correctly.\n2. Test retry logic using `asyncio.sleep` or `tenacity` to confirm that retries occur without blocking.\n3. Verify that `git_utils.py` and `terminal.py` execute shell commands asynchronously and capture outputs correctly.\n4. Conduct integration tests to ensure that the overall system performance improves and that no blocking occurs during AI calls.\n5. Perform manual testing to simulate AI calls and observe that the system remains responsive without freezes.",
+        "status": "pending",
+        "dependencies": [
+          6,
+          7,
+          17
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Replace requests.post with httpx.AsyncClient.post in ai_providers.py",
+            "description": "Modify the HTTP request logic in ai_providers.py to use asynchronous HTTP calls with httpx.AsyncClient.post.",
+            "dependencies": [],
+            "details": "Identify all instances of requests.post in ai_providers.py. Replace them with httpx.AsyncClient.post. Ensure that the surrounding function is converted to an async function and that the response is handled using await. Update any related error handling and logging to work with the async context.",
+            "status": "pending",
+            "testStrategy": "Write unit tests to verify that HTTP requests are made correctly and responses are handled as expected in an asynchronous manner."
+          },
+          {
+            "id": 2,
+            "title": "Replace time.sleep with asyncio.sleep in ai_providers.py",
+            "description": "Convert blocking sleep calls to non-blocking using asyncio.sleep or implement retry logic with tenacity for backoff.",
+            "dependencies": [
+              1
+            ],
+            "details": "Locate all instances of time.sleep in ai_providers.py. Replace them with asyncio.sleep to ensure non-blocking behavior. If retry logic is needed, use the tenacity library to implement retries with exponential backoff. Ensure that the functions using these calls are async.",
+            "status": "pending",
+            "testStrategy": "Test the functions to ensure they behave correctly with non-blocking sleep and retry logic, verifying that the application does not freeze during these operations."
+          },
+          {
+            "id": 3,
+            "title": "Make generate_sitrep in scribe.py an async function",
+            "description": "Convert the generate_sitrep function in scribe.py to an async function to support asynchronous operations.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Modify the generate_sitrep function to be async. Ensure that all internal calls within this function that can be async are awaited. Update any calling code to handle the async nature of this function, including adding await where necessary.",
+            "status": "pending",
+            "testStrategy": "Test the integration of generate_sitrep with other parts of the system to ensure it functions correctly as an async function."
+          },
+          {
+            "id": 4,
+            "title": "Replace subprocess.run with asyncio.create_subprocess_exec in git_utils.py and terminal.py",
+            "description": "Update shell command execution to be asynchronous by using asyncio.create_subprocess_exec.",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Identify all instances of subprocess.run in git_utils.py and terminal.py. Replace them with asyncio.create_subprocess_exec. Ensure that the output is captured correctly using await process.communicate(). Convert the surrounding functions to async if necessary.",
+            "status": "pending",
+            "testStrategy": "Verify that shell commands execute correctly and asynchronously, capturing output as expected. Ensure that the application remains responsive during these operations."
+          },
+          {
+            "id": 5,
+            "title": "Update freeze_logic to properly await all async calls",
+            "description": "Ensure that all calls to async functions are properly awaited in freeze_logic and that the daemon watchdog can process events during async AI calls.",
+            "dependencies": [
+              1,
+              2,
+              3,
+              4
+            ],
+            "details": "Review the freeze_logic to identify all async function calls. Ensure that each call is properly awaited. Verify that the daemon watchdog is capable of processing events concurrently with async AI operations, making adjustments as necessary to the event loop or task management.",
+            "status": "pending",
+            "testStrategy": "Conduct integration tests to ensure that the system remains responsive and that the daemon watchdog processes events correctly during asynchronous operations."
+          }
+        ]
+      },
+      {
+        "id": 29,
+        "title": "Fix Daemon Context Awareness for IDE Environments",
+        "description": "Improve the daemon's context awareness by checking for tmux sessions and IDE environments, and provide alternative context capture methods.",
+        "details": "1. Modify `pd_daemon.py` to check if a tmux session exists and has active clients before attempting to capture terminal output. Use `subprocess.run(['tmux', 'has-session', '-t', session_name])` to verify session existence and `tmux list-clients` to check for active clients.\n2. If no tmux session is found or no active clients are present, skip terminal capture and log a warning instead of returning ghost data.\n3. Detect IDE environments by checking the `TERM_PROGRAM` and `VSCODE` environment variables. If detected, adjust the daemon's behavior to avoid tmux assumptions.\n4. Implement alternative context capture methods for IDE environments, such as capturing the last command from the integrated terminal or using IDE-specific APIs if available.",
+        "testStrategy": "1. Test in a tmux environment: Ensure that the daemon correctly identifies active tmux sessions and captures terminal output only when sessions are valid.\n2. Test in an IDE environment (e.g., VS Code): Verify that the daemon detects the IDE environment using environment variables and skips tmux-specific operations.\n3. Simulate absence of tmux sessions: Confirm that the daemon logs a warning and does not attempt to capture terminal output.\n4. Check alternative context capture: In an IDE, ensure that the daemon captures the last command or relevant context from the IDE terminal.",
+        "status": "pending",
+        "dependencies": [
+          7,
+          14,
+          28
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 30,
+        "title": "Implement Interactive Freeze Protocol",
+        "description": "Refactor the pd freeze command to initiate an interactive interview process instead of using a single --note flag.",
+        "details": "Refactor the existing pd freeze command to default to an interactive multi-question interview. This interview will replace the current --note flag and will consist of the following questions: 1) What is the primary objective of this session? 2) What didn't work or what is the key uncertainty? 3) What is the next concrete action? 4) Optional: Any additional notes or brain dump. Update the ContextSnapshot schema in core/db.py to include new structured fields: human_objective, human_blocker, human_next_step. Ensure that the responses to these questions are stored in the database in a structured format to improve the quality of AI-generated SITREPs. Consider user experience and ensure the interview is user-friendly and intuitive.",
+        "testStrategy": "1. Run the pd freeze command and verify that the interactive interview is initiated.\n2. Answer each question in the interview and complete the process.\n3. Check the database to ensure that the responses are stored correctly in the new structured fields: human_objective, human_blocker, human_next_step.\n4. Verify that the AI-generated SITREP uses the new structured data fields to produce a coherent summary.\n5. Conduct user testing to ensure the interview process is intuitive and user-friendly.",
+        "status": "pending",
+        "dependencies": [
+          6,
+          7,
+          12
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 31,
+        "title": "Implement Time to First Commit KPI Tracking",
+        "description": "Add EventLog table to core/db.py and implement logging and reporting for Time to First Commit (TTC) metric.",
+        "details": "1. Modify core/db.py to include a new table 'EventLog' with the following fields: id (primary key), timestamp (datetime), repo_id (string), event_type (enum with values SWITCH_IN, COMMIT).\n2. Instrument the 'pd switch' command to log a SWITCH_IN event to the EventLog table whenever a repository switch occurs.\n3. Create a new command 'pd install-hooks' that sets up a post-commit git hook in the repository. This hook should call a new internal command 'pd _internal-log-commit' to log a COMMIT event to the EventLog table.\n4. Implement a new command 'pd metrics' that calculates and reports the average and recent Time to First Commit (TTC) times by analyzing the EventLog entries. This command should output the TTC in a human-readable format and support filtering by repository.\n5. Ensure that the new EventLog table and logging mechanisms are integrated with existing database management and migration systems.",
+        "testStrategy": "1. Verify that the EventLog table is created correctly in the database schema.\n2. Test the 'pd switch' command to ensure it logs a SWITCH_IN event in the EventLog table.\n3. Run 'pd install-hooks' in a test repository and verify that the post-commit hook is correctly installed.\n4. Commit changes in the test repository and check that a COMMIT event is logged in the EventLog table.\n5. Execute the 'pd metrics' command and verify that it correctly calculates and displays the average and recent TTC times.\n6. Perform end-to-end testing by switching to a repository, making a commit, and checking the metrics output for accuracy.",
+        "status": "pending",
+        "dependencies": [
+          3,
+          12
+        ],
+        "priority": "high",
+        "subtasks": []
+      },
+      {
+        "id": 32,
+        "title": "Enhance pd status with Last Touched Timestamp",
+        "description": "Add filesystem scanning logic to pd status to find the most recent file modification time for each repository, respecting .gitignore, and add a Last Touched column to the status table.",
+        "details": "1. Modify the pd status command to include a new column 'Last Touched' which displays the most recent file modification time (mtime) for each repository.\n2. Implement a filesystem scanning function that traverses the repository directories, respecting .gitignore files, to determine the latest mtime.\n3. Use Python's os and pathlib modules to efficiently scan directories and retrieve file mtimes.\n4. Integrate this logic into the existing status command, ensuring that the Last Touched column is updated dynamically based on the latest file activity.\n5. Update the status table rendering logic to include the new column, ensuring it is displayed clearly alongside existing columns.",
+        "testStrategy": "1. Create a test repository with multiple files and a .gitignore file.\n2. Modify some files and run the pd status command to verify that the Last Touched column reflects the most recent file modification times.\n3. Ensure that files listed in .gitignore are not considered in the Last Touched calculation.\n4. Test with various repository structures and file types to ensure robustness.\n5. Verify that the status table displays the Last Touched column correctly and that it updates as expected when files are modified.",
+        "status": "pending",
+        "dependencies": [
+          1,
+          10
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 33,
+        "title": "Implement Longitudinal SITREP with Deep-Dive Command",
+        "description": "Develop a new command 'pd sitrep --deep-dive <repo_id>' to generate a longitudinal summary from historical ContextSnapshot records.",
+        "details": "Create a new command in the CLI tool, 'pd sitrep --deep-dive <repo_id>', which retrieves the last 3-5 ContextSnapshot records from the database. These records should include structured human notes (objective, blocker, next_step) and previous AI summaries. Compile these into a historical narrative and send it to the ai_model_hq for processing. The AI model should generate a detailed longitudinal summary that outlines the problems being addressed, failed approaches, and recommended next steps. This feature is designed to address the cold start problem after long absences by providing a comprehensive overview of past activities and insights. Ensure integration with the interactive freeze protocol and tiered AI model support for seamless operation.",
+        "testStrategy": "1. Create mock ContextSnapshot records in the database with varying objectives, blockers, and next steps. 2. Execute 'pd sitrep --deep-dive <repo_id>' and verify that the command retrieves the correct records. 3. Check that the compiled narrative is correctly formatted and sent to ai_model_hq. 4. Validate that the AI-generated summary accurately reflects the historical context and provides actionable next steps. 5. Test the command with different AI model configurations to ensure compatibility with tiered AI model support.",
+        "status": "pending",
+        "dependencies": [
+          11,
+          30,
+          34
+        ],
+        "priority": "medium",
+        "subtasks": []
+      },
+      {
+        "id": 34,
+        "title": "Implement Tiered AI Model Support",
+        "description": "Add support for tiered AI models with a high-quality model configuration and command-line flag.",
+        "details": "1. Update the configuration file `conf/config.yaml` to include a new field `ai_model_hq` which will specify the high-quality AI model to be used, such as 'claude-3-5-sonnet' or 'gpt-4o'.\n2. Modify the `pd freeze` command to accept a new `--hq` flag. When this flag is used, the command should utilize the high-quality model specified in the configuration for important context captures.\n3. Update the model selection logic in `core/scribe.py` to check for the `--hq` flag and switch to the high-quality model if the flag is present.\n4. Ensure that the system intelligently balances cost versus quality by defaulting to a standard model unless the `--hq` flag is explicitly set.\n5. Consider the implications of model switching on performance and cost, and document any trade-offs in the code comments.",
+        "testStrategy": "1. Update `conf/config.yaml` with a test high-quality model and verify that the configuration loads correctly.\n2. Run the `pd freeze` command with and without the `--hq` flag and verify that the correct model is selected in each case by checking logs or debug output.\n3. Ensure that the `core/scribe.py` logic correctly switches models based on the presence of the `--hq` flag.\n4. Conduct performance tests to measure any impact on execution time and resource usage when using the high-quality model.\n5. Verify that the system defaults to the standard model when the `--hq` flag is not used.",
+        "status": "pending",
+        "dependencies": [
+          6,
+          23
+        ],
+        "priority": "high",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add ai_model_hq Field to Configuration",
+            "description": "Update the configuration file `conf/config.yaml` to include a new field `ai_model_hq` for specifying the high-quality AI model.",
+            "dependencies": [],
+            "details": "Open the `conf/config.yaml` file and add a new field named `ai_model_hq`. This field should allow users to specify the high-quality AI model, such as 'claude-3-5-sonnet' or 'gpt-4o'. Ensure the field is well-documented with comments explaining its purpose.",
+            "status": "pending",
+            "testStrategy": "Verify that the configuration file loads correctly with the new field and that the field can be set and retrieved without errors."
+          },
+          {
+            "id": 2,
+            "title": "Implement --hq Flag for pd freeze Command",
+            "description": "Modify the `pd freeze` command to accept a new `--hq` flag, which will trigger the use of the high-quality model specified in the configuration.",
+            "dependencies": [
+              1
+            ],
+            "details": "Update the command-line interface for `pd freeze` to recognize the `--hq` flag. Ensure that when this flag is used, the command reads the `ai_model_hq` field from the configuration and uses the specified model for processing.",
+            "status": "pending",
+            "testStrategy": "Test the `pd freeze` command with and without the `--hq` flag to ensure it correctly switches models based on the flag."
+          },
+          {
+            "id": 3,
+            "title": "Update Model Selection Logic in scribe.py",
+            "description": "Modify the model selection logic in `core/scribe.py` to check for the `--hq` flag and switch to the high-quality model if the flag is present.",
+            "dependencies": [
+              2
+            ],
+            "details": "In `core/scribe.py`, update the logic to check if the `--hq` flag is set. If it is, the script should switch to using the model specified in the `ai_model_hq` configuration field. Ensure this logic is clear and maintainable.",
+            "status": "pending",
+            "testStrategy": "Run unit tests to verify that the model selection logic correctly switches models based on the presence of the `--hq` flag."
+          },
+          {
+            "id": 4,
+            "title": "Add Validation and Error Handling for HQ Model Availability",
+            "description": "Implement validation and error handling to ensure the high-quality model specified is available and can be used without issues.",
+            "dependencies": [
+              3
+            ],
+            "details": "Add checks to validate that the model specified in `ai_model_hq` is available and supported by the system. Implement error handling to provide clear messages if the model is unavailable or if there are issues switching models.",
+            "status": "pending",
+            "testStrategy": "Test with various valid and invalid model names in the `ai_model_hq` field to ensure proper validation and error messages are displayed."
+          },
+          {
+            "id": 5,
+            "title": "Update Documentation for Tiered AI Usage",
+            "description": "Document the new tiered AI model support, including configuration options and command-line usage.",
+            "dependencies": [
+              4
+            ],
+            "details": "Update the project's documentation to include instructions on setting the `ai_model_hq` field, using the `--hq` flag, and understanding the trade-offs between cost and quality. Ensure the documentation is clear and accessible to users.",
+            "status": "pending",
+            "testStrategy": "Review the documentation for clarity and completeness. Ensure it accurately reflects the new functionality and is easy to follow."
+          }
+        ]
+      },
+      {
+        "id": 35,
+        "title": "Enable WAL Mode for SQLite Database",
+        "description": "Modify core/db.py to set SQLite journal mode to WAL (Write-Ahead Logging) instead of DELETE.",
+        "details": "To enable WAL mode for the SQLite database, modify the database connection setup in core/db.py. Add the SQL command `PRAGMA journal_mode=WAL;` immediately after establishing a connection to the SQLite database. This change will help prevent database locking issues when the daemon and CLI access the database concurrently. Ensure that the connection is properly closed after operations to maintain database integrity. Review the SQLite documentation on WAL mode to understand its benefits and limitations, such as increased disk space usage and potential performance impacts.",
+        "testStrategy": "1. Modify the existing database connection tests in tests/test_db.py to verify that the journal mode is set to WAL. \n2. Use a test database and execute a connection setup, then query `PRAGMA journal_mode;` to confirm it returns 'wal'. \n3. Conduct concurrent read/write operations from both the daemon and CLI to ensure no locking issues occur. \n4. Verify that the database integrity is maintained after multiple concurrent operations.",
+        "status": "pending",
+        "dependencies": [
+          3
+        ],
+        "priority": "low",
+        "subtasks": []
+      },
+      {
+        "id": 36,
+        "title": "Remove Dead Configuration Code",
+        "description": "Delete the unused core/registry.py, system/registry.yaml, and tests/test_registry.py files to finalize the configuration unification.",
+        "details": "To complete the configuration unification, remove the following files: core/registry.py, system/registry.yaml, and tests/test_registry.py. These files are remnants of the old configuration system and are no longer needed since Hydra is now the active configuration system. Before deleting these files, conduct a thorough search across the codebase to ensure no other parts of the system depend on them. Use tools like 'grep' or IDE search functionalities to confirm that there are no references to these files. Once confirmed, safely delete the files and commit the changes.",
+        "testStrategy": "1. Use a code search tool to verify that there are no references to core/registry.py, system/registry.yaml, and tests/test_registry.py in the codebase. 2. After deletion, run the full test suite to ensure no tests fail due to missing files. 3. Manually inspect the configuration setup to confirm that Hydra is functioning as expected without the deleted files.",
+        "status": "pending",
+        "dependencies": [
+          20
+        ],
+        "priority": "low",
+        "subtasks": []
       }
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T04:00:21.346Z",
+      "updated": "2025-12-15T22:57:13.349Z",
       "description": "Tasks for master context"
     }
   }
