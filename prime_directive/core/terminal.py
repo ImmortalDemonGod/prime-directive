@@ -1,4 +1,5 @@
 import subprocess
+import re
 from typing import Tuple, Optional
 
 def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
@@ -39,11 +40,18 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
         if capture_proc.returncode == 0:
             output_summary = capture_proc.stdout.strip()
         
-        # Capture command history isn't straightforward with just tmux commands without shell integration
-        # For now, we'll return a placeholder or try to parse the last prompt line if possible.
-        # As per PRD details: "Fallback to 'history | tail -n 1' if not in tmux."
-        # History is shell specific and tricky to get from a subprocess.
+        # Best-effort extraction of last executed command from captured output.
+        # We keep the existing "unknown" fallback unless we can detect a prompt line.
         last_command = "unknown"
+        if output_summary and output_summary != "No tmux session found or capture failed.":
+            prompt_re = re.compile(r"^\s*(?:\$|❯|>)\s+(.+?)\s*$")
+            for line in reversed(output_summary.splitlines()):
+                m = prompt_re.match(line)
+                if m:
+                    candidate = m.group(1).strip()
+                    if candidate:
+                        last_command = candidate
+                        break
         
         return last_command, output_summary
 
@@ -52,5 +60,5 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     except FileNotFoundError:
         # tmux not installed
         return "unknown", "tmux not installed."
-    except OSError as e:
-        return "error", str(e)
+    except OSError:
+        return "unknown", "Unexpected error during terminal capture."
