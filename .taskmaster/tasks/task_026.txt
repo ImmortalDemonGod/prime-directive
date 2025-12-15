@@ -1,0 +1,11 @@
+# Task ID: 26
+# Title: Fix Shell Integration and Process Hierarchy
+# Status: pending
+# Dependencies: 13, 16
+# Priority: high
+# Description: Resolve the fragile process hierarchy issue caused by the pd switch command, ensuring tmux sessions are not orphaned if Python exits unexpectedly.
+# Details:
+The current implementation of the pd switch command results in a fragile process hierarchy where Python remains the parent of the tmux client. This can lead to orphaned tmux sessions if Python exits unexpectedly. To address this, modify pd.py to exit with a specific status code or write a token file upon successful execution. Update shell_integration.zsh to trap this status code or token file, and execute tmux switch-client at the shell level, effectively removing Python from the process chain. This change will ensure that tmux sessions are managed independently of the Python process, improving the robustness of the session management.
+
+# Test Strategy:
+1. Modify pd.py to exit with a specific status code or write a token file upon successful execution.\n2. Update shell_integration.zsh to trap the status code or check for the token file.\n3. Execute tmux switch-client at the shell level based on the trapped status or token file.\n4. Test by running pd switch and forcibly terminating the Python process to ensure the tmux session remains active and is not orphaned.\n5. Verify that the shell integration correctly handles the status code or token file and executes the tmux switch-client command.
