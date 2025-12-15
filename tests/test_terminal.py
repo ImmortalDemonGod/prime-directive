@@ -10,10 +10,10 @@ def test_capture_terminal_state_tmux_success():
             stdout="Line 1\nLine 2\n...Line 50"
         )
         
-        cmd, output = capture_terminal_state()
+        last_cmd, output = capture_terminal_state()
         
         assert output == "Line 1\nLine 2\n...Line 50"
-        assert cmd == "unknown" # Placeholder for now
+        assert last_cmd == "unknown"  # Placeholder for now
         mock_run.assert_called_with(
             ["tmux", "capture-pane", "-p", "-S", "-50"],
             capture_output=True,
@@ -30,7 +30,7 @@ def test_capture_terminal_state_tmux_with_repo_id():
             stdout="Session Output"
         )
         
-        cmd, output = capture_terminal_state(repo_id="my-repo")
+        _cmd, output = capture_terminal_state(repo_id="my-repo")
         
         assert output == "Session Output"
         mock_run.assert_called_with(
@@ -50,12 +50,12 @@ def test_capture_terminal_state_tmux_failure():
             stderr="not a terminal"
         )
         
-        cmd, output = capture_terminal_state()
+        last_cmd, output = capture_terminal_state()
         
         assert output == "No tmux session found or capture failed."
-        assert cmd == "unknown"
+        assert last_cmd == "unknown"
 
 def test_capture_terminal_state_no_tmux_installed():
     with patch("subprocess.run", side_effect=FileNotFoundError):
-        cmd, output = capture_terminal_state()
+        _cmd, output = capture_terminal_state()
         assert output == "tmux not installed."
