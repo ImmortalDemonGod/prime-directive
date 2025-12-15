@@ -7,6 +7,8 @@ class SystemConfig:
     editor_cmd: str = "windsurf"
     ai_model: str = "qwen2.5-coder"
     db_path: str = "data/prime.db"
+    log_path: str = "data/logs/pd.log"
+    mock_mode: bool = False
 
 @dataclass
 class RepoConfig:
