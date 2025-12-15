@@ -9,28 +9,21 @@ from pathlib import Path
 import asyncio
 from sqlalchemy import select
 
-from prime_directive.core.registry import load_registry
+from prime_directive.core.registry import load_registry, Registry
 from prime_directive.core.git_utils import get_status
 from prime_directive.core.db import get_session, ContextSnapshot, init_db
 from prime_directive.core.terminal import capture_terminal_state
 from prime_directive.core.tasks import get_active_task
 from prime_directive.core.scribe import generate_sitrep
+from prime_directive.core.tmux import ensure_session
+from prime_directive.core.windsurf import launch_editor
 from datetime import datetime
 
 app = typer.Typer()
 console = Console()
 
-@app.command("freeze")
-def freeze(repo_id: str):
-    """
-    Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
-    """
-    registry = load_registry()
-    
-    if repo_id not in registry.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
-        raise typer.Exit(code=1)
-        
+def freeze_logic(repo_id: str, registry: Registry):
+    """Core freeze logic separated for reuse."""
     repo_config = registry.repos[repo_id]
     repo_path = repo_config.path
     
@@ -41,10 +34,6 @@ def freeze(repo_id: str):
     git_summary = f"Branch: {git_st['branch']}\nDirty: {git_st['is_dirty']}\nFiles: {git_st['uncommitted_files']}\nDiff: {git_st.get('diff_stat', '')}"
     
     # 2. Capture Terminal State
-    # Note: This captures the *current* terminal (where pd is run) or the tmux session.
-    # Ideally we want the tmux session associated with the repo.
-    # capture_terminal_state() captures the current tmux pane if active.
-    # If we are running `pd freeze` from within the repo's context, this works.
     last_cmd, term_output = capture_terminal_state()
     
     # 3. Capture Active Task
@@ -78,6 +67,72 @@ def freeze(repo_id: str):
             console.print(f"[italic]{sitrep}[/italic]")
 
     asyncio.run(save_snapshot())
+
+@app.command("freeze")
+def freeze(repo_id: str):
+    """
+    Snapshot the current state of a repository (Git, Terminal, Task) and generate an AI SITREP.
+    """
+    registry = load_registry()
+    
+    if repo_id not in registry.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
+        raise typer.Exit(code=1)
+        
+    freeze_logic(repo_id, registry)
+
+@app.command("switch")
+def switch(repo_id: str):
+    """
+    Switch context to another repository (Freeze current -> Warp -> Thaw target).
+    """
+    registry = load_registry()
+    
+    if repo_id not in registry.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found in registry.")
+        raise typer.Exit(code=1)
+
+    target_repo = registry.repos[repo_id]
+
+    # 1. Detect and Freeze current repo
+    cwd = os.getcwd()
+    current_repo_id = None
+    for r_id, r_config in registry.repos.items():
+        # Check if CWD is inside the repo path
+        if cwd.startswith(os.path.abspath(r_config.path)):
+            current_repo_id = r_id
+            break
+    
+    if current_repo_id and current_repo_id != repo_id:
+        console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
+        freeze_logic(current_repo_id, registry)
+    
+    # 2. Thaw / Switch
+    console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
+    
+    # Ensure Tmux Session
+    ensure_session(repo_id, target_repo.path)
+    
+    # Launch Editor
+    launch_editor(target_repo.path, registry.system.editor_cmd)
+    
+    # 3. Display SITREP
+    async def show_sitrep():
+        await init_db(registry.system.db_path)
+        async for session in get_session(registry.system.db_path):
+            stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
+            result = await session.execute(stmt)
+            snapshot = result.scalars().first()
+            
+            console.print("\n[bold reverse] SITREP [/bold reverse]")
+            if snapshot:
+                console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
+                console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
+                # We could parse the git summary for more details if needed
+            else:
+                console.print("[italic]No previous snapshot found.[/italic]")
+                
+    asyncio.run(show_sitrep())
 
 @app.command("list")
 def list_repos():
