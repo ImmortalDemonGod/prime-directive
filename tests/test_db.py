@@ -3,38 +3,46 @@ import pytest_asyncio
 from sqlmodel import select
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
-from prime_directive.core.db import Repository, ContextSnapshot, init_db, get_session, dispose_engine
+from prime_directive.core.db import (
+    Repository,
+    ContextSnapshot,
+    init_db,
+    get_session,
+    dispose_engine,
+)
+
 
 @pytest_asyncio.fixture
 async def async_db_session(tmp_path):
     db_path = tmp_path / "test.db"
     await init_db(str(db_path))
-    
+
     async for session in get_session(str(db_path)):
         yield session
-    
+
     # Cleanup (handled by tmp_path usually, but good practice if using engine explicitly)
     await dispose_engine(str(db_path))
+
 
 @pytest.mark.asyncio
 async def test_repository_crud(async_db_session):
     repo = Repository(
-        id="test-repo", 
-        path="/tmp/test", 
-        priority=1, 
-        active_branch="main"
+        id="test-repo", path="/tmp/test", priority=1, active_branch="main"
     )
     async_db_session.add(repo)
     await async_db_session.commit()
     await async_db_session.refresh(repo)
 
-    result = await async_db_session.execute(select(Repository).where(Repository.id == "test-repo"))
+    result = await async_db_session.execute(
+        select(Repository).where(Repository.id == "test-repo")
+    )
     fetched_repo = result.scalars().first()
-    
+
     assert fetched_repo is not None
     assert fetched_repo.id == "test-repo"
     assert fetched_repo.path == "/tmp/test"
     assert fetched_repo.active_branch == "main"
+
 
 @pytest.mark.asyncio
 async def test_snapshot_creation(async_db_session):
@@ -53,20 +61,23 @@ async def test_snapshot_creation(async_db_session):
         git_status_summary="clean",
         terminal_last_command="ls",
         terminal_output_summary="file1 file2",
-        ai_sitrep="All good"
+        ai_sitrep="All good",
     )
     async_db_session.add(snapshot)
     await async_db_session.commit()
     await async_db_session.refresh(snapshot)
-    
+
     assert snapshot.id is not None
-    
-    result = await async_db_session.execute(select(ContextSnapshot).where(ContextSnapshot.repo_id == "test-repo"))
+
+    result = await async_db_session.execute(
+        select(ContextSnapshot).where(ContextSnapshot.repo_id == "test-repo")
+    )
     fetched_snapshot = result.scalars().first()
-    
+
     assert fetched_snapshot is not None
     assert fetched_snapshot.git_status_summary == "clean"
     assert isinstance(fetched_snapshot.timestamp, datetime)
+
 
 @pytest.mark.asyncio
 async def test_snapshot_fk_enforced(async_db_session):
