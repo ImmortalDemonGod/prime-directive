@@ -1,18 +1,24 @@
 import pytest
-from unittest.mock import patch, Mock
-import requests
+from unittest.mock import patch, Mock, AsyncMock
+
+import httpx
+
 from prime_directive.core.scribe import generate_sitrep
 
 
-def test_generate_sitrep_success():
+async def test_generate_sitrep_success():
     mock_response = Mock()
     mock_response.json.return_value = {
         "response": "SITREP: All systems go. Next: Deploy."
     }
     mock_response.raise_for_status.return_value = None
 
-    with patch("requests.post", return_value=mock_response) as mock_post:
-        result = generate_sitrep(
+    with patch(
+        "httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+        return_value=mock_response,
+    ) as mock_post:
+        result = await generate_sitrep(
             repo_id="test-repo",
             git_state="clean",
             terminal_logs="echo hello",
@@ -30,43 +36,52 @@ def test_generate_sitrep_success():
         assert "Test Task" in kwargs["json"]["prompt"]
 
 
-def test_generate_sitrep_timeout():
+async def test_generate_sitrep_timeout():
+    req = httpx.Request("POST", "http://localhost:11434/api/generate")
     with patch(
-        "requests.post", side_effect=requests.exceptions.Timeout("Timed out")
+        "httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+        side_effect=httpx.ReadTimeout("Timed out", request=req),
     ):
-        result = generate_sitrep(
+        result = await generate_sitrep(
             repo_id="test-repo", git_state="clean", terminal_logs="loading..."
         )
         assert "Error generating SITREP" in result
         assert "Timed out" in result
 
 
-def test_generate_sitrep_connection_error():
+async def test_generate_sitrep_connection_error():
+    req = httpx.Request("POST", "http://localhost:11434/api/generate")
     with patch(
-        "requests.post",
-        side_effect=requests.exceptions.ConnectionError("Connection refused"),
+        "httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+        side_effect=httpx.ConnectError("Connection refused", request=req),
     ):
-        result = generate_sitrep(
+        result = await generate_sitrep(
             repo_id="test-repo", git_state="clean", terminal_logs="loading..."
         )
         assert "Error generating SITREP" in result
         assert "Connection refused" in result
 
 
-def test_generate_sitrep_retries_then_success():
+async def test_generate_sitrep_retries_then_success():
     mock_response = Mock()
     mock_response.json.return_value = {
         "response": "SITREP: Recovered. Next: Continue."
     }
     mock_response.raise_for_status.return_value = None
 
+    req = httpx.Request("POST", "http://localhost:11434/api/generate")
+
     side_effects = [
-        requests.exceptions.Timeout("Timed out"),
+        httpx.ReadTimeout("Timed out", request=req),
         mock_response,
     ]
 
-    with patch("requests.post", side_effect=side_effects) as mock_post:
-        result = generate_sitrep(
+    with patch(
+        "httpx.AsyncClient.post", new_callable=AsyncMock, side_effect=side_effects
+    ) as mock_post:
+        result = await generate_sitrep(
             repo_id="test-repo",
             git_state="clean",
             terminal_logs="loading...",
@@ -78,11 +93,14 @@ def test_generate_sitrep_retries_then_success():
         assert mock_post.call_count == 2
 
 
-def test_generate_sitrep_fallback_requires_confirmation():
+async def test_generate_sitrep_fallback_requires_confirmation():
+    req = httpx.Request("POST", "http://localhost:11434/api/generate")
     with patch(
-        "requests.post", side_effect=requests.exceptions.Timeout("Timed out")
+        "httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+        side_effect=httpx.ReadTimeout("Timed out", request=req),
     ):
-        result = generate_sitrep(
+        result = await generate_sitrep(
             repo_id="test-repo",
             git_state="clean",
             terminal_logs="loading...",
@@ -93,13 +111,13 @@ def test_generate_sitrep_fallback_requires_confirmation():
         assert "requires confirmation" in result
 
 
-def test_generate_sitrep_fallback_openai_success():
+async def test_generate_sitrep_fallback_openai_success():
+    req = httpx.Request("POST", "http://localhost:11434/api/generate")
     with (
         patch(
-            "requests.post",
-            side_effect=requests.exceptions.ConnectionError(
-                "Connection refused"
-            ),
+            "httpx.AsyncClient.post",
+            new_callable=AsyncMock,
+            side_effect=httpx.ConnectError("Connection refused", request=req),
         ),
         patch(
             "prime_directive.core.scribe.get_openai_api_key",
@@ -107,10 +125,11 @@ def test_generate_sitrep_fallback_openai_success():
         ),
         patch(
             "prime_directive.core.scribe.generate_openai_chat",
+            new_callable=AsyncMock,
             return_value="SITREP: Fallback ok.",
         ) as mock_openai,
     ):
-        result = generate_sitrep(
+        result = await generate_sitrep(
             repo_id="test-repo",
             git_state="clean",
             terminal_logs="loading...",
