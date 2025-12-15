@@ -3,6 +3,7 @@ import yaml
 from pathlib import Path
 from prime_directive.core.registry import load_registry, Registry, RepoConfig
 
+
 def test_load_registry_success(tmp_path):
     # Create a temporary registry file
     registry_content = """
@@ -29,13 +30,15 @@ def test_load_registry_success(tmp_path):
     assert registry.repos["test-repo"].path == "/tmp/test-repo"
     assert registry.repos["test-repo"].priority == 5
 
+
 def test_load_registry_defaults():
     # Test loading with non-existent file should return defaults
     registry = load_registry("non_existent_file.yaml")
-    
+
     assert registry.system.editor_cmd == "windsurf"
     assert registry.system.ai_model == "qwen2.5-coder"
     assert registry.repos == {}
+
 
 def test_repo_config_validation():
     # Test that RepoConfig validation works
