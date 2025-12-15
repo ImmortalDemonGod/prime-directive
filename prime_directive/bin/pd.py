@@ -200,7 +200,7 @@ def switch(repo_id: str):
                 logger.info(f"MOCK MODE: ensure_session({repo_id})")
                 logger.info(f"MOCK MODE: launch_editor({target_repo.path})")
             else:
-                ensure_session(repo_id, target_repo.path)
+                ensure_session(repo_id, target_repo.path, attach=False)
                 launch_editor(target_repo.path, cfg.system.editor_cmd)
             
             # 3. Display SITREP (Async)
@@ -220,6 +220,9 @@ def switch(repo_id: str):
             await dispose_engine()
 
     asyncio.run(run_switch())
+
+    if (not cfg.system.mock_mode) and (not os.environ.get("TMUX")):
+        ensure_session(repo_id, target_repo.path)
 
 @app.command("list")
 def list_repos():
