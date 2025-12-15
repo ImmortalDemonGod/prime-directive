@@ -70,12 +70,13 @@ def main(
                         asyncio.run(run_freeze(repo_id, cfg))
                         handler.is_frozen = True
                         console.print(f"[green]Repository {repo_id} is now FROZEN.[/green]")
-                    except Exception as e:
+                    except (OSError, ValueError) as e:
                         console.print(f"[red]Error freezing {repo_id}: {e}[/red]")
                         
     except KeyboardInterrupt:
         observer.stop()
-    observer.join()
+    finally:
+        observer.join()
 
 import os 
 
