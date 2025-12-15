@@ -309,3 +309,123 @@ Here are the **Core Development Verification Tests** for the 3-day build.
 | **Shell** | Manual | `pd switch` actually changes the terminal context. |
 
 If you pass these 6 checks, the system is solid. You can then trust it with your actual workflow.
+
+
+### Critical Gap Analysis: Prime Directive vs. AIV Workflow
+
+**Subject:** Architectural Completeness Audit of `PRIME-DIRECTIVE-ARCH-V1.0`
+**Context:** Transitioning to a meta-orchestrator (`prime-directive`) to manage multi-repo context switching.
+**Goal:** Verify if any critical components are missing to achieve the "Monday Morning Warp" and satisfy the AIV verification steps.
+
+---
+
+### 1. Analysis of Missing Components
+
+Based on the provided documents (`PRIME-DIRECTIVE-ARCH-V1.0` and the AIV Verification Plan), here are the critical gaps identified in the current specification relative to a "Full System Build."
+
+#### **Gap A: The "Task Master" Interface Layer**
+*   **Observation:** The specification focuses heavily on *Context* (Git + Terminal state) but lightly on *Tasks* (the actual work items).
+*   **The Missing Piece:** The `prime-directive` repo lacks a defined interface to query the `tasks.json` files inside the target repos.
+    *   *Why it matters:* The "SITREP" includes "IMMEDIATE TASK: Check normalization layers." To generate this, `pd` needs to read `rna-predict/.taskmaster/tasks.json`, find the active task, and feed it to the LLM.
+    *   *Requirement:* A `core/taskmaster_adapter.py` module that parses the Task Master schema. Without this, the AI Scribe is blind to the structured plan.
+
+#### **Gap B: The "LLM Configuration" Protocol**
+*   **Observation:** The spec assumes `ollama` is running and `qwen2.5-coder` is installed.
+*   **The Missing Piece:** A setup/check routine.
+    *   *Why it matters:* If you run `pd switch` on a new machine (or after a reboot) and Ollama isn't running, the freeze/thaw cycle crashes or hangs.
+    *   *Requirement:* A `system/health_check.py` or `bin/pd doctor` command that verifies:
+        1.  Ollama is reachable (`http://localhost:11434`).
+        2.  The target model is pulled.
+        3.  Tmux is installed.
+        4.  Windsurf binary is in PATH.
+
+#### **Gap C: The "Multi-Device" Sync Strategy**
+*   **Observation:** The `prime.db` (SQLite) is local.
+*   **The Missing Piece:** If you switch from Desktop to Laptop, your "Context" is lost because the DB is on the Desktop.
+*   **Mitigation:** The current spec handles *local* context switching well. *Syncing* context across devices is a P2 feature, but the architecture should acknowledge it (e.g., by placing `prime.db` in a synced folder like Dropbox/iCloud or using rsync). *Decision: Out of scope for V1 MVP, but worth noting.*
+
+#### **Gap D: The "Windsurf" Specifics**
+*   **Observation:** The spec assumes `windsurf -n <path>` works like VS Code.
+*   **The Missing Piece:** Windsurf might use a different binary name (e.g., `windsurf-cli` or just `code` if it aliases).
+    *   *Requirement:* A configuration field in `registry.yaml` for `editor_command`. Hardcoding `windsurf` is brittle.
+
+---
+
+### 2. Recommendations for "The Missing Document"
+
+You need a **Technical Addendum** to cover the "Glue" between the high-level architecture and the low-level code. Specifically, the **Task Master Integration** and **System Resilience** layers.
+
+I will generate this addendum now.
+
+---
+
+# Prime Directive v1.0: Technical Addendum (Gap Remediation)
+
+**Document ID:** `PRIME-DIRECTIVE-ADDENDUM-V1.0`
+**Date:** 2025-12-08
+**Status:** Required for V1 Completion
+
+## 1. The Task Master Adapter (`core/tasks.py`)
+
+To fulfill the promise of the SITREP, `pd` must be able to read the *intent* of the user, not just their terminal history.
+
+### **Functionality:**
+*   **`get_active_task(repo_path: str) -> dict`**:
+    1.  Locates `.taskmaster/tasks.json`.
+    2.  Parses the JSON.
+    3.  Filters for `status == "in-progress"`.
+    4.  Returns the task with the highest priority/most recent modification.
+
+### **Integration:**
+*   **Input to Scribe:** The AI Prompt in `scribe.py` is updated:
+    ```python
+    prompt = f"""
+    Context:
+    - Active Task: {task['title']}
+    - Task Details: {task['details']}
+    - Git Diff: {git_summary}
+    - Terminal Logs: {term_logs}
+    
+    Summarize progress and next steps.
+    """
+    ```
+
+## 2. The Resilience Layer (`bin/pd doctor`)
+
+Before "going live," the system must self-diagnose.
+
+### **Command:** `pd doctor`
+**Checks:**
+1.  **Dependencies:** `shutil.which("tmux")`, `shutil.which("windsurf")` (or configured editor).
+2.  **AI Engine:**
+    *   `requests.get("http://localhost:11434/api/tags")` (Check Ollama).
+    *   Verify `qwen2.5-coder` is in the model list.
+    *   *Auto-Fix:* If model missing, prompt to run `ollama pull qwen2.5-coder`.
+3.  **Registry:** Validate `registry.yaml` paths exist.
+
+## 3. Configuration Schema Update (`registry.yaml`)
+
+We add `editor_cmd` to allow flexibility (VS Code vs Windsurf vs Cursor).
+
+```yaml
+system:
+  editor_cmd: "windsurf" # or "code", "cursor"
+  ai_model: "qwen2.5-coder"
+  db_path: "~/.cultivation/prime.db" # Allows syncing if moved to Dropbox
+
+repos:
+  - id: black-box
+    path: ...
+```
+
+## 4. Modified Implementation Plan
+
+**Day 1 Additions:**
+*   Add `editor_cmd` to config schema.
+*   Implement `pd doctor` (It's easier to debug setup issues early).
+
+**Day 2 Additions:**
+*   Implement `core/tasks.py` (The JSON parser).
+*   Update `scribe.py` to ingest the Task JSON.
+
+This closes the loop between **Execution** (The Shell) and **Intent** (Task Master), ensuring the AI summary is grounded in the actual project goals.
