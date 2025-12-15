@@ -1,0 +1,11 @@
+# Task ID: 23
+# Title: Tier 2: AI provider manager with OpenAI fallback + cost/consent guardrails
+# Status: pending
+# Dependencies: 6, 22
+# Priority: high
+# Description: Introduce AI provider abstraction (Ollama primary, OpenAI fallback) with explicit user consent and budget controls.
+# Details:
+Create core/ai_providers.py defining provider interfaces for Ollama and OpenAI. Add Hydra config fields for primary/fallback providers/models, monthly budget, and require-confirmation flag. Implement selection logic: try Ollama first; if unavailable, fall back to OpenAI only if configured and within budget/consent settings. Ensure provider choice is clearly logged.
+
+# Test Strategy:
+Unit tests simulating: Ollama up, Ollama down with OpenAI key set, Ollama down without OpenAI key, and budget/consent blocking fallback. Verify freeze still produces a SITREP or a clear placeholder without crashing.
