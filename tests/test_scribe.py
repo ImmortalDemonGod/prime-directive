@@ -63,3 +63,32 @@ def test_generate_sitrep_retries_then_success():
 
         assert result == "SITREP: Recovered. Next: Continue."
         assert mock_post.call_count == 2
+
+def test_generate_sitrep_fallback_requires_confirmation():
+    with patch("requests.post", side_effect=requests.exceptions.Timeout("Timed out")):
+        result = generate_sitrep(
+            repo_id="test-repo",
+            git_state="clean",
+            terminal_logs="loading...",
+            fallback_provider="openai",
+            require_confirmation=True,
+        )
+        assert "Error generating SITREP" in result
+        assert "requires confirmation" in result
+
+def test_generate_sitrep_fallback_openai_success():
+    with patch("requests.post", side_effect=requests.exceptions.ConnectionError("Connection refused")), patch(
+        "prime_directive.core.scribe.get_openai_api_key", return_value="sk-test"
+    ), patch(
+        "prime_directive.core.scribe.generate_openai_chat", return_value="SITREP: Fallback ok."
+    ) as mock_openai:
+        result = generate_sitrep(
+            repo_id="test-repo",
+            git_state="clean",
+            terminal_logs="loading...",
+            fallback_provider="openai",
+            fallback_model="gpt-4o-mini",
+            require_confirmation=False,
+        )
+        assert result == "SITREP: Fallback ok."
+        mock_openai.assert_called_once()
