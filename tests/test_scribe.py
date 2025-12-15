@@ -18,7 +18,7 @@ def test_generate_sitrep_success():
         
         assert result == "SITREP: All systems go. Next: Deploy."
         mock_post.assert_called_once()
-        args, kwargs = mock_post.call_args
+        _, kwargs = mock_post.call_args
         assert kwargs["json"]["model"] == "qwen2.5-coder"
         assert "Test Task" in kwargs["json"]["prompt"]
 
