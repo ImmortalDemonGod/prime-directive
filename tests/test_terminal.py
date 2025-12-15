@@ -18,7 +18,8 @@ def test_capture_terminal_state_tmux_success():
             ["tmux", "capture-pane", "-p", "-S", "-50"],
             capture_output=True,
             text=True,
-            check=False
+            check=False,
+            timeout=2
         )
 
 def test_capture_terminal_state_tmux_failure():
