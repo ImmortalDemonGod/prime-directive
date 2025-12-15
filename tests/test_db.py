@@ -29,8 +29,8 @@ async def test_repository_crud(async_db_session):
     await async_db_session.commit()
     await async_db_session.refresh(repo)
 
-    result = await async_db_session.exec(select(Repository).where(Repository.id == "test-repo"))
-    fetched_repo = result.first()
+    result = await async_db_session.execute(select(Repository).where(Repository.id == "test-repo"))
+    fetched_repo = result.scalars().first()
     
     assert fetched_repo is not None
     assert fetched_repo.id == "test-repo"
@@ -53,8 +53,8 @@ async def test_snapshot_creation(async_db_session):
     
     assert snapshot.id is not None
     
-    result = await async_db_session.exec(select(ContextSnapshot).where(ContextSnapshot.repo_id == "test-repo"))
-    fetched_snapshot = result.first()
+    result = await async_db_session.execute(select(ContextSnapshot).where(ContextSnapshot.repo_id == "test-repo"))
+    fetched_snapshot = result.scalars().first()
     
     assert fetched_snapshot is not None
     assert fetched_snapshot.git_status_summary == "clean"
