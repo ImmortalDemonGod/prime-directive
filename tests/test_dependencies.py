@@ -16,7 +16,10 @@ def test_get_ollama_install_cmd_macos():
 
 def test_get_ollama_install_cmd_linux():
     with patch("platform.system", return_value="Linux"):
-        assert get_ollama_install_cmd() == "curl -fsSL https://ollama.com/install.sh | sh"
+        assert (
+            get_ollama_install_cmd()
+            == "curl -fsSL https://ollama.com/install.sh | sh"
+        )
 
 
 def test_get_ollama_status_not_installed():
@@ -30,8 +33,12 @@ def test_get_ollama_status_not_installed():
 
 
 def test_get_ollama_status_installed_not_running():
-    with patch("shutil.which", return_value="/usr/bin/ollama"), patch(
-        "requests.get", side_effect=requests.exceptions.ConnectionError("refused")
+    with (
+        patch("shutil.which", return_value="/usr/bin/ollama"),
+        patch(
+            "requests.get",
+            side_effect=requests.exceptions.ConnectionError("refused"),
+        ),
     ):
         status = get_ollama_status("qwen2.5-coder")
         assert status.installed is True
@@ -44,8 +51,9 @@ def test_get_ollama_status_running_model_missing():
     mock_resp.status_code = 200
     mock_resp.json.return_value = {"models": [{"name": "other-model:latest"}]}
 
-    with patch("shutil.which", return_value="/usr/bin/ollama"), patch(
-        "requests.get", return_value=mock_resp
+    with (
+        patch("shutil.which", return_value="/usr/bin/ollama"),
+        patch("requests.get", return_value=mock_resp),
     ):
         status = get_ollama_status("qwen2.5-coder")
         assert status.installed is True
@@ -56,10 +64,13 @@ def test_get_ollama_status_running_model_missing():
 def test_get_ollama_status_running_model_present():
     mock_resp = Mock()
     mock_resp.status_code = 200
-    mock_resp.json.return_value = {"models": [{"name": "qwen2.5-coder:latest"}]}
+    mock_resp.json.return_value = {
+        "models": [{"name": "qwen2.5-coder:latest"}]
+    }
 
-    with patch("shutil.which", return_value="/usr/bin/ollama"), patch(
-        "requests.get", return_value=mock_resp
+    with (
+        patch("shutil.which", return_value="/usr/bin/ollama"),
+        patch("requests.get", return_value=mock_resp),
     ):
         status = get_ollama_status("qwen2.5-coder")
         assert status.installed is True
