@@ -2,6 +2,7 @@ import subprocess
 import os
 import shutil
 
+
 def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
     """
     Ensures a tmux session exists for the given repo_id and attaches to it.
@@ -16,7 +17,7 @@ def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
         return
 
     session_name = f"pd-{repo_id}"
-    
+
     # Check if session exists
     try:
         result = subprocess.run(
@@ -27,7 +28,7 @@ def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
     except subprocess.TimeoutExpired:
         print(f"Error: tmux has-session timed out for {session_name}")
         return
-    
+
     if result.returncode != 0:
         # Create new session
         # Use tmux start-directory (-c) to avoid shell interpolation / injection risk.
@@ -65,12 +66,15 @@ def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
         except subprocess.TimeoutExpired:
             print(f"Error: tmux new-session timed out for {session_name}")
             return
-    
+
     # Attach logic
     # If we are already inside a tmux session, we must use switch-client
     if os.environ.get("TMUX"):
         try:
-            subprocess.run(["tmux", "switch-client", "-t", session_name], timeout=2)
+            subprocess.run(
+                ["tmux", "switch-client", "-t", session_name],
+                timeout=2,
+            )
         except subprocess.TimeoutExpired:
             print("Error: tmux switch-client timed out")
     else:
@@ -79,6 +83,7 @@ def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
         # We do NOT put a timeout here as it would kill the user's session.
         if attach:
             subprocess.run(["tmux", "attach-session", "-t", session_name])
+
 
 def detach_current():
     """
