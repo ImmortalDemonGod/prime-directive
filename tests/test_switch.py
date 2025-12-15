@@ -26,7 +26,7 @@ def mock_config(tmp_path):
 
 @patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.os.getcwd")
-@patch("prime_directive.bin.pd.freeze_logic") # We'll refactor freeze to a function
+@patch("prime_directive.bin.pd.freeze_logic", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.ensure_session")
 @patch("prime_directive.bin.pd.launch_editor")
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
