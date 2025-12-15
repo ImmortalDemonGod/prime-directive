@@ -54,7 +54,7 @@ async def switch_logic(
     dispose_engine_fn: Callable[..., Any],
     console: Any,
     logger: logging.Logger,
-) -> None:
+) -> bool:
     try:
         current_repo_id = detect_current_repo_id(cwd, cfg.repos)
 
@@ -152,5 +152,6 @@ def run_switch(
     )
 
     if (not cfg.system.mock_mode) and (not os.environ.get("TMUX")):
-        target_path = cfg.repos[target_repo_id].path
-        ensure_session_fn(target_repo_id, target_path)
+        return True
+
+    return False
