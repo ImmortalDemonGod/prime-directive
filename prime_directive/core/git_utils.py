@@ -29,7 +29,8 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             cwd=repo_path,
             capture_output=True,
             text=True,
-            check=False
+            check=False,
+            timeout=5
         )
         branch = branch_proc.stdout.strip() if branch_proc.returncode == 0 else "unknown"
 
@@ -39,7 +40,8 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             cwd=repo_path,
             capture_output=True,
             text=True,
-            check=False
+            check=False,
+            timeout=5
         )
         status_output = status_proc.stdout
         
@@ -56,7 +58,8 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             cwd=repo_path,
             capture_output=True,
             text=True,
-            check=False
+            check=False,
+            timeout=5
         )
         diff_stat = diff_proc.stdout.strip()
 
@@ -65,6 +68,13 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
             "is_dirty": is_dirty,
             "uncommitted_files": uncommitted_files,
             "diff_stat": diff_stat
+        }
+    except subprocess.TimeoutExpired:
+        return {
+            "branch": "timeout",
+            "is_dirty": False,
+            "uncommitted_files": [],
+            "diff_stat": "Git command timed out"
         }
     except Exception as e:
         # Fallback for any execution errors
