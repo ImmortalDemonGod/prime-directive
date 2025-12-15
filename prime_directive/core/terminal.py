@@ -1,10 +1,14 @@
 import subprocess
-from typing import Tuple
+from typing import Tuple, Optional
 
-def capture_terminal_state() -> Tuple[str, str]:
+def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
     Captures the terminal state from tmux if running inside a tmux session.
     
+    Args:
+        repo_id (Optional[str]): If provided, targets the specific tmux session 'pd-{repo_id}'.
+                                 Otherwise captures the current pane.
+
     Returns:
         tuple[str, str]: (last_command, output_summary)
         - last_command: The last command executed (if available) or "unknown"
@@ -19,8 +23,12 @@ def capture_terminal_state() -> Tuple[str, str]:
         # Capture last 50 lines
         # -p: output to stdout
         # -S -50: start 50 lines back from end of history
+        cmd = ["tmux", "capture-pane", "-p", "-S", "-50"]
+        if repo_id:
+            cmd.extend(["-t", f"pd-{repo_id}"])
+
         capture_proc = subprocess.run(
-            ["tmux", "capture-pane", "-p", "-S", "-50"],
+            cmd,
             capture_output=True,
             text=True,
             check=False,
