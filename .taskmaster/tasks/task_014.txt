@@ -1,0 +1,11 @@
+# Task ID: 14
+# Title: Implement Background Daemon Service
+# Status: done
+# Dependencies: 11
+# Priority: low
+# Description: Create bin/pd-daemon for Watchdog monitoring and auto-freeze on inactivity
+# Details:
+Use watchdog 5.0+: monitor registry repo paths, on file changes or inactivity (>30min) trigger freeze(). Run as `pd-daemon` service with systemd or nohup. Log to data/logs/.
+
+# Test Strategy:
+Run pd-daemon, modify file in watched repo, verify auto-freeze creates DB snapshot.
