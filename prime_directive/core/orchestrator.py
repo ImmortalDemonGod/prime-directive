@@ -1,6 +1,7 @@
 import os
 import logging
 from typing import Optional, Callable, Any
+import asyncio
 
 from sqlalchemy import select
 
@@ -8,7 +9,10 @@ from prime_directive.core.db import ContextSnapshot
 
 
 def _is_path_prefix(prefix: str, path: str) -> bool:
-    """Return True if `prefix` is a directory-prefix of `path` (path boundary safe)."""
+    """Return True if `prefix` is a directory-prefix of `path`.
+
+    This is path boundary safe.
+    """
     prefix_norm = os.path.normpath(os.path.abspath(prefix))
     path_norm = os.path.normpath(os.path.abspath(path))
 
@@ -24,7 +28,9 @@ def detect_current_repo_id(cwd: str, repos: Any) -> Optional[str]:
     best_len = -1
 
     for repo_id, repo_cfg in repos.items():
-        repo_path = getattr(repo_cfg, "path", None) or repo_cfg.get("path")
+        repo_path = getattr(repo_cfg, "path", None) or repo_cfg.get(
+            "path"
+        )
         if not repo_path:
             continue
 
@@ -55,17 +61,23 @@ async def switch_logic(
         current_repo_id = detect_current_repo_id(cwd, cfg.repos)
 
         if current_repo_id and current_repo_id != target_repo_id:
-            console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
+            console.print(
+                f"[yellow]Detected current repo: {current_repo_id}[/yellow]"
+            )
             logger.info(f"Auto-freezing current repo: {current_repo_id}")
             try:
                 await freeze_fn(current_repo_id, cfg)
             except Exception as e:
-                console.print(f"[red]Failed to freeze {current_repo_id}: {e}[/red]")
+                console.print(
+                    f"[red]Failed to freeze {current_repo_id}: {e}[/red]"
+                )
 
         target_repo = cfg.repos[target_repo_id]
         target_path = target_repo.path
 
-        console.print(f"[bold green]>>> WARPING TO {target_repo_id.upper()} >>>[/bold green]")
+        console.print(
+            f"[bold green]>>> WARPING TO {target_repo_id.upper()} >>>[/bold green]"
+        )
         logger.info(f"Switching to {target_repo_id}")
 
         if cfg.system.mock_mode:
@@ -89,9 +101,18 @@ async def switch_logic(
             console.print("\n[bold reverse] SITREP [/bold reverse]")
             if snapshot:
                 if snapshot.human_note:
-                    console.print(f"[bold magenta]>>> HUMAN NOTE:[/bold magenta] {snapshot.human_note}")
-                console.print(f"[bold cyan]>>> AI SUMMARY:[/bold cyan] {snapshot.ai_sitrep}")
-                console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
+                    console.print(
+                        "[bold magenta]>>> HUMAN NOTE:[/bold magenta] "
+                        f"{snapshot.human_note}"
+                    )
+                console.print(
+                    "[bold cyan]>>> AI SUMMARY:[/bold cyan] "
+                    f"{snapshot.ai_sitrep}"
+                )
+                console.print(
+                    "[bold yellow]>>> TIMESTAMP:[/bold yellow] "
+                    f"{snapshot.timestamp}"
+                )
             else:
                 console.print("[italic]No previous snapshot found.[/italic]")
     finally:
@@ -112,7 +133,6 @@ def run_switch(
     console: Any,
     logger: logging.Logger,
 ) -> None:
-    import asyncio
 
     asyncio.run(
         switch_logic(
