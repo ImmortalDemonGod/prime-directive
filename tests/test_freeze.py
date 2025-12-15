@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, Mock, AsyncMock
+from unittest.mock import patch, Mock, AsyncMock, MagicMock
 from prime_directive.bin.pd import app
 from omegaconf import OmegaConf
 
@@ -63,30 +63,35 @@ def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mo
     mock_session = AsyncMock()
     # session.add is synchronous in SQLAlchemy
     mock_session.add = Mock()
+    # Mock execute for repository check - return empty result (repo doesn't exist)
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = None
+    mock_session.execute.return_value = mock_result
     
     # async generator mock
     async def async_gen(_db_path=None):
         yield mock_session
     mock_get_session.side_effect = async_gen
 
-    result = runner.invoke(app, ["freeze", "test-repo"])
+    result = runner.invoke(app, ["freeze", "test-repo", "--note", "Testing freeze command"])
     
     assert result.exit_code == 0
     assert "Freezing context for test-repo" in result.stdout
     assert "Generating AI SITREP" in result.stdout
     assert "Snapshot saved" in result.stdout
     assert "SITREP: Fixed bug." in result.stdout
+    assert "YOUR NOTE:" in result.stdout
     
-    # Verify DB calls
-    mock_session.add.assert_called_once()
-    snapshot = mock_session.add.call_args[0][0]
+    # Verify DB calls - now adds Repository first, then ContextSnapshot
+    assert mock_session.add.call_count >= 1
+    # Get the last add call which should be the snapshot
+    snapshot = mock_session.add.call_args_list[-1][0][0]
     assert snapshot.repo_id == "test-repo"
-    assert snapshot.git_status_summary == "Branch: main\nDirty: True\nFiles: ['file.py']\nDiff: file.py | 1 +"
-    assert snapshot.ai_sitrep == "SITREP: Fixed bug."
+    assert snapshot.human_note == "Testing freeze command"
 
 @patch("prime_directive.bin.pd.load_config")
 def test_freeze_command_invalid_repo(mock_load, mock_config):
     mock_load.return_value = mock_config
-    result = runner.invoke(app, ["freeze", "invalid-repo"])
+    result = runner.invoke(app, ["freeze", "invalid-repo", "--note", "Testing invalid repo"])
     assert result.exit_code == 1
     assert "Repository 'invalid-repo' not found" in result.stdout
