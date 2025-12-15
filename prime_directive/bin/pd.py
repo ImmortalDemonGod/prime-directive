@@ -51,14 +51,14 @@ def load_config() -> DictConfig:
         with initialize(version_base=None, config_path=str(config_dir)):
             cfg = compose(config_name="config")
             return cfg
-    except Exception as e:
+    except (OSError, ValueError) as e:
         # Fallback for when running from root or different context
         try:
             with initialize(version_base=None, config_path="../../prime_directive/conf"):
                 cfg = compose(config_name="config")
                 return cfg
-        except Exception as inner_e:
-             msg = f"Error loading config: {e} | {inner_e}"
+        except (OSError, ValueError) as inner_e:
+            msg = f"Error loading config: {e} | {inner_e}"
              console.print(f"[bold red]{msg}[/bold red]")
              logger.critical(msg)
              sys.exit(1)
@@ -163,7 +163,7 @@ def freeze(repo_id: str):
         try:
             await freeze_logic(repo_id, cfg)
         except ValueError:
-            raise typer.Exit(code=1)
+            raise typer.Exit(code=1) from None
         finally:
             await dispose_engine()
 
