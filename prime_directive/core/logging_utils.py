@@ -31,14 +31,11 @@ def setup_logging(log_file="~/.prime-directive/logs/pd.log"):
                 "level": "INFO",
                 "formatter": "standard",
                 "filename": log_file,
-                "encoding": "utf8"
+                "encoding": "utf8",
             },
             # We can add console handler if we want verbose output,
             # but Typer/Rich handles console mostly.
         },
-        "root": {
-            "level": "INFO",
-            "handlers": ["file"]
-        }
+        "root": {"level": "INFO", "handlers": ["file"]},
     }
     logging.config.dictConfig(config)
