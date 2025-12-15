@@ -28,6 +28,7 @@ from prime_directive.core.tmux import ensure_session
 from prime_directive.core.windsurf import launch_editor
 from prime_directive.core.logging_utils import setup_logging
 from prime_directive.core.orchestrator import run_switch
+from prime_directive.core.dependencies import get_ollama_status, has_openai_api_key
 
 app = typer.Typer()
 # Export cli for entry point
@@ -323,30 +324,29 @@ def doctor():
     if cfg.system.mock_mode:
         checks.append(("AI Engine (Ollama)", "✅", "Mocked"))
     else:
-        ai_status = "❌"
-        ai_msg = "Connection Failed"
-        try:
-            # Check connection
-            resp = requests.get("http://localhost:11434/api/tags", timeout=2)
-            if resp.status_code == 200:
-                models = resp.json().get("models", [])
-                model_names = [m["name"] for m in models]
-                target_model = cfg.system.ai_model
-                # Check for partial match (e.g. qwen2.5-coder:latest)
-                if any(target_model in name for name in model_names):
-                    ai_status = "✅"
-                    ai_msg = f"Connected & {target_model} found"
-                else:
-                    ai_status = "⚠️"
-                    ai_msg = f"Connected but {target_model} missing (Pulling needed)"
+        ollama = get_ollama_status(cfg.system.ai_model)
+        if not ollama.installed:
+            ai_status = "❌"
+            ai_msg = f"{ollama.details}. Install: {ollama.install_cmd}"
+        elif not ollama.running:
+            ai_status = "❌"
+            ai_msg = f"{ollama.details}. Start: {ollama.start_cmd}"
+        else:
+            if "missing" in ollama.details.lower():
+                ai_status = "⚠️"
             else:
-                ai_msg = f"API Error: {resp.status_code}"
-        except requests.exceptions.ConnectionError:
-            ai_msg = "Ollama not running (localhost:11434)"
-        except Exception as e:
-            ai_msg = f"Error: {str(e)}"
-        
+                ai_status = "✅"
+            ai_msg = ollama.details
         checks.append(("AI Engine (Ollama)", ai_status, ai_msg))
+
+    # 3b. OpenAI fallback availability (optional)
+    if cfg.system.mock_mode:
+        checks.append(("OpenAI Fallback", "✅", "Mocked"))
+    else:
+        if has_openai_api_key():
+            checks.append(("OpenAI Fallback", "✅", "OPENAI_API_KEY set"))
+        else:
+            checks.append(("OpenAI Fallback", "⚠️", "OPENAI_API_KEY not set"))
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
