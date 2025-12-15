@@ -7,10 +7,17 @@ from omegaconf import OmegaConf
 runner = CliRunner()
 
 @pytest.fixture
-def mock_config():
+def mock_config(tmp_path):
     # Use OmegaConf to create a DictConfig that supports dot access
+    log_file = tmp_path / "pd.log"
     conf_dict = {
-        "system": {"editor_cmd": "code", "ai_model": "gpt-4", "db_path": ":memory:"},
+        "system": {
+            "editor_cmd": "code", 
+            "ai_model": "gpt-4", 
+            "db_path": ":memory:",
+            "log_path": str(log_file),
+            "mock_mode": False
+        },
         "repos": {
             "repo1": {"id": "repo1", "path": "/tmp/repo1", "priority": 10, "active_branch": "main"},
             "repo2": {"id": "repo2", "path": "/tmp/repo2", "priority": 5, "active_branch": "dev"}
