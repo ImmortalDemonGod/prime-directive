@@ -222,8 +222,8 @@
             "dependencies": [
               1
             ],
-            "details": "Follow the manual test scripts for tests 1.1 through 3.3. Document any deviations or unexpected results. Ensure that each test passes as expected before moving on.",
-            "status": "pending",
+            "details": "Follow the manual test scripts for tests 1.1 through 3.3. Document any deviations or unexpected results. Ensure that each test passes as expected before moving on.\n<info added on 2025-12-15T23:34:08.323Z>\nManual test results (stand-in repo = prime-directive):\n- Test 2.3 freeze hook: ran freeze with marker note and verified latest snapshot in DB contains marker in human_note and terminal_output_summary.\n- Test 3.1 tmux idempotency: ensure_session called twice; tmux list-sessions shows only pd-prime-directive; no suffix sessions.\n- Test 3.2/3.3 interactive: user confirmed editor launch + shell/tmux integration working.\nNote: configured db_path (~/.prime-directive/data/prime.db) directory was missing; snapshot written to repo-local data/prime.db during testing.\n</info added on 2025-12-15T23:34:08.323Z>",
+            "status": "done",
             "testStrategy": "Record the results of each test and compare them against expected outcomes documented in the test scripts."
           },
           {
@@ -234,7 +234,7 @@
               2
             ],
             "details": "Work on repo1 for 30 minutes, then switch away for 24 hours. After 24 hours, switch back to repo1 and commit code within 5 minutes. Document the state of the system before and after the inactivity period.",
-            "status": "pending",
+            "status": "deferred",
             "testStrategy": "Ensure that the system state is consistent with expectations after the 24-hour period and that the commit is successful without errors."
           },
           {
@@ -941,7 +941,7 @@
         "id": 26,
         "title": "Fix Shell Integration and Process Hierarchy",
         "description": "Resolve the fragile process hierarchy issue caused by the pd switch command, ensuring tmux sessions are not orphaned if Python exits unexpectedly.",
-        "details": "The current implementation of the pd switch command results in a fragile process hierarchy where Python remains the parent of the tmux client. This can lead to orphaned tmux sessions if Python exits unexpectedly. To address this, modify pd.py to exit with a specific status code or write a token file upon successful execution. Update shell_integration.zsh to trap this status code or token file, and execute tmux switch-client at the shell level, effectively removing Python from the process chain. This change will ensure that tmux sessions are managed independently of the Python process, improving the robustness of the session management.",
+        "details": "The current implementation of the pd switch command results in a fragile process hierarchy where Python remains the parent of the tmux client. This can lead to orphaned tmux sessions if Python exits unexpectedly. To address this, modify pd.py to exit with a specific status code or write a token file upon successful execution. Update shell_integration.zsh to trap this status code or token file, and execute tmux switch-client at the shell level, effectively removing Python from the process chain. This change will ensure that tmux sessions are managed independently of the Python process, improving the robustness of the session management.\n<info added on 2025-12-15T23:45:15.476Z>\nImplemented shell-level tmux attach/switch to fix process hierarchy:\n- core/orchestrator.run_switch now returns a boolean (needs_shell_attach) instead of attaching to tmux.\n- bin/pd.py exits with code 88 on 'pd switch' when shell attach is required.\n- system/shell_integration.zsh traps exit code 88 and performs tmux attach-session / switch-client in the shell.\n- Updated tests/test_switch.py to cover both normal switch (exit 0) and shell-attach handshake (exit 88). pytest tests/test_switch.py passes.\n</info added on 2025-12-15T23:45:15.476Z>",
         "testStrategy": "1. Modify pd.py to exit with a specific status code or write a token file upon successful execution.\\n2. Update shell_integration.zsh to trap the status code or check for the token file.\\n3. Execute tmux switch-client at the shell level based on the trapped status or token file.\\n4. Test by running pd switch and forcibly terminating the Python process to ensure the tmux session remains active and is not orphaned.\\n5. Verify that the shell integration correctly handles the status code or token file and executes the tmux switch-client command.",
         "status": "pending",
         "dependencies": [
@@ -970,7 +970,7 @@
         "description": "Replace blocking I/O calls with asynchronous alternatives to improve performance and prevent freezes.",
         "details": "1. Replace `requests.post` in `ai_providers.py` with `httpx.AsyncClient.post` to make HTTP requests asynchronously. Ensure that the function calling it is also async and handle the response appropriately.\n2. Replace `time.sleep` in `ai_providers.py` with `asyncio.sleep` or use the `tenacity` library for retries with backoff, ensuring that the function is async.\n3. In `git_utils.py` and `terminal.py`, replace `subprocess.run` with `asyncio.create_subprocess_exec` to execute shell commands asynchronously. Ensure that the output is captured correctly using `await process.communicate()`.\n4. Make `generate_sitrep` in `scribe.py` an async function to support the changes and ensure it integrates seamlessly with the rest of the system.\n5. Update any calling code to handle the new async functions, including adding `await` where necessary.",
         "testStrategy": "1. Write unit tests for `ai_providers.py` to ensure that HTTP requests are made asynchronously and responses are handled correctly.\n2. Test retry logic using `asyncio.sleep` or `tenacity` to confirm that retries occur without blocking.\n3. Verify that `git_utils.py` and `terminal.py` execute shell commands asynchronously and capture outputs correctly.\n4. Conduct integration tests to ensure that the overall system performance improves and that no blocking occurs during AI calls.\n5. Perform manual testing to simulate AI calls and observe that the system remains responsive without freezes.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           6,
           7,
@@ -984,7 +984,7 @@
             "description": "Modify the HTTP request logic in ai_providers.py to use asynchronous HTTP calls with httpx.AsyncClient.post.",
             "dependencies": [],
             "details": "Identify all instances of requests.post in ai_providers.py. Replace them with httpx.AsyncClient.post. Ensure that the surrounding function is converted to an async function and that the response is handled using await. Update any related error handling and logging to work with the async context.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Write unit tests to verify that HTTP requests are made correctly and responses are handled as expected in an asynchronous manner."
           },
           {
@@ -995,7 +995,7 @@
               1
             ],
             "details": "Locate all instances of time.sleep in ai_providers.py. Replace them with asyncio.sleep to ensure non-blocking behavior. If retry logic is needed, use the tenacity library to implement retries with exponential backoff. Ensure that the functions using these calls are async.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the functions to ensure they behave correctly with non-blocking sleep and retry logic, verifying that the application does not freeze during these operations."
           },
           {
@@ -1007,7 +1007,7 @@
               2
             ],
             "details": "Modify the generate_sitrep function to be async. Ensure that all internal calls within this function that can be async are awaited. Update any calling code to handle the async nature of this function, including adding await where necessary.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the integration of generate_sitrep with other parts of the system to ensure it functions correctly as an async function."
           },
           {
@@ -1019,7 +1019,7 @@
               2
             ],
             "details": "Identify all instances of subprocess.run in git_utils.py and terminal.py. Replace them with asyncio.create_subprocess_exec. Ensure that the output is captured correctly using await process.communicate(). Convert the surrounding functions to async if necessary.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify that shell commands execute correctly and asynchronously, capturing output as expected. Ensure that the application remains responsive during these operations."
           },
           {
@@ -1033,7 +1033,7 @@
               4
             ],
             "details": "Review the freeze_logic to identify all async function calls. Ensure that each call is properly awaited. Verify that the daemon watchdog is capable of processing events concurrently with async AI operations, making adjustments as necessary to the event loop or task management.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Conduct integration tests to ensure that the system remains responsive and that the daemon watchdog processes events correctly during asynchronous operations."
           }
         ]
@@ -1185,7 +1185,7 @@
         "description": "Modify core/db.py to set SQLite journal mode to WAL (Write-Ahead Logging) instead of DELETE.",
         "details": "To enable WAL mode for the SQLite database, modify the database connection setup in core/db.py. Add the SQL command `PRAGMA journal_mode=WAL;` immediately after establishing a connection to the SQLite database. This change will help prevent database locking issues when the daemon and CLI access the database concurrently. Ensure that the connection is properly closed after operations to maintain database integrity. Review the SQLite documentation on WAL mode to understand its benefits and limitations, such as increased disk space usage and potential performance impacts.",
         "testStrategy": "1. Modify the existing database connection tests in tests/test_db.py to verify that the journal mode is set to WAL. \n2. Use a test database and execute a connection setup, then query `PRAGMA journal_mode;` to confirm it returns 'wal'. \n3. Conduct concurrent read/write operations from both the daemon and CLI to ensure no locking issues occur. \n4. Verify that the database integrity is maintained after multiple concurrent operations.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           3
         ],
@@ -1208,7 +1208,7 @@
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-15T22:57:13.349Z",
+      "updated": "2025-12-15T23:41:19.175Z",
       "description": "Tasks for master context"
     }
   }
