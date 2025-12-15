@@ -20,7 +20,7 @@ from omegaconf import OmegaConf, DictConfig
 # Core imports
 from prime_directive.core.config import PrimeConfig, register_configs
 from prime_directive.core.git_utils import get_status
-from prime_directive.core.db import get_session, ContextSnapshot, init_db
+from prime_directive.core.db import get_session, ContextSnapshot, init_db, dispose_engine
 from prime_directive.core.terminal import capture_terminal_state
 from prime_directive.core.tasks import get_active_task
 from prime_directive.core.scribe import generate_sitrep
@@ -122,22 +122,25 @@ def freeze_logic(repo_id: str, config: DictConfig):
     
     # 5. Save to DB
     async def save_snapshot():
-        await init_db(config.system.db_path)
-        async for session in get_session(config.system.db_path):
-            snapshot = ContextSnapshot(
-                repo_id=repo_id,
-                timestamp=datetime.utcnow(),
-                git_status_summary=git_summary,
-                terminal_last_command=last_cmd,
-                terminal_output_summary=term_output,
-                ai_sitrep=sitrep
-            )
-            session.add(snapshot)
-            await session.commit()
-            msg = f"Snapshot saved. ID: {snapshot.id}"
-            console.print(f"[bold green]{msg}[/bold green]")
-            console.print(f"[italic]{sitrep}[/italic]")
-            logger.info(f"{msg}. SITREP: {sitrep}")
+        try:
+            await init_db(config.system.db_path)
+            async for session in get_session(config.system.db_path):
+                snapshot = ContextSnapshot(
+                    repo_id=repo_id,
+                    timestamp=datetime.utcnow(),
+                    git_status_summary=git_summary,
+                    terminal_last_command=last_cmd,
+                    terminal_output_summary=term_output,
+                    ai_sitrep=sitrep
+                )
+                session.add(snapshot)
+                await session.commit()
+                msg = f"Snapshot saved. ID: {snapshot.id}"
+                console.print(f"[bold green]{msg}[/bold green]")
+                console.print(f"[italic]{sitrep}[/italic]")
+                logger.info(f"{msg}. SITREP: {sitrep}")
+        finally:
+            await dispose_engine()
 
     asyncio.run(save_snapshot())
 
@@ -200,18 +203,21 @@ def switch(repo_id: str):
     
     # 3. Display SITREP
     async def show_sitrep():
-        await init_db(cfg.system.db_path)
-        async for session in get_session(cfg.system.db_path):
-            stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
-            result = await session.execute(stmt)
-            snapshot = result.scalars().first()
-            
-            console.print("\n[bold reverse] SITREP [/bold reverse]")
-            if snapshot:
-                console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
-                console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
-            else:
-                console.print("[italic]No previous snapshot found.[/italic]")
+        try:
+            await init_db(cfg.system.db_path)
+            async for session in get_session(cfg.system.db_path):
+                stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
+                result = await session.execute(stmt)
+                snapshot = result.scalars().first()
+                
+                console.print("\n[bold reverse] SITREP [/bold reverse]")
+                if snapshot:
+                    console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
+                    console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
+                else:
+                    console.print("[italic]No previous snapshot found.[/italic]")
+        finally:
+            await dispose_engine()
                 
     asyncio.run(show_sitrep())
 
@@ -269,6 +275,8 @@ def status_command():
         except Exception as e:
             logger.debug(f"Error fetching snapshot for {repo_id}: {e}")
             return "Unknown"
+        finally:
+            await dispose_engine()
         return "Never"
 
     for repo in sorted_repos:
