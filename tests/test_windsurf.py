@@ -32,9 +32,7 @@ def test_launch_editor_not_found(mock_popen, mock_which):
     # Our implementation tries to launch.
     launch_editor("/path/to/repo", "unknown_editor")
 
-    mock_popen.assert_called_once_with(
-        ["unknown_editor", "-n", "/path/to/repo"]
-    )
+    mock_popen.assert_not_called()
 
 
 @patch("shutil.which")
