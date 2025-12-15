@@ -65,7 +65,7 @@ def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mo
     mock_session.add = Mock()
     
     # async generator mock
-    async def async_gen(*args, **kwargs):
+    async def async_gen(_db_path=None):
         yield mock_session
     mock_get_session.side_effect = async_gen
 
