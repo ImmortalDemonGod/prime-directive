@@ -1,0 +1,11 @@
+# Task ID: 8
+# Title: Implement Tmux Session Management
+# Status: done
+# Dependencies: 2
+# Priority: high
+# Description: Create core/tmux.py for idempotent session create/attach with pd-<repo_id> naming
+# Details:
+def ensure_session(repo_id: str, repo_path: str): session_name=f'pd-{repo_id}'. Check tmux ls | grep session_name, if exists: tmux attach -t session_name. Else: tmux new-session -d -s session_name 'cd {repo_path} && uv shell'. def detach_current(): tmux detach-client. Use subprocess.run(['tmux', ...], capture_output=True).
+
+# Test Strategy:
+Manual Test 3.1: pd switch test-project (creates), detach, pd switch test-project (attaches existing, no duplication).
