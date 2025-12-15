@@ -15,9 +15,10 @@ def launch_editor(repo_path: str, editor_cmd: str = "windsurf"):
     if not shutil.which(editor_cmd):
         print(f"Error: Editor command '{editor_cmd}' not found in PATH.")
         return
-    
+
     try:
-        # -n forces a new window/instance, which is standard VS Code / Windsurf CLI behavior
+        # -n forces a new window/instance, which is standard VS Code / Windsurf
+        # CLI behavior
         # This allows multiple projects to be open simultaneously.
         subprocess.Popen([editor_cmd, "-n", repo_path])
     except FileNotFoundError:
