@@ -18,10 +18,15 @@ def ensure_session(repo_id: str, repo_path: str):
     session_name = f"pd-{repo_id}"
     
     # Check if session exists
-    result = subprocess.run(
-        ["tmux", "has-session", "-t", session_name],
-        capture_output=True
-    )
+    try:
+        result = subprocess.run(
+            ["tmux", "has-session", "-t", session_name],
+            capture_output=True,
+            timeout=2
+        )
+    except subprocess.TimeoutExpired:
+        print(f"Error: tmux has-session timed out for {session_name}")
+        return
     
     if result.returncode != 0:
         # Create new session
@@ -29,17 +34,26 @@ def ensure_session(repo_id: str, repo_path: str):
         # Note: 'uv shell' might fail if not in a project with .venv, fall back to $SHELL
         # Using bash -c as per PRD suggestion, but making it more robust
         cmd = f"cd {repo_path} && (uv shell || $SHELL)"
-        subprocess.run([
-            "tmux", "new-session", "-d", "-s", session_name,
-            "bash", "-c", cmd
-        ])
+        try:
+            subprocess.run([
+                "tmux", "new-session", "-d", "-s", session_name,
+                "bash", "-c", cmd
+            ], timeout=5)
+        except subprocess.TimeoutExpired:
+            print(f"Error: tmux new-session timed out for {session_name}")
+            return
     
     # Attach logic
     # If we are already inside a tmux session, we must use switch-client
     if os.environ.get("TMUX"):
-        subprocess.run(["tmux", "switch-client", "-t", session_name])
+        try:
+            subprocess.run(["tmux", "switch-client", "-t", session_name], timeout=2)
+        except subprocess.TimeoutExpired:
+            print("Error: tmux switch-client timed out")
     else:
         # Otherwise attach normally
+        # NOTE: attach-session is interactive and blocks until the user detaches.
+        # We do NOT put a timeout here as it would kill the user's session.
         subprocess.run(["tmux", "attach-session", "-t", session_name])
 
 def detach_current():
@@ -47,4 +61,7 @@ def detach_current():
     Detaches the current tmux client if inside a session.
     """
     if os.environ.get("TMUX"):
-        subprocess.run(["tmux", "detach-client"])
+        try:
+            subprocess.run(["tmux", "detach-client"], timeout=2)
+        except subprocess.TimeoutExpired:
+            print("Error: tmux detach-client timed out")
