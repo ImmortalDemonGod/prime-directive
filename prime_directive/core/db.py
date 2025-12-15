@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional
-from sqlmodel import SQLModel, Field, create_engine
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from typing import Optional, Dict
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Index, event
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
 from sqlalchemy.orm import sessionmaker
 
 # Define Models
@@ -12,31 +13,55 @@ class Repository(SQLModel, table=True):
     active_branch: Optional[str] = None
     last_snapshot_id: Optional[int] = Field(default=None)
 
+    snapshots: list["ContextSnapshot"] = Relationship(back_populates="repo")
+
 class ContextSnapshot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    repo_id: str = Field(index=True)
+    repo_id: str = Field(foreign_key="repository.id", index=True)
     timestamp: datetime = Field(default_factory=datetime.utcnow)
     git_status_summary: str
     terminal_last_command: str
     terminal_output_summary: str
     ai_sitrep: str
 
+    repo: Optional[Repository] = Relationship(back_populates="snapshots")
+
+    __table_args__ = (
+        Index("ix_contextsnapshot_repo_id_timestamp", "repo_id", "timestamp"),
+    )
+
 # Database Connection
 # We will use a function to initialize the engine to allow for configuration
-_async_engine = None
+_async_engines: Dict[str, AsyncEngine] = {}
 
 def get_engine(db_path: str = "data/prime.db"):
-    global _async_engine
-    if _async_engine:
-        return _async_engine
+    global _async_engines
+    if db_path in _async_engines:
+        return _async_engines[db_path]
     
     # Ensure directory exists
     import os
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+    if db_path != ":memory:":
+        dir_name = os.path.dirname(db_path)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
     
     database_url = f"sqlite+aiosqlite:///{db_path}"
-    _async_engine = create_async_engine(database_url, echo=False, connect_args={"check_same_thread": False})
-    return _async_engine
+
+    engine = create_async_engine(
+        database_url,
+        echo=False,
+        connect_args={"check_same_thread": False},
+    )
+
+    @event.listens_for(engine.sync_engine, "connect")
+    def _set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+
+    _async_engines[db_path] = engine
+    return engine
 
 async def init_db(db_path: str = "data/prime.db"):
     engine = get_engine(db_path)
@@ -51,9 +76,16 @@ async def get_session(db_path: str = "data/prime.db"):
     async with async_session() as session:
         yield session
 
-async def dispose_engine():
-    """Dispose of the global async engine to ensure clean exit."""
-    global _async_engine
-    if _async_engine:
-        await _async_engine.dispose()
-        _async_engine = None
+async def dispose_engine(db_path: Optional[str] = None):
+    """Dispose cached async engine(s) to ensure clean exit."""
+    global _async_engines
+    if db_path is not None:
+        engine = _async_engines.pop(db_path, None)
+        if engine is not None:
+            await engine.dispose()
+        return
+
+    engines = list(_async_engines.values())
+    _async_engines = {}
+    for engine in engines:
+        await engine.dispose()
