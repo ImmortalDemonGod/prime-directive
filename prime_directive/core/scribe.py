@@ -1,7 +1,12 @@
 import requests
 from typing import Optional, Dict, Any
 
-from prime_directive.core.ai_providers import generate_ollama, generate_openai_chat, get_openai_api_key
+from prime_directive.core.ai_providers import (
+    generate_ollama,
+    generate_openai_chat,
+    get_openai_api_key,
+)
+
 
 def generate_sitrep(
     repo_id: str,
@@ -23,7 +28,7 @@ def generate_sitrep(
 ) -> str:
     """
     Generates a SITREP summary using Ollama.
-    
+
     Args:
         repo_id (str): The ID of the repository.
         git_state (str): Summary of git status.
@@ -34,25 +39,29 @@ def generate_sitrep(
         fallback_model (str): The fallback model to use if Ollama fails.
         require_confirmation (bool): Whether to require confirmation for OpenAI fallback.
         openai_api_url (str): The OpenAI API endpoint.
-        openai_timeout_seconds (float): The timeout in seconds for the OpenAI API request.
-        openai_max_tokens (int): The maximum number of tokens for the OpenAI API request.
+        openai_timeout_seconds (float): Timeout in seconds for the OpenAI request.
+        openai_max_tokens (int): Maximum number of tokens for the OpenAI request.
         api_url (str): The Ollama API endpoint.
         timeout_seconds (float): The timeout in seconds for the Ollama API request.
         max_retries (int): The maximum number of retries for the Ollama API request.
         backoff_seconds (float): The backoff time in seconds between retries.
-        
+
     Returns:
         str: The generated SITREP string.
     """
-    
+
     task_info = "None"
     if active_task:
-        task_info = f"ID: {active_task.get('id')}\nTitle: {active_task.get('title')}\nDetails: {active_task.get('description')}"
+        task_info = (
+            f"ID: {active_task.get('id')}\n"
+            f"Title: {active_task.get('title')}\n"
+            f"Details: {active_task.get('description')}"
+        )
 
     prompt = f"""
     Context:
     - Repository: {repo_id}
-    - Active Task: 
+    - Active Task:
     {task_info}
     - Git State:
     {git_state}
@@ -65,7 +74,8 @@ def generate_sitrep(
     system_prompt = (
         "You are a concise engineering assistant. "
         "Given git state, terminal logs, and active task, "
-        "generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in 50 words max."
+        "generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in "
+        "50 words max."
     )
 
     # Use OpenAI as primary provider if configured
