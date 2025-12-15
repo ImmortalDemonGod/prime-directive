@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from typing import Dict
+from typing import Dict, Optional
 from hydra.core.config_store import ConfigStore
 
 
@@ -29,7 +29,7 @@ class RepoConfig:
     id: str
     path: str
     priority: int
-    active_branch: str = "main"
+    active_branch: Optional[str] = None
 
 
 @dataclass
