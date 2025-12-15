@@ -1,0 +1,15 @@
+# Task ID: 27
+# Title: Clean Up Technical Debt: Code Removal, WAL Mode, Refactoring, and Alembic Setup
+# Status: pending
+# Dependencies: 20
+# Priority: medium
+# Description: Refactor windsurf.py to accept configurable editor_args from Hydra config instead of using the hardcoded -n flag. This change will improve compatibility with editors other than VSCode, such as vim.
+# Details:
+1. **Refactor windsurf.py**: Update `windsurf.py` to accept configurable `editor_args` from the Hydra configuration instead of using the hardcoded `-n` flag. This will improve compatibility with editors that do not support the `-n` flag, such as vim. 
+
+2. **Update Configuration**: Add an `editor_args` field to `config.yaml` to allow users to specify their preferred editor arguments. Ensure that the application reads this configuration correctly and applies it when launching the editor.
+
+# Test Strategy:
+1. **Refactor windsurf.py**: Test the `windsurf.py` functionality with different editors by specifying various `editor_args` in the Hydra configuration. Ensure that the application launches the editor correctly without the `-n` flag.
+
+2. **Configuration Verification**: Verify that the `editor_args` field in `config.yaml` is correctly parsed and applied by the application. Test with multiple configurations to ensure flexibility and correctness.
