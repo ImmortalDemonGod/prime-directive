@@ -95,7 +95,7 @@ def freeze_logic(repo_id: str, config: DictConfig):
         last_cmd = "mock_cmd"
         term_output = "MOCK: Terminal output"
     else:
-        last_cmd, term_output = capture_terminal_state()
+        last_cmd, term_output = capture_terminal_state(repo_id)
     
     logger.debug(f"Terminal state: cmd={last_cmd}")
     
