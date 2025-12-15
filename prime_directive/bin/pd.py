@@ -27,6 +27,7 @@ from prime_directive.core.scribe import generate_sitrep
 from prime_directive.core.tmux import ensure_session
 from prime_directive.core.windsurf import launch_editor
 from prime_directive.core.logging_utils import setup_logging
+from prime_directive.core.orchestrator import run_switch
 
 app = typer.Typer()
 # Export cli for entry point
@@ -176,57 +177,19 @@ def switch(repo_id: str):
         logger.error(msg)
         raise typer.Exit(code=1)
 
-    target_repo = cfg.repos[repo_id]
-
-    async def run_switch():
-        try:
-            # 1. Detect and Freeze current repo
-            cwd = os.getcwd()
-            current_repo_id = None
-            for r_id, r_config in cfg.repos.items():
-                if cwd.startswith(os.path.abspath(r_config.path)):
-                    current_repo_id = r_id
-                    break
-            
-            if current_repo_id and current_repo_id != repo_id:
-                console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
-                logger.info(f"Auto-freezing current repo: {current_repo_id}")
-                try:
-                    await freeze_logic(current_repo_id, cfg)
-                except Exception as e:
-                    console.print(f"[red]Failed to freeze {current_repo_id}: {e}[/red]")
-
-            # 2. Thaw / Switch (Sync operations)
-            console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
-            logger.info(f"Switching to {repo_id}")
-            
-            if cfg.system.mock_mode:
-                logger.info(f"MOCK MODE: ensure_session({repo_id})")
-                logger.info(f"MOCK MODE: launch_editor({target_repo.path})")
-            else:
-                ensure_session(repo_id, target_repo.path, attach=False)
-                launch_editor(target_repo.path, cfg.system.editor_cmd)
-            
-            # 3. Display SITREP (Async)
-            await init_db(cfg.system.db_path)
-            async for session in get_session(cfg.system.db_path):
-                stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
-                result = await session.execute(stmt)
-                snapshot = result.scalars().first()
-                
-                console.print("\n[bold reverse] SITREP [/bold reverse]")
-                if snapshot:
-                    console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
-                    console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
-                else:
-                    console.print("[italic]No previous snapshot found.[/italic]")
-        finally:
-            await dispose_engine()
-
-    asyncio.run(run_switch())
-
-    if (not cfg.system.mock_mode) and (not os.environ.get("TMUX")):
-        ensure_session(repo_id, target_repo.path)
+    run_switch(
+        repo_id,
+        cfg,
+        cwd=os.getcwd(),
+        freeze_fn=freeze_logic,
+        ensure_session_fn=ensure_session,
+        launch_editor_fn=launch_editor,
+        init_db_fn=init_db,
+        get_session_fn=get_session,
+        dispose_engine_fn=dispose_engine,
+        console=console,
+        logger=logger,
+    )
 
 @app.command("list")
 def list_repos():
