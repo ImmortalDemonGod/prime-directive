@@ -1,0 +1,72 @@
+import pytest
+import time
+from unittest.mock import patch, MagicMock
+from prime_directive.bin.pd_daemon import AutoFreezeHandler, main
+from prime_directive.core.registry import Registry, RepoConfig, SystemConfig
+from datetime import datetime, timedelta
+
+@pytest.fixture
+def mock_registry():
+    return Registry(
+        system=SystemConfig(editor_cmd="code", ai_model="gpt-4", db_path=":memory:"),
+        repos={
+            "test-repo": RepoConfig(id="test-repo", path="/tmp/test-repo", priority=10)
+        }
+    )
+
+def test_handler_update():
+    handler = AutoFreezeHandler("test-repo", None)
+    initial_time = handler.last_modified
+    
+    # Simulate an event
+    event = MagicMock()
+    event.is_directory = False
+    event.src_path = "/tmp/test-repo/file.py"
+    
+    time.sleep(0.01) # Ensure time advances
+    handler.on_any_event(event)
+    
+    assert handler.last_modified > initial_time
+
+@patch("prime_directive.bin.pd_daemon.load_registry")
+@patch("prime_directive.bin.pd_daemon.Observer")
+@patch("prime_directive.bin.pd_daemon.time.sleep")
+@patch("prime_directive.bin.pd_daemon.freeze_logic")
+@patch("prime_directive.bin.pd_daemon.os.path.exists")
+def test_daemon_loop(mock_exists, mock_freeze, mock_sleep, mock_observer, mock_load, mock_registry):
+    mock_load.return_value = mock_registry
+    mock_exists.return_value = True
+    
+    # Mock Observer
+    observer_instance = MagicMock()
+    mock_observer.return_value = observer_instance
+    
+    # Control the infinite loop: run once then raise KeyboardInterrupt
+    mock_sleep.side_effect = [None, KeyboardInterrupt]
+    
+    # Mock Handler state to trigger freeze
+    # We need to access the handler created inside main. 
+    # Since main instantiates AutoFreezeHandler, we can patch AutoFreezeHandler class 
+    # OR we can rely on logic inside main.
+    # Let's patch AutoFreezeHandler to return a mock with an old timestamp
+    with patch("prime_directive.bin.pd_daemon.AutoFreezeHandler") as MockHandlerClass:
+        mock_handler = MagicMock()
+        # Set last_modified to 1 hour ago
+        mock_handler.last_modified = datetime.now() - timedelta(hours=1)
+        MockHandlerClass.return_value = mock_handler
+        
+        try:
+            main(interval=1, inactivity_limit=1800) # 30 mins limit
+        except KeyboardInterrupt:
+            pass
+        
+        # Verify monitoring started
+        observer_instance.schedule.assert_called_once()
+        observer_instance.start.assert_called_once()
+        
+        # Verify freeze trigger
+        # The loop runs once (sleep called), detects inactivity (1 hour > 30 mins)
+        mock_freeze.assert_called_with("test-repo", mock_registry)
+        
+        # Verify handler timestamp reset
+        assert mock_handler.last_modified > datetime.now() - timedelta(minutes=1)
