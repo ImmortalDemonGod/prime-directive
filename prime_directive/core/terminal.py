@@ -1,14 +1,15 @@
-import subprocess
 import re
-from typing import Tuple, Optional
+import subprocess
+from typing import Optional, Tuple
+
 
 def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
     Captures the terminal state from tmux if running inside a tmux session.
     
     Args:
-        repo_id (Optional[str]): If provided, targets the specific tmux session 'pd-{repo_id}'.
-                                 Otherwise captures the current pane.
+        repo_id (Optional[str]): If provided, targets the tmux session
+            'pd-{repo_id}'. Otherwise captures the current pane.
 
     Returns:
         tuple[str, str]: (last_command, output_summary)
@@ -17,10 +18,11 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
     try:
         # Check if we are inside tmux (basic check, could be more robust)
-        # Note: This tool runs inside the IDE, which might not be inside tmux. 
-        # But the PRD implies this is part of the 'pd' CLI which *might* be running in tmux.
+        # Note: This tool runs inside the IDE, which might not be inside tmux.
+        # But the PRD implies this is part of the 'pd' CLI which *might* be
+        # running in tmux.
         # We'll try to capture the active pane.
-        
+
         # Capture last 50 lines
         # -p: output to stdout
         # -S -50: start 50 lines back from end of history
@@ -35,16 +37,18 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
             check=False,
             timeout=2
         )
-        
+
         output_summary = "No tmux session found or capture failed."
         if capture_proc.returncode == 0:
             output_summary = capture_proc.stdout.strip()
-        
+
         # Best-effort extraction of last executed command from captured output.
         # We keep the existing "unknown" fallback unless we can detect a prompt line.
         last_command = "unknown"
         if output_summary and output_summary != "No tmux session found or capture failed.":
-            prompt_re = re.compile(r"^\s*(?:\$|❯|>)\s+(.+?)\s*$")
+            prompt_re = re.compile(
+                r"^\s*(?:\$|❯|>)\s+(.+?)\s*$"
+            )
             for line in reversed(output_summary.splitlines()):
                 m = prompt_re.match(line)
                 if m:
@@ -52,7 +56,7 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
                     if candidate:
                         last_command = candidate
                         break
-        
+
         return last_command, output_summary
 
     except subprocess.TimeoutExpired:
