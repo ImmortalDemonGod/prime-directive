@@ -1,5 +1,6 @@
-import requests
 from typing import Optional, Dict, Any
+
+import httpx
 
 from prime_directive.core.ai_providers import (
     generate_ollama,
@@ -8,7 +9,7 @@ from prime_directive.core.ai_providers import (
 )
 
 
-def generate_sitrep(
+async def generate_sitrep(
     repo_id: str,
     git_state: str,
     terminal_logs: str,
@@ -87,7 +88,7 @@ def generate_sitrep(
         if not api_key:
             return "Error generating SITREP: OPENAI_API_KEY not set"
         try:
-            return generate_openai_chat(
+            return await generate_openai_chat(
                 api_url=openai_api_url,
                 api_key=api_key,
                 model=model,
@@ -96,13 +97,13 @@ def generate_sitrep(
                 timeout_seconds=openai_timeout_seconds,
                 max_tokens=openai_max_tokens,
             )
-        except (requests.exceptions.RequestException, ValueError) as e:
+        except (httpx.HTTPError, ValueError) as e:
             return f"Error generating SITREP: {e!s}"
 
     # Default: Use Ollama as primary provider
     last_error: Optional[Exception] = None
     try:
-        return generate_ollama(
+        return await generate_ollama(
             api_url=api_url,
             model=model,
             prompt=prompt,
@@ -111,7 +112,7 @@ def generate_sitrep(
             max_retries=max_retries,
             backoff_seconds=backoff_seconds,
         )
-    except (requests.exceptions.RequestException, ValueError) as e:
+    except (httpx.HTTPError, ValueError) as e:
         last_error = e
 
     if fallback_provider != "openai":
@@ -132,7 +133,7 @@ def generate_sitrep(
         )
 
     try:
-        return generate_openai_chat(
+        return await generate_openai_chat(
             api_url=openai_api_url,
             api_key=api_key,
             model=fallback_model,
@@ -141,5 +142,5 @@ def generate_sitrep(
             timeout_seconds=openai_timeout_seconds,
             max_tokens=openai_max_tokens,
         )
-    except (requests.exceptions.RequestException, ValueError) as e:
+    except (httpx.HTTPError, ValueError) as e:
         return f"Error generating SITREP: {e!s}"
