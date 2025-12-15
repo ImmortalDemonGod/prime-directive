@@ -58,13 +58,22 @@ def test_status_command(mock_dispose, mock_get_session, mock_init_db, mock_get_s
     
     mock_result = MagicMock()
     mock_result.scalars.return_value.first.return_value = mock_snapshot
-    mock_session.execute.return_value = mock_result
     
+    # Make execute return the result (AsyncMock automatically makes it awaitable if we configure it right, 
+    # but strictly execute returns a coroutine. AsyncMock calls return coroutines.)
+    mock_session.execute.return_value = mock_result 
+    
+    # Define async generator for get_session
     async def async_gen(*args, **kwargs):
         yield mock_session
+    
+    # side_effect needs to be the function itself if it's a generator? 
+    # Or calling the mock returns the generator object.
+    # When `get_session()` is called, it returns an async iterator.
+    # `async_gen()` returns an async generator.
     mock_get_session.side_effect = async_gen
 
-    result = runner.invoke(app, ["status"])
+    result = runner.invoke(app, ["status"], catch_exceptions=False)
     
     assert result.exit_code == 0
     assert "Prime Directive Status" in result.stdout
