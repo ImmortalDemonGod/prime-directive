@@ -1,0 +1,311 @@
+Understood. A dedicated repo for the orchestration layer is cleaner. And switching from VS Code to **Windsurf** is critical context because Windsurf has different CLI behaviors and workspace handling mechanisms (though it forks VS Code, we must verify the command flags).
+
+Here is the revised, canonical specification for **Project: Prime Directive**.
+
+---
+
+# Prime Directive v1.0: Meta-Orchestration Specification
+
+**Document ID:** `PRIME-DIRECTIVE-ARCH-V1.0`
+**Date:** 2025-12-08
+**Status:** Approved for Implementation
+**Role:** The Command Center / The Architect's Console
+**Repository Name:** `prime-directive`
+
+---
+
+## 1. Executive Summary
+
+**Prime Directive** is the central nervous system for the user's multi-project ecosystem. It is a standalone repository designed to solve the **"Polymath's Trap"**—the cognitive and operational friction of managing multiple high-complexity domains (`black-box`, `rna-predict`, `cultivation-os`).
+
+**Core Mandate:**
+1.  **Federation:** Aggregates task data from distributed repositories without centralization.
+2.  **Persistence:** Maintains the runtime state (`tmux`) and editor context (`windsurf`) of inactive projects.
+3.  **Synthesis:** Uses AI to generate "Situation Reports" (SITREPs) during context switches.
+
+**The Interface:** A global CLI tool (`pd`) installed on the host machine.
+
+---
+
+## 2. Architecture: The Client-Daemon Model
+
+### 2.1 The Repository Structure (`prime-directive`)
+
+```text
+prime-directive/
+├── pyproject.toml              # Dependencies (Typer, SQLModel, Watchdog, Ollama)
+├── uv.lock
+│
+├── bin/                        # Entrypoints
+│   ├── pd                      # The CLI Client
+│   └── pd-daemon               # The Background Service
+│
+├── system/                     # Configuration
+│   ├── registry.yaml           # The "Map of the Empire" (Repo paths & priorities)
+│   └── shell_integration.zsh   # Zsh functions for cd/tmux hijacking
+│
+├── core/                       # Logic Layer
+│   ├── db.py                   # SQLite Schema & connection
+│   ├── scribe.py               # AI Context Engine (Ollama wrapper)
+│   ├── windsurf.py             # Editor Control Logic
+│   └── tmux.py                 # Session Management Logic
+│
+└── data/                       # State (Gitignored)
+    ├── prime.db                # The Index
+    └── logs/
+```
+
+### 2.2 The Tech Stack
+*   **Runtime:** Python 3.11+ (`uv`).
+*   **Database:** **SQLite**. Simple, fast, local.
+*   **Editor Target:** **Windsurf**.
+    *   *Constraint:* Must verify if `windsurf` CLI supports `.code-workspace` or if it requires directory paths. (Assumption: It supports `windsurf <path>` similar to `code`).
+*   **Session Manager:** **Tmux**.
+*   **AI Engine:** **Ollama** (Local Qwen-2.5-Coder). Zero-latency, free, private context analysis.
+
+---
+
+## 3. The Data Schema
+
+We need a rigorous schema to map the "Empire."
+
+```python
+class Repository(SQLModel, table=True):
+    id: str = Field(primary_key=True)       # "rna-predict"
+    path: str                               # "/home/miguel/dev/rna-predict"
+    priority: int                           # 1-10
+    active_branch: str
+    last_snapshot_id: Optional[int]
+
+class ContextSnapshot(SQLModel, table=True):
+    id: int = Field(primary_key=True)
+    repo_id: str
+    timestamp: datetime
+    # The "Auto-Scribe" Data
+    git_status_summary: str                 # "3 modified files, 1 uncommitted"
+    terminal_last_command: str              # "pytest tests/test_model.py"
+    terminal_output_summary: str            # "Tests failed: ShapeMismatch"
+    ai_sitrep: str                          # "You were debugging tensor shapes."
+```
+
+---
+
+## 4. The "Warp" Protocol (Context Switching)
+
+This is the core feature. The command `pd switch <repo>` replaces manual `cd`.
+
+### A. The "Freeze" Sequence (Leaving Project A)
+1.  **Trigger:** User types `pd switch rna-predict` while inside `black-box`.
+2.  **Scribe Activation:**
+    *   The Daemon captures the last 50 lines of the `black-box` tmux pane.
+    *   It runs `git diff --stat`.
+    *   It sends this to Ollama: *"Summarize my state."*
+3.  **Persist:** Saves the AI summary to `prime.db`.
+4.  **Detach:** Detaches the `black-box` tmux client (keeping the server running).
+
+### B. The "Thaw" Sequence (Entering Project B)
+1.  **Environment:**
+    *   Checks for existing tmux session `pd-rna-predict`.
+    *   If missing: Creates it, `cd` to path, activates `uv` venv.
+    *   If exists: Attaches client.
+2.  **Editor:**
+    *   Executes `windsurf -n <repo_path>`. (`-n` forces new window/instance if needed, or reuses existing).
+    *   *Crucial:* We rely on Windsurf's internal "Hot Exit" / "Workspace Restore" feature to handle open tabs. We just point it to the root folder.
+3.  **Briefing:**
+    *   Prints the **SITREP** to the terminal:
+        ```text
+        [ PRIME DIRECTIVE ] :: ENTERING RNA-PREDICT
+        -------------------------------------------
+        >>> LAST ACTION (14h ago): Debugging Gradient Explosion.
+        >>> GIT STATE: Feature branch 'fix-torsion' (Dirty).
+        >>> IMMEDIATE TASK: Check normalization layers.
+        ```
+
+---
+
+## 5. The "Overseer" Dashboard
+
+The CLI needs a HUD mode.
+
+**Command:** `pd status`
+*   **Output:** A rich table (via `rich` library).
+
+| Project | Priority | Active Branch | Task Status | Last Touch |
+| :--- | :--- | :--- | :--- | :--- |
+| **black-box** | 🔥 CRITICAL | `main` | 🟢 2 In-Progress | 2m ago |
+| **rna-predict** | 🔬 RESEARCH | `exp/diffusion` | 🔴 Build Fail | 14h ago |
+| **cultivation-os** | ⚙️ KERNEL | `dev` | 🟡 1 Pending | 1d ago |
+
+---
+
+## 6. Implementation Plan
+
+We execute this in **3 Days**.
+
+#### **Day 1: The Registry & CLI Skeleton**
+1.  Initialize `prime-directive` repo.
+2.  Create `system/registry.yaml` and list your 3-4 active repos.
+3.  Build `pd` CLI (Typer). Implement `pd list` that reads the registry.
+4.  **Verification:** `pd list` prints your projects.
+
+#### **Day 2: The Scribe & Database**
+1.  Implement `core/db.py` and `core/scribe.py`.
+2.  Wire up **Ollama**. Test a prompt: "Summarize this git diff."
+3.  Implement the "Freeze" logic (Capture state -> DB).
+4.  **Verification:** Run `pd snapshot`. Check if DB has a new row with an AI summary.
+
+#### **Day 3: The Switcher (Tmux + Windsurf)**
+1.  Write the `shell_integration.zsh` wrapper.
+2.  Implement `core/tmux.py` to handle session creation/attachment.
+3.  Implement the Windsurf launch command.
+4.  **Verification:** `pd switch black-box` puts you in a persistent tmux session and opens the IDE.
+
+---
+
+### 7. Strategic Implication
+
+**Prime Directive** is the "Manager" you cannot hire.
+*   **Cultivation OS** optimizes the **Operator** (You).
+*   **Prime Directive** optimizes the **Work** (The Code).
+
+By decoupling this into its own repo, you ensure that your management tooling is robust, versioned, and independent of the projects it manages. This is the correct architecture for scaling a one-man empire.
+
+
+The core user story is **"Zero-Friction Re-Entry."**
+
+You know the system is working when you can stop working on a complex project (like `rna-predict`) on Friday night, spend the weekend on `black-box`, and then return to `rna-predict` on Monday morning and **know exactly what to type next within 10 seconds.**
+
+---
+
+### The User Story: "The Monday Morning Warp"
+
+**The Scenario:**
+It is Monday at 09:00. You have not touched `rna-predict` in 72 hours. Your brain cache has been flushed. You remember vaguely that you were "fixing something with gradients."
+
+**Without Prime Directive:**
+1.  You `cd` into the folder.
+2.  You run `git status`. It's dirty. "What was I changing?"
+3.  You open Windsurf. 10 tabs open. You stare at `model.py`. "Why is this line commented out?"
+4.  You scroll up in your terminal to see the last error. The history is gone (or cluttered).
+5.  **Result:** You spend 45 minutes reading code just to remember what the bug was.
+
+**With Prime Directive:**
+
+1.  **Action:** You type `pd switch rna-predict`.
+2.  **Visual:** Your terminal clears. A banner appears.
+3.  **The SITREP (Generated by AI on Friday):**
+    ```text
+    [ PRIME DIRECTIVE ] :: WARPING TO RNA-PREDICT
+    ---------------------------------------------
+    >>> SITUATION REPORT (Friday 22:45):
+    You were implementing the 'SE(3) Equivariant Loss'.
+    The unit test `test_rotation_invariance` failed with `AssertionError: 0.8 != 1.0`.
+    You determined the issue is in the normalization layer in `equivariant.py`.
+
+    >>> IMMEDIATE NEXT STEP:
+    Open `equivariant.py` line 142 and remove the hardcoded epsilon.
+    ```
+4.  **The Environment:**
+    *   Windsurf opens immediately with `equivariant.py` focused.
+    *   Your terminal is *already attached* to the session from Friday. The error message `AssertionError: 0.8 != 1.0` is still visible on the screen. The server is still running.
+5.  **The Result:** You type the fix immediately. **Time to code: 10 seconds.**
+
+---
+
+### The Pass/Fail Criteria
+
+To verify if **Prime Directive** is actually working, apply this test:
+
+1.  **The "Amnesia Test":** Can you switch to a project you haven't touched in a week and commit valid code within 5 minutes?
+    *   **Yes:** Working.
+    *   **No:** The SITREP wasn't detailed enough (Tune the AI Prompt).
+
+2.  **The "Crash Test":** If you close your terminal window and reopen it, does `pd switch` put you back *exactly* where you were (same command history, same running processes)?
+    *   **Yes:** Working (Tmux is holding state).
+    *   **No:** Broken (Session management failed).
+
+If the system passes the **Amnesia Test**, you have solved the Polymath's Trap.
+
+
+You are right. To execute the **Verifier** role effectively during the build of **Prime Directive**, we need granular tests that validate each component *before* we attempt the full End-to-End "Monday Morning Warp."
+
+We will use **Pytest** for the logic and **Manual Verification Steps** for the shell/tmux interactions (since automating tmux tests is brittle).
+
+Here are the **Core Development Verification Tests** for the 3-day build.
+
+---
+
+### **Day 1: The Registry & CLI Skeleton**
+*Goal: Can we find the projects and read their state?*
+
+#### **Test 1.1: Registry Parsing (Automated)**
+*   **Input:** A mock `registry.yaml` with 2 dummy repos.
+*   **Action:** `pd list`
+*   **Expected Output:** A JSON or Table listing the correct paths and priorities.
+*   **Verifier:** `pytest tests/test_registry.py`
+
+#### **Test 1.2: Git State Detection (Automated)**
+*   **Setup:** Create a temporary git repo. Make a change but don't commit it.
+*   **Action:** Run `core.git_utils.get_status(repo_path)`.
+*   **Expected Output:** Returns a data object: `{ branch: "master", is_dirty: True, uncommitted_files: ["test.py"] }`.
+*   **Verifier:** `pytest tests/test_git.py`
+
+---
+
+### **Day 2: The Scribe & Database**
+*Goal: Can we capture state and persist it?*
+
+#### **Test 2.1: The Snapshot Transaction (Automated)**
+*   **Setup:** Initialize a fresh SQLite DB.
+*   **Action:** Call `db.save_snapshot(repo="test-repo", git_state="...", logs="...")`.
+*   **Verification:** Query the DB. Ensure the row exists with the correct timestamp.
+*   **Verifier:** `pytest tests/test_db.py`
+
+#### **Test 2.2: The AI Summarizer (Manual/Integration)**
+*   **Setup:** Ensure Ollama is running (`ollama serve`).
+*   **Action:** Run a script that feeds a raw string of "Python Error Traceback" to the `Scribe` class.
+*   **Expected Output:** A concise English summary (e.g., "Python script failed due to IndexError").
+*   **Verification:** Read the output. Is it coherent? Is it fast (< 2s)?
+    *   *Failure Mode:* If it hallucinates or is slow, tune the System Prompt in `scribe.py`.
+
+#### **Test 2.3: The Freeze Hook (Manual)**
+*   **Setup:** Open a dummy project. Run `echo "Critical Failure"`.
+*   **Action:** Run `pd freeze`.
+*   **Verification:** Check `prime.db`. Does the latest snapshot contain the text "Critical Failure" in the logs field?
+    *   *Why:* This proves we are successfully scraping the active terminal buffer.
+
+---
+
+### **Day 3: The Switcher (Tmux + Windsurf)**
+*   **Goal:** Can we control the environment?*
+
+#### **Test 3.1: Tmux Session Idempotency (Manual)**
+*   **Action 1:** Run `pd switch test-project`. (Should create session `pd-test-project`).
+*   **Action 2:** Detach. Run `pd switch test-project` *again*.
+*   **Expected Result:** It attaches to the **existing** session. It does **not** create `pd-test-project-1`.
+*   *Why:* Prevents session proliferation.
+
+#### **Test 3.2: Windsurf Launch (Manual)**
+*   **Action:** Run `pd switch black-box`.
+*   **Expected Result:** Windsurf opens the `black-box` folder.
+    *   *Crucial Check:* Does it open a *new* window or reuse an existing one? (Tune the CLI flags `-n` or `-r` to your preference).
+
+#### **Test 3.3: The Shell Wrapper (Manual)**
+*   **Action:** Type `pd switch rna-predict` in your main terminal.
+*   **Expected Result:** The terminal prompt changes. You are now *inside* the tmux session.
+*   **Failure Mode:** If the python script runs but you are still in your original shell, the `.zshrc` wrapper is broken.
+
+---
+
+### **Summary of the "Green Lights"**
+
+| Component | Test Type | Success Metric |
+| :--- | :--- | :--- |
+| **Registry** | Unit | `pytest` passes 100%. |
+| **Git Logic** | Unit | Correctly identifies "Dirty" repos. |
+| **Database** | Unit | Snapshots persist across restarts. |
+| **AI Scribe** | Integration | Summaries are < 50 words and accurate. |
+| **Tmux** | Manual | Re-attaches to existing sessions 100% of time. |
+| **Shell** | Manual | `pd switch` actually changes the terminal context. |
+
+If you pass these 6 checks, the system is solid. You can then trust it with your actual workflow.
