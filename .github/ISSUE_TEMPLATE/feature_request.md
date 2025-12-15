@@ -1,20 +1,26 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: ''
-labels: enhancement, question
+about: Suggest an enhancement for Prime Directive
+title: '[FEATURE] '
+labels: enhancement
 assignees: ''
 
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]
+**Problem or Use Case**
+Describe the problem or workflow that this feature would address.
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+**Proposed Solution**
+Describe what you'd like to happen.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+**Example Usage**
+```bash
+# Show how you'd expect to use this feature
+pd new-command --option value
+```
+
+**Alternatives Considered**
+Any alternative approaches you've thought about.
 
 **Additional context**
-Add any other context or screenshots about the feature request here.
+Any other context about the feature request.
