@@ -17,6 +17,7 @@ def mock_registry():
 def test_handler_update():
     handler = AutoFreezeHandler("test-repo", None)
     initial_time = handler.last_modified
+    handler.is_frozen = True  # Set to frozen to test reset
     
     # Simulate an event
     event = MagicMock()
@@ -27,6 +28,7 @@ def test_handler_update():
     handler.on_any_event(event)
     
     assert handler.last_modified > initial_time
+    assert handler.is_frozen is False # Verify reset
 
 @patch("prime_directive.bin.pd_daemon.load_registry")
 @patch("prime_directive.bin.pd_daemon.Observer")
@@ -45,14 +47,12 @@ def test_daemon_loop(mock_exists, mock_freeze, mock_sleep, mock_observer, mock_l
     mock_sleep.side_effect = [None, KeyboardInterrupt]
     
     # Mock Handler state to trigger freeze
-    # We need to access the handler created inside main. 
-    # Since main instantiates AutoFreezeHandler, we can patch AutoFreezeHandler class 
-    # OR we can rely on logic inside main.
-    # Let's patch AutoFreezeHandler to return a mock with an old timestamp
     with patch("prime_directive.bin.pd_daemon.AutoFreezeHandler") as MockHandlerClass:
         mock_handler = MagicMock()
         # Set last_modified to 1 hour ago
         mock_handler.last_modified = datetime.now() - timedelta(hours=1)
+        # Explicitly set is_frozen to False so logic triggers
+        mock_handler.is_frozen = False
         MockHandlerClass.return_value = mock_handler
         
         try:
@@ -65,8 +65,7 @@ def test_daemon_loop(mock_exists, mock_freeze, mock_sleep, mock_observer, mock_l
         observer_instance.start.assert_called_once()
         
         # Verify freeze trigger
-        # The loop runs once (sleep called), detects inactivity (1 hour > 30 mins)
         mock_freeze.assert_called_with("test-repo", mock_registry)
         
-        # Verify handler timestamp reset
-        assert mock_handler.last_modified > datetime.now() - timedelta(minutes=1)
+        # Verify handler state updated
+        assert mock_handler.is_frozen is True
