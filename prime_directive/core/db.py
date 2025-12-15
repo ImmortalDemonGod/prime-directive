@@ -50,3 +50,10 @@ async def get_session(db_path: str = "data/prime.db"):
     )
     async with async_session() as session:
         yield session
+
+async def dispose_engine():
+    """Dispose of the global async engine to ensure clean exit."""
+    global _async_engine
+    if _async_engine:
+        await _async_engine.dispose()
+        _async_engine = None
