@@ -1,4 +1,5 @@
 import os
+import threading
 from datetime import datetime, timezone
 from typing import Optional, Dict, AsyncGenerator
 
@@ -42,6 +43,7 @@ class ContextSnapshot(SQLModel, table=True):
 
 # Database Connection
 # We will use a function to initialize the engine to allow for configuration
+_engine_lock = threading.Lock()
 _async_engines: Dict[str, AsyncEngine] = {}
 
 
@@ -51,31 +53,37 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     # Expand ~ to home directory
     db_path = os.path.expanduser(db_path)
 
-    if db_path in _async_engines:
-        return _async_engines[db_path]
+    engine = _async_engines.get(db_path)
+    if engine is not None:
+        return engine
 
-    # Ensure directory exists
-    if db_path != ":memory:":
-        dir_name = os.path.dirname(db_path)
-        if dir_name:
-            os.makedirs(dir_name, exist_ok=True)
+    with _engine_lock:
+        engine = _async_engines.get(db_path)
+        if engine is not None:
+            return engine
 
-    database_url = f"sqlite+aiosqlite:///{db_path}"
+        # Ensure directory exists
+        if db_path != ":memory:":
+            dir_name = os.path.dirname(db_path)
+            if dir_name:
+                os.makedirs(dir_name, exist_ok=True)
 
-    engine = create_async_engine(
-        database_url,
-        echo=False,
-        connect_args={"check_same_thread": False},
-    )
+        database_url = f"sqlite+aiosqlite:///{db_path}"
 
-    @event.listens_for(engine.sync_engine, "connect")
-    def _set_sqlite_pragma(dbapi_connection, _connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
+        engine = create_async_engine(
+            database_url,
+            echo=False,
+            connect_args={"check_same_thread": False},
+        )
 
-    _async_engines[db_path] = engine
-    return engine
+        @event.listens_for(engine.sync_engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, _connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+        _async_engines[db_path] = engine
+        return engine
 
 
 async def init_db(db_path: str = "data/prime.db"):
@@ -99,12 +107,14 @@ async def dispose_engine(db_path: Optional[str] = None):
     """Dispose cached async engine(s) to ensure clean exit."""
     global _async_engines
     if db_path is not None:
-        engine = _async_engines.pop(db_path, None)
+        with _engine_lock:
+            engine = _async_engines.pop(db_path, None)
         if engine is not None:
             await engine.dispose()
         return
 
-    engines = list(_async_engines.values())
-    _async_engines = {}
+    with _engine_lock:
+        engines = list(_async_engines.values())
+        _async_engines = {}
     for engine in engines:
         await engine.dispose()
