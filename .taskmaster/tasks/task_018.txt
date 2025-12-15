@@ -1,0 +1,55 @@
+# Task ID: 18
+# Title: P1: DB integrity + performance improvements (FKs, indexes, relationships)
+# Status: pending
+# Dependencies: 3
+# Priority: medium
+# Description: Add schema constraints and query optimizations to prevent orphaned snapshots and improve latest-snapshot queries.
+# Details:
+Update core/db.py: add FK constraint from ContextSnapshot.repo_id -> Repository.id and define relationships if helpful. Add index to optimize (repo_id, timestamp) latest-snapshot retrieval. Ensure engine lifecycle is safe if multiple db_path values are used (dispose old engine or key engines by path).
+
+# Test Strategy:
+Extend tests/test_db.py to cover FK behavior (no orphan snapshots) and validate latest-snapshot query correctness.
+
+# Subtasks:
+## 1. Add Foreign Key Constraint [pending]
+### Dependencies: None
+### Description: Implement a foreign key constraint from ContextSnapshot.repo_id to Repository.id to ensure referential integrity.
+### Details:
+Modify the core/db.py to include a foreign key constraint in the SQLModel definition for ContextSnapshot. Ensure that the foreign key is correctly defined to prevent orphaned snapshots.
+
+## 2. Define Relationships in SQLModel [pending]
+### Dependencies: 18.1
+### Description: Define relationships in SQLModel to facilitate ORM operations between ContextSnapshot and Repository.
+### Details:
+Update the SQLModel definitions to include relationship attributes. This will allow for easier navigation and querying between related tables.
+
+## 3. Add Index for Latest Snapshot Query [pending]
+### Dependencies: 18.1
+### Description: Create an index on the (repo_id, timestamp) columns to optimize queries for retrieving the latest snapshot.
+### Details:
+Modify the database schema to include an index on the (repo_id, timestamp) columns. This will improve the performance of queries that retrieve the latest snapshot for a given repository.
+
+## 4. Implement Engine Lifecycle Management [pending]
+### Dependencies: None
+### Description: Ensure that the database engine lifecycle is managed safely when multiple db_path values are used.
+### Details:
+Update the database connection logic to dispose of old engines or manage engines keyed by db_path. This will prevent resource leaks and ensure that each db_path uses a distinct engine.
+
+## 5. Plan Migration and Backward Compatibility [pending]
+### Dependencies: 18.1, 18.3
+### Description: Develop a migration plan to apply schema changes without disrupting existing data or applications.
+### Details:
+Create migration scripts using a tool like Alembic to apply the new constraints and indexes. Ensure that the migration can be applied to existing databases without data loss.
+
+## 6. Update Tests for Schema Changes [pending]
+### Dependencies: 18.1, 18.2, 18.3
+### Description: Revise existing tests and add new tests to cover the updated schema constraints and performance improvements.
+### Details:
+Review and update the test suite to ensure that all new constraints, relationships, and indexes are adequately tested. Add new tests where necessary.
+
+## 7. Document Schema and Performance Improvements [pending]
+### Dependencies: 18.1, 18.2, 18.3, 18.5
+### Description: Update the project documentation to reflect the new schema constraints, relationships, and performance optimizations.
+### Details:
+Revise the database schema documentation to include details of the new foreign key constraints, relationships, and indexes. Document the rationale and expected performance improvements.
+
