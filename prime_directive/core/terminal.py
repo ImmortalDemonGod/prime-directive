@@ -1,9 +1,30 @@
+import asyncio
+from asyncio.subprocess import PIPE
 import re
-import subprocess
 from typing import Optional, Tuple
 
 
-def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
+async def _run_tmux_command(
+    args: list[str],
+    *,
+    timeout_seconds: float,
+) -> tuple[int, str, str]:
+    proc = await asyncio.create_subprocess_exec(*args, stdout=PIPE, stderr=PIPE)
+    try:
+        stdout_b, stderr_b = await asyncio.wait_for(
+            proc.communicate(), timeout=timeout_seconds
+        )
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.communicate()
+        raise
+
+    stdout = stdout_b.decode(errors="replace")
+    stderr = stderr_b.decode(errors="replace")
+    return proc.returncode, stdout, stderr
+
+
+async def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
     Captures the terminal state from tmux if running inside a tmux session.
 
@@ -30,13 +51,11 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
         if repo_id:
             cmd.extend(["-t", f"pd-{repo_id}"])
 
-        capture_proc = subprocess.run(
-            cmd, capture_output=True, text=True, check=False, timeout=2
-        )
+        returncode, stdout, _stderr = await _run_tmux_command(cmd, timeout_seconds=2)
 
         output_summary = "No tmux session found or capture failed."
-        if capture_proc.returncode == 0:
-            output_summary = capture_proc.stdout.strip()
+        if returncode == 0:
+            output_summary = stdout.strip()
 
         # Best-effort extraction of last executed command from captured output.
         # We keep the existing "unknown" fallback unless we can detect a prompt
@@ -57,7 +76,7 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
 
         return last_command, output_summary
 
-    except subprocess.TimeoutExpired:
+    except asyncio.TimeoutError:
         return "unknown", "Terminal capture timed out."
     except FileNotFoundError:
         # tmux not installed
