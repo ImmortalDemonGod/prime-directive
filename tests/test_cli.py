@@ -14,6 +14,12 @@ def mock_config(tmp_path):
         "system": {
             "editor_cmd": "code", 
             "ai_model": "gpt-4", 
+            "ai_fallback_provider": "none",
+            "ai_fallback_model": "gpt-4o-mini",
+            "ai_require_confirmation": True,
+            "openai_api_url": "https://api.openai.com/v1/chat/completions",
+            "openai_timeout_seconds": 10.0,
+            "openai_max_tokens": 150,
             "ollama_api_url": "http://localhost:11434/api/generate",
             "ollama_timeout_seconds": 5.0,
             "ollama_max_retries": 0,
