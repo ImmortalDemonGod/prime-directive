@@ -88,7 +88,9 @@ async def switch_logic(
 
             console.print("\n[bold reverse] SITREP [/bold reverse]")
             if snapshot:
-                console.print(f"[bold cyan]>>> LAST ACTION:[/bold cyan] {snapshot.ai_sitrep}")
+                if snapshot.human_note:
+                    console.print(f"[bold magenta]>>> HUMAN NOTE:[/bold magenta] {snapshot.human_note}")
+                console.print(f"[bold cyan]>>> AI SUMMARY:[/bold cyan] {snapshot.ai_sitrep}")
                 console.print(f"[bold yellow]>>> TIMESTAMP:[/bold yellow] {snapshot.timestamp}")
             else:
                 console.print("[italic]No previous snapshot found.[/italic]")
