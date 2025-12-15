@@ -1,5 +1,6 @@
 import os
 from typing import Optional
+import time
 
 import requests
 
@@ -25,7 +26,11 @@ def generate_ollama(
     attempts = max_retries + 1
     for attempt in range(attempts):
         try:
-            response = requests.post(api_url, json=payload, timeout=timeout_seconds)
+            response = requests.post(
+                api_url,
+                json=payload,
+                timeout=timeout_seconds,
+            )
             response.raise_for_status()
             data = response.json()
             content = data.get("response")
@@ -37,8 +42,6 @@ def generate_ollama(
             if attempt >= attempts - 1:
                 break
             if backoff_seconds > 0:
-                import time
-
                 time.sleep(backoff_seconds * (2**attempt))
 
     assert last_error is not None
@@ -69,7 +72,12 @@ def generate_openai_chat(
         "max_tokens": max_tokens,
     }
 
-    response = requests.post(api_url, json=payload, headers=headers, timeout=timeout_seconds)
+    response = requests.post(
+        api_url,
+        json=payload,
+        headers=headers,
+        timeout=timeout_seconds,
+    )
     response.raise_for_status()
     data = response.json()
 
