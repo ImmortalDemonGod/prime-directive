@@ -1,6 +1,6 @@
 import pytest
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from prime_directive.bin.pd_daemon import AutoFreezeHandler, main
 from prime_directive.core.registry import Registry, RepoConfig, SystemConfig
 from datetime import datetime, timedelta
@@ -33,11 +33,13 @@ def test_handler_update():
 @patch("prime_directive.bin.pd_daemon.load_registry")
 @patch("prime_directive.bin.pd_daemon.Observer")
 @patch("prime_directive.bin.pd_daemon.time.sleep")
-@patch("prime_directive.bin.pd_daemon.freeze_logic")
+@patch("prime_directive.bin.pd_daemon.freeze_logic", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd_daemon.os.path.exists")
 def test_daemon_loop(mock_exists, mock_freeze, mock_sleep, mock_observer, mock_load, mock_registry):
     mock_load.return_value = mock_registry
     mock_exists.return_value = True
+    
+    # mock_freeze is AsyncMock, so it returns an awaitable automatically
     
     # Mock Observer
     observer_instance = MagicMock()
