@@ -6,6 +6,7 @@ from hydra.core.config_store import ConfigStore
 class SystemConfig:
     editor_cmd: str = "windsurf"
     ai_model: str = "qwen2.5-coder"
+    ai_provider: str = "ollama"
     ai_fallback_provider: str = "none"
     ai_fallback_model: str = "gpt-4o-mini"
     ai_require_confirmation: bool = True
