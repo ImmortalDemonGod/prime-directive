@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, AsyncMock, call
 from prime_directive.bin.pd import app
 from omegaconf import OmegaConf
 from datetime import datetime
@@ -57,7 +57,10 @@ def test_switch_command(mock_get_session, mock_init_db, mock_launch, mock_ensure
     mock_freeze.assert_called_once_with("current-repo", mock_config)
     
     # 2. Verify Session & Editor
-    mock_ensure.assert_called_once_with("target-repo", "/tmp/target-repo")
+    assert mock_ensure.call_args_list == [
+        call("target-repo", "/tmp/target-repo", attach=False),
+        call("target-repo", "/tmp/target-repo"),
+    ]
     mock_launch.assert_called_once_with("/tmp/target-repo", "code")
     
     # 3. Verify Output
