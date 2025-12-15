@@ -150,4 +150,4 @@ node_modules/
 *.sln
 *.sw?
 # OS specific
-.DS_Store
+.DS_Storedata/
