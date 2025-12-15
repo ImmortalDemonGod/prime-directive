@@ -1,4 +1,5 @@
 import requests
+import time
 from typing import Optional, Dict, Any
 
 def generate_sitrep(
@@ -7,7 +8,10 @@ def generate_sitrep(
     terminal_logs: str,
     active_task: Optional[Dict[str, Any]] = None,
     model: str = "qwen2.5-coder",
-    api_url: str = "http://localhost:11434/api/generate"
+    api_url: str = "http://localhost:11434/api/generate",
+    timeout_seconds: float = 5.0,
+    max_retries: int = 0,
+    backoff_seconds: float = 0.0,
 ) -> str:
     """
     Generates a SITREP summary using Ollama.
@@ -19,6 +23,9 @@ def generate_sitrep(
         active_task (Optional[dict]): The current active task dictionary.
         model (str): The Ollama model to use.
         api_url (str): The Ollama API endpoint.
+        timeout_seconds (float): The timeout in seconds for the API request.
+        max_retries (int): The maximum number of retries for the API request.
+        backoff_seconds (float): The backoff time in seconds between retries.
         
     Returns:
         str: The generated SITREP string.
@@ -54,10 +61,19 @@ def generate_sitrep(
         "stream": False
     }
 
-    try:
-        response = requests.post(api_url, json=payload, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        return data.get("response", "Error: No response from AI model.")
-    except requests.exceptions.RequestException as e:
-        return f"Error generating SITREP: {str(e)}"
+    last_error: Optional[Exception] = None
+    attempts = max_retries + 1
+    for attempt in range(attempts):
+        try:
+            response = requests.post(api_url, json=payload, timeout=timeout_seconds)
+            response.raise_for_status()
+            data = response.json()
+            return data.get("response", "Error: No response from AI model.")
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            if attempt >= attempts - 1:
+                break
+            if backoff_seconds > 0:
+                time.sleep(backoff_seconds * (2 ** attempt))
+
+    return f"Error generating SITREP: {str(last_error)}"
