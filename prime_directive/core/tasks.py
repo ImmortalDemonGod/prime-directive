@@ -36,8 +36,14 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     for tag_data in data.values():
         if not isinstance(tag_data, dict) or "tasks" not in tag_data:
             continue
+        
+        tasks_list = tag_data["tasks"]
+        if not isinstance(tasks_list, list):
+            continue
             
-        for task in tag_data["tasks"]:
+        for task in tasks_list:
+            if not isinstance(task, dict):
+                continue
             if task.get("status") == "in-progress":
                 # Add priority value for sorting
                 p_str = task.get("priority", "medium").lower()
