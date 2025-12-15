@@ -9,13 +9,17 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
     AsyncSession,
     AsyncEngine,
+    async_sessionmaker,
 )
-from sqlalchemy.orm import sessionmaker
 
 # Define Models
 
 
-class Repository(SQLModel, table=True):
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class Repository(SQLModel, table=True):  # type: ignore[call-arg]
     id: str = Field(primary_key=True)
     path: str
     priority: int
@@ -25,10 +29,10 @@ class Repository(SQLModel, table=True):
     snapshots: list["ContextSnapshot"] = Relationship(back_populates="repo")
 
 
-class ContextSnapshot(SQLModel, table=True):
+class ContextSnapshot(SQLModel, table=True):  # type: ignore[call-arg]
     id: Optional[int] = Field(default=None, primary_key=True)
     repo_id: str = Field(foreign_key="repository.id", index=True)
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = Field(default_factory=_utcnow)
     git_status_summary: str
     terminal_last_command: str
     terminal_output_summary: str
@@ -40,6 +44,7 @@ class ContextSnapshot(SQLModel, table=True):
     __table_args__ = (
         Index("ix_contextsnapshot_repo_id_timestamp", "repo_id", "timestamp"),
     )
+
 
 # Database Connection
 # We will use a function to initialize the engine to allow for configuration
@@ -96,9 +101,7 @@ async def get_session(
     db_path: str = "data/prime.db",
 ) -> AsyncGenerator[AsyncSession, None]:
     engine = get_engine(db_path)
-    async_session = sessionmaker(
-        engine, class_=AsyncSession, expire_on_commit=False
-    )
+    async_session = async_sessionmaker(engine, expire_on_commit=False)
     async with async_session() as session:
         yield session
 
