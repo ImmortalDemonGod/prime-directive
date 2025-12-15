@@ -52,5 +52,5 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     except FileNotFoundError:
         # tmux not installed
         return "unknown", "tmux not installed."
-    except Exception as e:
+    except OSError as e:
         return "error", str(e)
