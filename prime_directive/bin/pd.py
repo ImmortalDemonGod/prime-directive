@@ -262,60 +262,63 @@ def status_command():
 
     sorted_repos = sorted(cfg.repos.values(), key=lambda r: r.priority, reverse=True)
 
-    async def fetch_last_snapshot_time(repo_id: str, db_path: str) -> str:
+    async def run_status():
         try:
             # Ensure DB exists/tables created
-            await init_db(db_path)
-            async for session in get_session(db_path):
-                stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
-                result = await session.execute(stmt)
-                snapshot = result.scalars().first()
-                if snapshot:
-                    return snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
-        except Exception as e:
-            logger.debug(f"Error fetching snapshot for {repo_id}: {e}")
-            return "Unknown"
+            await init_db(cfg.system.db_path)
+            
+            async for session in get_session(cfg.system.db_path):
+                # We can reuse this session for all queries
+                
+                for repo in sorted_repos:
+                    # 1. Git Status (Sync)
+                    if cfg.system.mock_mode:
+                        git_st = {"branch": "mock", "is_dirty": False, "uncommitted_files": []}
+                    else:
+                        git_st = get_status(repo.path)
+                    
+                    status_icon = "🟢"
+                    status_text = "Clean"
+                    if git_st["is_dirty"]:
+                        status_icon = "🔴"
+                        status_text = f"Dirty ({len(git_st['uncommitted_files'])})"
+                    elif git_st["branch"] == "unknown":
+                         status_icon = "⚪"
+                         status_text = "Not Git"
+                    elif git_st["branch"] == "error":
+                         status_icon = "❌"
+                         status_text = "Error"
+                    elif git_st["branch"] == "timeout":
+                         status_icon = "⏱️"
+                         status_text = "Timeout"
+
+                    git_display = f"{status_icon} {status_text}"
+                    
+                    # 2. Last Snapshot (Async)
+                    last_snap_str = "Never"
+                    try:
+                        stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo.id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
+                        result = await session.execute(stmt)
+                        snapshot = result.scalars().first()
+                        if snapshot:
+                            last_snap_str = snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
+                    except Exception as e:
+                        logger.debug(f"Error fetching snapshot for {repo.id}: {e}")
+                        last_snap_str = "Error"
+
+                    priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
+
+                    table.add_row(
+                        repo.id,
+                        priority_display,
+                        git_st["branch"] if isinstance(git_st["branch"], str) else "Unknown",
+                        git_display,
+                        last_snap_str
+                    )
         finally:
             await dispose_engine()
-        return "Never"
 
-    for repo in sorted_repos:
-        # 1. Git Status
-        if cfg.system.mock_mode:
-            git_st = {"branch": "mock", "is_dirty": False, "uncommitted_files": []}
-        else:
-            git_st = get_status(repo.path)
-        
-        status_icon = "🟢"
-        status_text = "Clean"
-        if git_st["is_dirty"]:
-            status_icon = "🔴"
-            status_text = f"Dirty ({len(git_st['uncommitted_files'])})"
-        elif git_st["branch"] == "unknown":
-             status_icon = "⚪"
-             status_text = "Not Git"
-        elif git_st["branch"] == "error":
-             status_icon = "❌"
-             status_text = "Error"
-        elif git_st["branch"] == "timeout":
-             status_icon = "⏱️"
-             status_text = "Timeout"
-
-        git_display = f"{status_icon} {status_text}"
-        
-        # 2. Last Snapshot (Async wrapper)
-        last_snap = asyncio.run(fetch_last_snapshot_time(repo.id, cfg.system.db_path))
-
-        priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
-
-        table.add_row(
-            repo.id,
-            priority_display,
-            git_st["branch"] if isinstance(git_st["branch"], str) else "Unknown",
-            git_display,
-            last_snap
-        )
-
+    asyncio.run(run_status())
     console.print(table)
 
 @app.command("doctor")
