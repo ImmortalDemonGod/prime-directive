@@ -53,7 +53,7 @@ def check_ollama_model_present(
         return any(model_name in name for name in model_names)
     except requests.exceptions.RequestException:
         return False
-    except Exception:
+    except (ValueError, KeyError):
         return False
 
 
