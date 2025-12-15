@@ -1,0 +1,51 @@
+# Task ID: 34
+# Title: Implement Tiered AI Model Support
+# Status: pending
+# Dependencies: 6, 23
+# Priority: high
+# Description: Add support for tiered AI models with a high-quality model configuration and command-line flag.
+# Details:
+1. Update the configuration file `conf/config.yaml` to include a new field `ai_model_hq` which will specify the high-quality AI model to be used, such as 'claude-3-5-sonnet' or 'gpt-4o'.
+2. Modify the `pd freeze` command to accept a new `--hq` flag. When this flag is used, the command should utilize the high-quality model specified in the configuration for important context captures.
+3. Update the model selection logic in `core/scribe.py` to check for the `--hq` flag and switch to the high-quality model if the flag is present.
+4. Ensure that the system intelligently balances cost versus quality by defaulting to a standard model unless the `--hq` flag is explicitly set.
+5. Consider the implications of model switching on performance and cost, and document any trade-offs in the code comments.
+
+# Test Strategy:
+1. Update `conf/config.yaml` with a test high-quality model and verify that the configuration loads correctly.
+2. Run the `pd freeze` command with and without the `--hq` flag and verify that the correct model is selected in each case by checking logs or debug output.
+3. Ensure that the `core/scribe.py` logic correctly switches models based on the presence of the `--hq` flag.
+4. Conduct performance tests to measure any impact on execution time and resource usage when using the high-quality model.
+5. Verify that the system defaults to the standard model when the `--hq` flag is not used.
+
+# Subtasks:
+## 1. Add ai_model_hq Field to Configuration [pending]
+### Dependencies: None
+### Description: Update the configuration file `conf/config.yaml` to include a new field `ai_model_hq` for specifying the high-quality AI model.
+### Details:
+Open the `conf/config.yaml` file and add a new field named `ai_model_hq`. This field should allow users to specify the high-quality AI model, such as 'claude-3-5-sonnet' or 'gpt-4o'. Ensure the field is well-documented with comments explaining its purpose.
+
+## 2. Implement --hq Flag for pd freeze Command [pending]
+### Dependencies: 34.1
+### Description: Modify the `pd freeze` command to accept a new `--hq` flag, which will trigger the use of the high-quality model specified in the configuration.
+### Details:
+Update the command-line interface for `pd freeze` to recognize the `--hq` flag. Ensure that when this flag is used, the command reads the `ai_model_hq` field from the configuration and uses the specified model for processing.
+
+## 3. Update Model Selection Logic in scribe.py [pending]
+### Dependencies: 34.2
+### Description: Modify the model selection logic in `core/scribe.py` to check for the `--hq` flag and switch to the high-quality model if the flag is present.
+### Details:
+In `core/scribe.py`, update the logic to check if the `--hq` flag is set. If it is, the script should switch to using the model specified in the `ai_model_hq` configuration field. Ensure this logic is clear and maintainable.
+
+## 4. Add Validation and Error Handling for HQ Model Availability [pending]
+### Dependencies: 34.3
+### Description: Implement validation and error handling to ensure the high-quality model specified is available and can be used without issues.
+### Details:
+Add checks to validate that the model specified in `ai_model_hq` is available and supported by the system. Implement error handling to provide clear messages if the model is unavailable or if there are issues switching models.
+
+## 5. Update Documentation for Tiered AI Usage [pending]
+### Dependencies: 34.4
+### Description: Document the new tiered AI model support, including configuration options and command-line usage.
+### Details:
+Update the project's documentation to include instructions on setting the `ai_model_hq` field, using the `--hq` flag, and understanding the trade-offs between cost and quality. Ensure the documentation is clear and accessible to users.
+
