@@ -8,18 +8,18 @@ from prime_directive.core.db import ContextSnapshot
 
 
 def _is_path_prefix(prefix: str, path: str) -> bool:
+    """Return True if `prefix` is a directory-prefix of `path` (path boundary safe)."""
     prefix_norm = os.path.normpath(os.path.abspath(prefix))
     path_norm = os.path.normpath(os.path.abspath(path))
 
     if path_norm == prefix_norm:
         return True
 
-    # Ensure we don't treat /foo/bar as a prefix of /foo/barbaz
     return path_norm.startswith(prefix_norm + os.sep)
 
 
 def detect_current_repo_id(cwd: str, repos: Any) -> Optional[str]:
-    """Detect current repo by choosing the *longest* matching repo path prefix."""
+    """Detect current repo by choosing the longest matching repo path prefix."""
     best_repo_id: Optional[str] = None
     best_len = -1
 
