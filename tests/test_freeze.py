@@ -13,6 +13,10 @@ def mock_config(tmp_path):
         "system": {
             "editor_cmd": "code", 
             "ai_model": "gpt-4", 
+            "ollama_api_url": "http://localhost:11434/api/generate",
+            "ollama_timeout_seconds": 5.0,
+            "ollama_max_retries": 0,
+            "ollama_backoff_seconds": 0.0,
             "db_path": ":memory:",
             "log_path": str(log_file),
             "mock_mode": False
