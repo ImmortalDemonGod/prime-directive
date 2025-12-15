@@ -1,12 +1,19 @@
 import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, AsyncGenerator
+
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Index, event
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
+from sqlalchemy.ext.asyncio import (
+    create_async_engine,
+    AsyncSession,
+    AsyncEngine,
+)
 from sqlalchemy.orm import sessionmaker
 
 # Define Models
+
+
 class Repository(SQLModel, table=True):
     id: str = Field(primary_key=True)
     path: str
@@ -15,6 +22,7 @@ class Repository(SQLModel, table=True):
     last_snapshot_id: Optional[int] = Field(default=None)
 
     snapshots: list["ContextSnapshot"] = Relationship(back_populates="repo")
+
 
 class ContextSnapshot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -36,21 +44,22 @@ class ContextSnapshot(SQLModel, table=True):
 # We will use a function to initialize the engine to allow for configuration
 _async_engines: Dict[str, AsyncEngine] = {}
 
+
 def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     global _async_engines
-    
+
     # Expand ~ to home directory
     db_path = os.path.expanduser(db_path)
-    
+
     if db_path in _async_engines:
         return _async_engines[db_path]
-    
+
     # Ensure directory exists
     if db_path != ":memory:":
         dir_name = os.path.dirname(db_path)
         if dir_name:
             os.makedirs(dir_name, exist_ok=True)
-    
+
     database_url = f"sqlite+aiosqlite:///{db_path}"
 
     engine = create_async_engine(
@@ -68,18 +77,23 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     _async_engines[db_path] = engine
     return engine
 
+
 async def init_db(db_path: str = "data/prime.db"):
     engine = get_engine(db_path)
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-async def get_session(db_path: str = "data/prime.db") -> AsyncGenerator[AsyncSession, None]:
+
+async def get_session(
+    db_path: str = "data/prime.db",
+) -> AsyncGenerator[AsyncSession, None]:
     engine = get_engine(db_path)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
     async with async_session() as session:
         yield session
+
 
 async def dispose_engine(db_path: Optional[str] = None):
     """Dispose cached async engine(s) to ensure clean exit."""
