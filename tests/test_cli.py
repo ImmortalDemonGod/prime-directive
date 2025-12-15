@@ -1,6 +1,6 @@
 import pytest
 from typer.testing import CliRunner
-from unittest.mock import patch, Mock, MagicMock, AsyncMock
+from unittest.mock import patch, Mock, MagicMock
 from prime_directive.bin.pd import app
 from omegaconf import OmegaConf
 
@@ -36,8 +36,10 @@ def test_list_command(mock_load, mock_config):
 
 @patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.get_status")
-@patch("prime_directive.bin.pd.asyncio.run")
-def test_status_command(mock_async_run, mock_get_status, mock_load, mock_config):
+@patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
+@patch("prime_directive.bin.pd.get_session")
+@patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
+def test_status_command(mock_dispose, mock_get_session, mock_init_db, mock_get_status, mock_load, mock_config):
     mock_load.return_value = mock_config
     
     # Mock get_status return values
@@ -48,18 +50,30 @@ def test_status_command(mock_async_run, mock_get_status, mock_load, mock_config)
         "diff_stat": ""
     }
     
-    def async_run_side_effect(coro):
-        coro.close() # Close the coroutine to avoid RuntimeWarning
-        return "2025-01-01 12:00"
+    # Mock DB Session
+    mock_session = AsyncMock()
+    # Mock result for snapshot query
+    mock_snapshot = MagicMock()
+    mock_snapshot.timestamp.strftime.return_value = "2025-01-01 12:00"
     
-    mock_async_run.side_effect = async_run_side_effect
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.first.return_value = mock_snapshot
+    mock_session.execute.return_value = mock_result
+    
+    async def async_gen(*args, **kwargs):
+        yield mock_session
+    mock_get_session.side_effect = async_gen
 
     result = runner.invoke(app, ["status"])
+    
     assert result.exit_code == 0
     assert "Prime Directive Status" in result.stdout
     assert "repo1" in result.stdout
     assert "Clean" in result.stdout
     assert "2025-01-01 12:00" in result.stdout
+    
+    # Verify cleanup
+    mock_dispose.assert_called_once()
 
 @patch("prime_directive.bin.pd.load_config")
 @patch("shutil.which")
