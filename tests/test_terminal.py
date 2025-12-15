@@ -22,6 +22,25 @@ def test_capture_terminal_state_tmux_success():
             timeout=2
         )
 
+def test_capture_terminal_state_tmux_with_repo_id():
+    with patch("subprocess.run") as mock_run:
+        # Mock successful tmux capture
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="Session Output"
+        )
+        
+        cmd, output = capture_terminal_state(repo_id="my-repo")
+        
+        assert output == "Session Output"
+        mock_run.assert_called_with(
+            ["tmux", "capture-pane", "-p", "-S", "-50", "-t", "pd-my-repo"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=2
+        )
+
 def test_capture_terminal_state_tmux_failure():
     with patch("subprocess.run") as mock_run:
         # Mock failed tmux capture (e.g. not in tmux)
