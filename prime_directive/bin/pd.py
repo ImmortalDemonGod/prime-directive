@@ -64,13 +64,15 @@ def load_config() -> DictConfig:
 # Initialize logging globally with default, will be re-configured if needed
 setup_logging()
 
-def freeze_logic(repo_id: str, config: DictConfig):
-    """Core freeze logic separated for reuse."""
+async def freeze_logic(repo_id: str, config: DictConfig):
+    """Core freeze logic separated for reuse (Async)."""
     if repo_id not in config.repos:
         msg = f"Repository '{repo_id}' not found in configuration."
         console.print(f"[bold red]Error:[/bold red] {msg}")
         logger.error(msg)
-        raise typer.Exit(code=1)
+        # We can't raise Typer.Exit in async easily if we want to clean up, 
+        # but for now we'll just return or raise an exception.
+        raise ValueError(msg)
 
     repo_config = config.repos[repo_id]
     repo_path = repo_config.path
@@ -78,7 +80,7 @@ def freeze_logic(repo_id: str, config: DictConfig):
     logger.info(f"Freezing context for {repo_id} at {repo_path}")
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
     
-    # 1. Capture Git State
+    # 1. Capture Git State (Sync/Blocking)
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping actual git status check")
         git_summary = "MOCK: Branch: main\nDirty: False"
@@ -89,7 +91,7 @@ def freeze_logic(repo_id: str, config: DictConfig):
     
     logger.debug(f"Git state for {repo_id}: {git_st}")
     
-    # 2. Capture Terminal State
+    # 2. Capture Terminal State (Sync/Blocking)
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping terminal capture")
         last_cmd = "mock_cmd"
@@ -99,13 +101,11 @@ def freeze_logic(repo_id: str, config: DictConfig):
     
     logger.debug(f"Terminal state: cmd={last_cmd}")
     
-    # 3. Capture Active Task
-    # Tasks are file based, so we might still want to read them even in mock mode?
-    # Or mock that too. Let's read them as it's just FS.
+    # 3. Capture Active Task (Sync)
     active_task = get_active_task(repo_path)
     logger.debug(f"Active task: {active_task}")
     
-    # 4. Generate AI SITREP
+    # 4. Generate AI SITREP (Blocking Network Call - could be made async with httpx)
     console.print("Generating AI SITREP...")
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping AI generation")
@@ -120,29 +120,23 @@ def freeze_logic(repo_id: str, config: DictConfig):
         )
     logger.info(f"Generated SITREP for {repo_id}")
     
-    # 5. Save to DB
-    async def save_snapshot():
-        try:
-            await init_db(config.system.db_path)
-            async for session in get_session(config.system.db_path):
-                snapshot = ContextSnapshot(
-                    repo_id=repo_id,
-                    timestamp=datetime.utcnow(),
-                    git_status_summary=git_summary,
-                    terminal_last_command=last_cmd,
-                    terminal_output_summary=term_output,
-                    ai_sitrep=sitrep
-                )
-                session.add(snapshot)
-                await session.commit()
-                msg = f"Snapshot saved. ID: {snapshot.id}"
-                console.print(f"[bold green]{msg}[/bold green]")
-                console.print(f"[italic]{sitrep}[/italic]")
-                logger.info(f"{msg}. SITREP: {sitrep}")
-        finally:
-            await dispose_engine()
-
-    asyncio.run(save_snapshot())
+    # 5. Save to DB (Async)
+    await init_db(config.system.db_path)
+    async for session in get_session(config.system.db_path):
+        snapshot = ContextSnapshot(
+            repo_id=repo_id,
+            timestamp=datetime.utcnow(),
+            git_status_summary=git_summary,
+            terminal_last_command=last_cmd,
+            terminal_output_summary=term_output,
+            ai_sitrep=sitrep
+        )
+        session.add(snapshot)
+        await session.commit()
+        msg = f"Snapshot saved. ID: {snapshot.id}"
+        console.print(f"[bold green]{msg}[/bold green]")
+        console.print(f"[italic]{sitrep}[/italic]")
+        logger.info(f"{msg}. SITREP: {sitrep}")
 
 @app.command("freeze")
 def freeze(repo_id: str):
@@ -152,7 +146,16 @@ def freeze(repo_id: str):
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
-    freeze_logic(repo_id, cfg)
+    
+    async def run_freeze():
+        try:
+            await freeze_logic(repo_id, cfg)
+        except ValueError:
+            raise typer.Exit(code=1)
+        finally:
+            await dispose_engine()
+
+    asyncio.run(run_freeze())
 
 @app.command("switch")
 def switch(repo_id: str):
@@ -171,39 +174,36 @@ def switch(repo_id: str):
 
     target_repo = cfg.repos[repo_id]
 
-    # 1. Detect and Freeze current repo
-    cwd = os.getcwd()
-    current_repo_id = None
-    for r_id, r_config in cfg.repos.items():
-        # Check if CWD is inside the repo path
-        if cwd.startswith(os.path.abspath(r_config.path)):
-            current_repo_id = r_id
-            break
-    
-    if current_repo_id and current_repo_id != repo_id:
-        console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
-        logger.info(f"Auto-freezing current repo: {current_repo_id}")
-        freeze_logic(current_repo_id, cfg)
-    
-    # 2. Thaw / Switch
-    console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
-    logger.info(f"Switching to {repo_id}")
-    
-    # Ensure Tmux Session
-    if cfg.system.mock_mode:
-        logger.info(f"MOCK MODE: ensure_session({repo_id})")
-    else:
-        ensure_session(repo_id, target_repo.path)
-    
-    # Launch Editor
-    if cfg.system.mock_mode:
-        logger.info(f"MOCK MODE: launch_editor({target_repo.path})")
-    else:
-        launch_editor(target_repo.path, cfg.system.editor_cmd)
-    
-    # 3. Display SITREP
-    async def show_sitrep():
+    async def run_switch():
         try:
+            # 1. Detect and Freeze current repo
+            cwd = os.getcwd()
+            current_repo_id = None
+            for r_id, r_config in cfg.repos.items():
+                if cwd.startswith(os.path.abspath(r_config.path)):
+                    current_repo_id = r_id
+                    break
+            
+            if current_repo_id and current_repo_id != repo_id:
+                console.print(f"[yellow]Detected current repo: {current_repo_id}[/yellow]")
+                logger.info(f"Auto-freezing current repo: {current_repo_id}")
+                try:
+                    await freeze_logic(current_repo_id, cfg)
+                except Exception as e:
+                    console.print(f"[red]Failed to freeze {current_repo_id}: {e}[/red]")
+
+            # 2. Thaw / Switch (Sync operations)
+            console.print(f"[bold green]>>> WARPING TO {repo_id.upper()} >>>[/bold green]")
+            logger.info(f"Switching to {repo_id}")
+            
+            if cfg.system.mock_mode:
+                logger.info(f"MOCK MODE: ensure_session({repo_id})")
+                logger.info(f"MOCK MODE: launch_editor({target_repo.path})")
+            else:
+                ensure_session(repo_id, target_repo.path)
+                launch_editor(target_repo.path, cfg.system.editor_cmd)
+            
+            # 3. Display SITREP (Async)
             await init_db(cfg.system.db_path)
             async for session in get_session(cfg.system.db_path):
                 stmt = select(ContextSnapshot).where(ContextSnapshot.repo_id == repo_id).order_by(ContextSnapshot.timestamp.desc()).limit(1)
@@ -218,8 +218,8 @@ def switch(repo_id: str):
                     console.print("[italic]No previous snapshot found.[/italic]")
         finally:
             await dispose_engine()
-                
-    asyncio.run(show_sitrep())
+
+    asyncio.run(run_switch())
 
 @app.command("list")
 def list_repos():
