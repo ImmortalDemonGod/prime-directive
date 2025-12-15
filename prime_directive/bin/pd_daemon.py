@@ -16,16 +16,16 @@ class AutoFreezeHandler(FileSystemEventHandler):
         self.repo_id = repo_id
         self.registry = registry
         self.last_modified = datetime.now()
-        # Debounce or inactivity threshold could be handled here or in the main loop
-        # For this implementation, we'll just log changes and let the main loop handle logic if needed
-        # Or trigger immediately if that's the requirement.
-        # PRD says "on file changes or inactivity (>30min) trigger freeze()"
+        self.is_frozen = False
         
     def on_any_event(self, event):
         if event.is_directory:
             return
-        # console.print(f"Change detected in {self.repo_id}: {event.src_path}")
+        # Activity detected, reset state
         self.last_modified = datetime.now()
+        if self.is_frozen:
+            # console.print(f"[green]Activity detected in {self.repo_id}. Unfreezing state...[/green]")
+            self.is_frozen = False
 
 @app.command()
 def main(
@@ -58,14 +58,13 @@ def main(
             for repo_id, handler in handlers.items():
                 # Check inactivity
                 delta = now - handler.last_modified
-                if delta.total_seconds() > inactivity_limit:
+                if delta.total_seconds() > inactivity_limit and not handler.is_frozen:
                     console.print(f"[blue]Inactivity detected in {repo_id} ({delta}). Freezing...[/blue]")
                     try:
                         # We call freeze_logic directly. Note: freeze_logic calls asyncio.run inside it.
                         freeze_logic(repo_id, registry)
-                        # Reset timer to avoid repeated freezes every loop? 
-                        # Or maybe update last_modified to now to "snooze" the freeze?
-                        handler.last_modified = now 
+                        handler.is_frozen = True
+                        console.print(f"[green]Repository {repo_id} is now FROZEN.[/green]")
                     except Exception as e:
                         console.print(f"[red]Error freezing {repo_id}: {e}[/red]")
                         
