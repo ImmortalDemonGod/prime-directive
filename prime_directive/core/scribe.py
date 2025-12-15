@@ -91,7 +91,7 @@ def generate_sitrep(
                 time.sleep(backoff_seconds * (2 ** attempt))
 
     if fallback_provider != "openai":
-        return f"Error generating SITREP: {str(last_error)}"
+        return f"Error generating SITREP: {last_error!s}"
 
     if require_confirmation:
         return "Error generating SITREP: OpenAI fallback requires confirmation"
@@ -111,4 +111,4 @@ def generate_sitrep(
             max_tokens=openai_max_tokens,
         )
     except requests.exceptions.RequestException as e:
-        return f"Error generating SITREP: {str(e)}"
+        return f"Error generating SITREP: {e!s}"
