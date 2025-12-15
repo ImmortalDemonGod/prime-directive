@@ -59,9 +59,9 @@ def load_config() -> DictConfig:
                 return cfg
         except (OSError, ValueError) as inner_e:
             msg = f"Error loading config: {e} | {inner_e}"
-             console.print(f"[bold red]{msg}[/bold red]")
-             logger.critical(msg)
-             sys.exit(1)
+            console.print(f"[bold red]{msg}[/bold red]")
+            logger.critical(msg)
+            sys.exit(1)
 
 # Initialize logging globally with default, will be re-configured if needed
 setup_logging()
@@ -279,8 +279,8 @@ def status_command():
                         snapshot = result.scalars().first()
                         if snapshot:
                             last_snap_str = snapshot.timestamp.strftime("%Y-%m-%d %H:%M")
-                    except Exception as e:
-                        logger.debug(f"Error fetching snapshot for {repo.id}: {e}")
+                    except (OSError, ValueError) as e:
+                        logger.warning(f"Error fetching snapshot for {repo.id}: {e}")
                         last_snap_str = "Error"
 
                     priority_display = f"{'🔥' if repo.priority >= 8 else '⚡'} {repo.priority}"
