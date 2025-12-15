@@ -1,3 +1,4 @@
+import os
 from typing import Optional
 
 import requests
@@ -68,15 +69,4 @@ def generate_openai_chat(
 
 
 def get_openai_api_key(env_var: str = "OPENAI_API_KEY") -> Optional[str]:
-    value = None
-    try:
-        import os
-
-        value = os.getenv(env_var)
-    except Exception:
-        return None
-
-    if not value:
-        return None
-
-    return value
+    return os.getenv(env_var) or None
