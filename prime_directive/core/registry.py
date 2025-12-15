@@ -3,10 +3,12 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field
 
+
 class SystemConfig(BaseModel):
     editor_cmd: str = Field(default="windsurf")
     ai_model: str = Field(default="qwen2.5-coder")
     db_path: str = Field(default="data/prime.db")
+
 
 class RepoConfig(BaseModel):
     id: str
@@ -14,11 +16,15 @@ class RepoConfig(BaseModel):
     priority: int
     active_branch: Optional[str] = None
 
+
 class Registry(BaseModel):
     system: SystemConfig = Field(default_factory=SystemConfig)
     repos: Dict[str, RepoConfig] = Field(default_factory=dict)
 
-def load_registry(config_path: str = "prime_directive/system/registry.yaml") -> Registry:
+
+def load_registry(
+    config_path: str = "prime_directive/system/registry.yaml",
+) -> Registry:
     """Load registry from YAML file."""
     path = Path(config_path)
     if not path.exists():
@@ -32,12 +38,14 @@ def load_registry(config_path: str = "prime_directive/system/registry.yaml") -> 
 
     with open(path, "r") as f:
         data = yaml.safe_load(f) or {}
-    
-    # Handle list of repos vs dict of repos structure difference in PRD description vs Schema
+
+    # Handle list of repos vs dict of repos structure difference in PRD
+    # description vs Schema
     # PRD details: repos: [{id: str, path: str...}]
-    # But schema in details also implies: repos: {black-box: {...}} in YAML example
+    # But schema in details also implies: repos: {black-box: {...}} in YAML
+    # example
     # Let's support the YAML example format (Dict) as it matches "mappings".
-    
+
     # If the YAML has repos as a list, we convert to dict
     if "repos" in data and isinstance(data["repos"], list):
         repos_dict = {}
@@ -51,5 +59,5 @@ def load_registry(config_path: str = "prime_directive/system/registry.yaml") -> 
             if isinstance(repo_data, dict):
                 if "id" not in repo_data:
                     repo_data["id"] = repo_id
-    
+
     return Registry(**data)
