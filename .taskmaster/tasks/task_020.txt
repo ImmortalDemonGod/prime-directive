@@ -1,6 +1,6 @@
 # Task ID: 20
 # Title: P1: Unify configuration system (Hydra vs registry.yaml) to remove duplication
-# Status: pending
+# Status: done
 # Dependencies: 2, 14
 # Priority: medium
 # Description: Resolve architectural duplication from multiple configuration sources and ensure daemon/CLI use the same config pipeline.
@@ -11,43 +11,43 @@ Audit calls out multiple config systems (Hydra structured config, registry YAML 
 Tests should confirm CLI and daemon load identical repo/system settings (mock_mode, db_path, editor_cmd) from the single config source.
 
 # Subtasks:
-## 1. Inventory Current Configuration Sources [pending]
+## 1. Inventory Current Configuration Sources [done]
 ### Dependencies: None
 ### Description: Identify and document all current configuration sources, including Hydra and registry.yaml, used across the system.
 ### Details:
 Conduct a thorough audit of the codebase to list all configuration files and systems in use. Document their usage, scope, and any interdependencies.
 
-## 2. Decide on a Single Source of Truth [pending]
+## 2. Decide on a Single Source of Truth [done]
 ### Dependencies: 20.1
 ### Description: Determine which configuration system will be the single source of truth for the application.
 ### Details:
 Evaluate the pros and cons of Hydra and registry.yaml. Consider factors such as flexibility, ease of use, and integration with existing systems. Make a decision and document the rationale.
 
-## 3. Refactor pd.py to Use the Unified Configuration System [pending]
+## 3. Refactor pd.py to Use the Unified Configuration System [done]
 ### Dependencies: 20.2
 ### Description: Refactor the pd.py module to load configuration from the chosen source of truth.
 ### Details:
 Update pd.py to remove any direct references to deprecated configuration systems. Implement loading and parsing logic using the unified configuration system.
 
-## 4. Refactor pd_daemon.py to Use the Unified Configuration System [pending]
+## 4. Refactor pd_daemon.py to Use the Unified Configuration System [done]
 ### Dependencies: 20.2
 ### Description: Refactor the pd_daemon.py module to load configuration from the chosen source of truth.
 ### Details:
 Update pd_daemon.py to ensure it uses the unified configuration system. Remove any legacy configuration code.
 
-## 5. Refactor Core and Registry Usage [pending]
+## 5. Refactor Core and Registry Usage [done]
 ### Dependencies: 20.2
 ### Description: Update core and registry modules to utilize the unified configuration system.
 ### Details:
 Identify all instances where core and registry modules interact with configuration systems. Refactor these to use the unified configuration system.
 
-## 6. Deprecate and Remove Redundant Configuration Code [pending]
+## 6. Deprecate and Remove Redundant Configuration Code [done]
 ### Dependencies: 20.3, 20.4, 20.5
 ### Description: Safely deprecate and remove any redundant configuration code and files.
 ### Details:
 Identify redundant configuration files and code. Ensure they are no longer in use before removing them. Update any references in the codebase.
 
-## 7. Update Documentation and Add Tests [pending]
+## 7. Update Documentation and Add Tests [done]
 ### Dependencies: 20.6
 ### Description: Update all relevant documentation to reflect the new configuration system and add tests to verify consistent application of configurations.
 ### Details:
