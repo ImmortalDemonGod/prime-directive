@@ -1,5 +1,6 @@
+import os
 from datetime import datetime, timezone
-from typing import Optional, Dict
+from typing import Optional, Dict, AsyncGenerator
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Index, event
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, AsyncEngine
@@ -23,6 +24,7 @@ class ContextSnapshot(SQLModel, table=True):
     terminal_last_command: str
     terminal_output_summary: str
     ai_sitrep: str
+    human_note: Optional[str] = Field(default=None)
 
     repo: Optional[Repository] = Relationship(back_populates="snapshots")
 
@@ -34,13 +36,16 @@ class ContextSnapshot(SQLModel, table=True):
 # We will use a function to initialize the engine to allow for configuration
 _async_engines: Dict[str, AsyncEngine] = {}
 
-def get_engine(db_path: str = "data/prime.db"):
+def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     global _async_engines
+    
+    # Expand ~ to home directory
+    db_path = os.path.expanduser(db_path)
+    
     if db_path in _async_engines:
         return _async_engines[db_path]
     
     # Ensure directory exists
-    import os
     if db_path != ":memory:":
         dir_name = os.path.dirname(db_path)
         if dir_name:
@@ -68,7 +73,7 @@ async def init_db(db_path: str = "data/prime.db"):
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
-async def get_session(db_path: str = "data/prime.db"):
+async def get_session(db_path: str = "data/prime.db") -> AsyncGenerator[AsyncSession, None]:
     engine = get_engine(db_path)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
