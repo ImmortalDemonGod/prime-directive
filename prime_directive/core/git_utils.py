@@ -24,7 +24,7 @@ def get_status(repo_path: str) -> GitStatus:
             "branch": "unknown",
             "is_dirty": False,
             "uncommitted_files": [],
-            "diff_stat": ""
+            "diff_stat": "",
         }
 
     try:
@@ -35,7 +35,7 @@ def get_status(repo_path: str) -> GitStatus:
             capture_output=True,
             text=True,
             check=False,
-            timeout=5
+            timeout=5,
         )
         if branch_proc.returncode == 0:
             branch = branch_proc.stdout.strip()
@@ -49,14 +49,16 @@ def get_status(repo_path: str) -> GitStatus:
             capture_output=True,
             text=True,
             check=False,
-            timeout=5
+            timeout=5,
         )
         status_output = status_proc.stdout
 
         # Parse porcelain output for filenames
-        # Porcelain format: XY PATH (XY are status codes, space separated from path)
+        # Porcelain format: XY PATH (XY are status codes, space separated from
+        # path)
         # Regex captures: (Group 1: Status XY) (Group 2: Path)
-        # Matches start of line, 2 chars for status, 1 space, then the rest is path
+        # Matches start of line, 2 chars for status, 1 space, then the rest is
+        # path
         uncommitted_files = []
         for line in status_output.splitlines():
             match = re.match(r"^(.{2}) (.*)$", line)
@@ -72,7 +74,7 @@ def get_status(repo_path: str) -> GitStatus:
             capture_output=True,
             text=True,
             check=False,
-            timeout=5
+            timeout=5,
         )
         diff_stat = diff_proc.stdout.strip()
 
@@ -80,7 +82,7 @@ def get_status(repo_path: str) -> GitStatus:
             "branch": branch,
             "is_dirty": is_dirty,
             "uncommitted_files": uncommitted_files,
-            "diff_stat": diff_stat
+            "diff_stat": diff_stat,
         }
     except subprocess.TimeoutExpired:
         return {
@@ -95,5 +97,5 @@ def get_status(repo_path: str) -> GitStatus:
             "branch": "error",
             "is_dirty": False,
             "uncommitted_files": [],
-            "diff_stat": str(e)
+            "diff_stat": str(e),
         }
