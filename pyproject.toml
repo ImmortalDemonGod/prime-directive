@@ -23,6 +23,13 @@ pd-daemon = "prime_directive.bin.pd_daemon:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
