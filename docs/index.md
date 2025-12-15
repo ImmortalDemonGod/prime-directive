@@ -66,4 +66,5 @@ See `prime_directive/conf/config.yaml` for all configuration options.
 
 - [GitHub Repository](https://github.com/ImmortalDemonGod/prime-directive)
 - [Contributing Guide](https://github.com/ImmortalDemonGod/prime-directive/blob/main/CONTRIBUTING.md)
-- [Code Audit](CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md)
+- [Code Audit (2025-12-14)](CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md)
+- [Code Audit (2025-12-15)](CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-15_01.md)
