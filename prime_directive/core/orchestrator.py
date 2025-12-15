@@ -5,7 +5,7 @@ import asyncio
 
 from sqlalchemy import select
 
-from prime_directive.core.db import ContextSnapshot
+from prime_directive.core.db import ContextSnapshot, EventLog, EventType
 
 
 def _is_path_prefix(prefix: str, path: str) -> bool:
@@ -88,6 +88,14 @@ async def switch_logic(
 
         await init_db_fn(cfg.system.db_path)
         async for session in get_session_fn(cfg.system.db_path):
+            session.add(
+                EventLog(
+                    repo_id=target_repo_id,
+                    event_type=EventType.SWITCH_IN,
+                )
+            )
+            await session.commit()
+
             repo_id_col = cast(Any, ContextSnapshot.repo_id)
             ts_col = cast(Any, ContextSnapshot.timestamp)
             stmt = (
@@ -133,7 +141,7 @@ def run_switch(
     dispose_engine_fn: Callable[..., Any],
     console: Any,
     logger: logging.Logger,
-) -> None:
+) -> bool:
 
     asyncio.run(
         switch_logic(
