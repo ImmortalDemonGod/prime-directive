@@ -20,6 +20,7 @@ from prime_directive.core.windsurf import launch_editor
 from datetime import datetime
 
 app = typer.Typer()
+cli = app
 console = Console()
 
 def freeze_logic(repo_id: str, registry: Registry):
