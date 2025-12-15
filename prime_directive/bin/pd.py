@@ -53,6 +53,8 @@ cli = app
 console = Console()
 logger = logging.getLogger("prime_directive")
 
+_EXIT_CODE_SHELL_ATTACH = 88
+
 
 def load_config() -> DictConfig:
     """Load configuration using Hydra."""
@@ -256,7 +258,7 @@ def switch(repo_id: str):
         logger.error(msg)
         raise typer.Exit(code=1)
 
-    run_switch(
+    needs_shell_attach = run_switch(
         repo_id,
         cfg,
         cwd=os.getcwd(),
@@ -269,6 +271,9 @@ def switch(repo_id: str):
         console=console,
         logger=logger,
     )
+
+    if needs_shell_attach:
+        raise typer.Exit(code=_EXIT_CODE_SHELL_ATTACH)
 
 
 @app.command("list")
