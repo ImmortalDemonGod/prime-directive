@@ -2,30 +2,30 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock
 from prime_directive.bin.pd import app
-from prime_directive.core.registry import Registry, RepoConfig, SystemConfig
+from omegaconf import OmegaConf
 from datetime import datetime
 
 runner = CliRunner()
 
 @pytest.fixture
-def mock_registry():
-    return Registry(
-        system=SystemConfig(editor_cmd="code", ai_model="gpt-4", db_path=":memory:"),
-        repos={
-            "current-repo": RepoConfig(id="current-repo", path="/tmp/current-repo", priority=10),
-            "target-repo": RepoConfig(id="target-repo", path="/tmp/target-repo", priority=8)
+def mock_config():
+    return OmegaConf.create({
+        "system": {"editor_cmd": "code", "ai_model": "gpt-4", "db_path": ":memory:"},
+        "repos": {
+            "current-repo": {"id": "current-repo", "path": "/tmp/current-repo", "priority": 10},
+            "target-repo": {"id": "target-repo", "path": "/tmp/target-repo", "priority": 8}
         }
-    )
+    })
 
-@patch("prime_directive.bin.pd.load_registry")
+@patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.os.getcwd")
 @patch("prime_directive.bin.pd.freeze_logic") # We'll refactor freeze to a function
 @patch("prime_directive.bin.pd.ensure_session")
 @patch("prime_directive.bin.pd.launch_editor")
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session")
-def test_switch_command(mock_get_session, mock_init_db, mock_launch, mock_ensure, mock_freeze, mock_getcwd, mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+def test_switch_command(mock_get_session, mock_init_db, mock_launch, mock_ensure, mock_freeze, mock_getcwd, mock_load, mock_config):
+    mock_load.return_value = mock_config
     mock_getcwd.return_value = "/tmp/current-repo/subdir"
     
     # Mock DB for SITREP retrieval
@@ -47,7 +47,7 @@ def test_switch_command(mock_get_session, mock_init_db, mock_launch, mock_ensure
     assert result.exit_code == 0
     
     # 1. Verify Freeze of current repo
-    mock_freeze.assert_called_once_with("current-repo", mock_registry)
+    mock_freeze.assert_called_once_with("current-repo", mock_config)
     
     # 2. Verify Session & Editor
     mock_ensure.assert_called_once_with("target-repo", "/tmp/target-repo")
@@ -57,9 +57,9 @@ def test_switch_command(mock_get_session, mock_init_db, mock_launch, mock_ensure
     assert "WARPING TO TARGET-REPO" in result.stdout
     assert "LAST ACTION: SITREP: Ready for work." in result.stdout
 
-@patch("prime_directive.bin.pd.load_registry")
-def test_switch_invalid_repo(mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+@patch("prime_directive.bin.pd.load_config")
+def test_switch_invalid_repo(mock_load, mock_config):
+    mock_load.return_value = mock_config
     result = runner.invoke(app, ["switch", "invalid-repo"])
     assert result.exit_code == 1
     assert "Repository 'invalid-repo' not found" in result.stdout
