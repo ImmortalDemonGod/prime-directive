@@ -1,8 +1,7 @@
 import requests
-import time
 from typing import Optional, Dict, Any
 
-from prime_directive.core.ai_providers import generate_openai_chat, get_openai_api_key
+from prime_directive.core.ai_providers import generate_ollama, generate_openai_chat, get_openai_api_key
 
 def generate_sitrep(
     repo_id: str,
@@ -10,6 +9,7 @@ def generate_sitrep(
     terminal_logs: str,
     active_task: Optional[Dict[str, Any]] = None,
     model: str = "qwen2.5-coder",
+    provider: str = "ollama",
     fallback_provider: str = "none",
     fallback_model: str = "gpt-4o-mini",
     require_confirmation: bool = True,
@@ -68,30 +68,42 @@ def generate_sitrep(
         "generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in 50 words max."
     )
 
-    payload = {
-        "model": model,
-        "prompt": prompt,
-        "system": system_prompt,
-        "stream": False
-    }
-
-    last_error: Optional[Exception] = None
-    attempts = max_retries + 1
-    for attempt in range(attempts):
+    # Use OpenAI as primary provider if configured
+    if provider == "openai":
+        api_key = get_openai_api_key()
+        if not api_key:
+            return "Error generating SITREP: OPENAI_API_KEY not set"
         try:
-            response = requests.post(api_url, json=payload, timeout=timeout_seconds)
-            response.raise_for_status()
-            data = response.json()
-            return data.get("response", "Error: No response from AI model.")
-        except requests.exceptions.RequestException as e:
-            last_error = e
-            if attempt >= attempts - 1:
-                break
-            if backoff_seconds > 0:
-                time.sleep(backoff_seconds * (2 ** attempt))
+            return generate_openai_chat(
+                api_url=openai_api_url,
+                api_key=api_key,
+                model=model,
+                system=system_prompt,
+                prompt=prompt,
+                timeout_seconds=openai_timeout_seconds,
+                max_tokens=openai_max_tokens,
+            )
+        except (requests.exceptions.RequestException, ValueError) as e:
+            return f"Error generating SITREP: {e!s}"
+
+    # Default: Use Ollama as primary provider
+    last_error: Optional[Exception] = None
+    try:
+        return generate_ollama(
+            api_url=api_url,
+            model=model,
+            prompt=prompt,
+            system=system_prompt,
+            timeout_seconds=timeout_seconds,
+            max_retries=max_retries,
+            backoff_seconds=backoff_seconds,
+        )
+    except (requests.exceptions.RequestException, ValueError) as e:
+        last_error = e
 
     if fallback_provider != "openai":
-        return f"Error generating SITREP: {last_error!s}"
+        message = str(last_error) if last_error is not None else "Unknown error contacting Ollama"
+        return f"Error generating SITREP: {message}"
 
     if require_confirmation:
         return "Error generating SITREP: OpenAI fallback requires confirmation"
@@ -110,5 +122,5 @@ def generate_sitrep(
             timeout_seconds=openai_timeout_seconds,
             max_tokens=openai_max_tokens,
         )
-    except requests.exceptions.RequestException as e:
+    except (requests.exceptions.RequestException, ValueError) as e:
         return f"Error generating SITREP: {e!s}"
