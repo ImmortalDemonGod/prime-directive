@@ -1,0 +1,51 @@
+# Task ID: 28
+# Title: Fix Async I/O Architecture
+# Status: pending
+# Dependencies: 6, 7, 17
+# Priority: high
+# Description: Replace blocking I/O calls with asynchronous alternatives to improve performance and prevent freezes.
+# Details:
+1. Replace `requests.post` in `ai_providers.py` with `httpx.AsyncClient.post` to make HTTP requests asynchronously. Ensure that the function calling it is also async and handle the response appropriately.
+2. Replace `time.sleep` in `ai_providers.py` with `asyncio.sleep` or use the `tenacity` library for retries with backoff, ensuring that the function is async.
+3. In `git_utils.py` and `terminal.py`, replace `subprocess.run` with `asyncio.create_subprocess_exec` to execute shell commands asynchronously. Ensure that the output is captured correctly using `await process.communicate()`.
+4. Make `generate_sitrep` in `scribe.py` an async function to support the changes and ensure it integrates seamlessly with the rest of the system.
+5. Update any calling code to handle the new async functions, including adding `await` where necessary.
+
+# Test Strategy:
+1. Write unit tests for `ai_providers.py` to ensure that HTTP requests are made asynchronously and responses are handled correctly.
+2. Test retry logic using `asyncio.sleep` or `tenacity` to confirm that retries occur without blocking.
+3. Verify that `git_utils.py` and `terminal.py` execute shell commands asynchronously and capture outputs correctly.
+4. Conduct integration tests to ensure that the overall system performance improves and that no blocking occurs during AI calls.
+5. Perform manual testing to simulate AI calls and observe that the system remains responsive without freezes.
+
+# Subtasks:
+## 1. Replace requests.post with httpx.AsyncClient.post in ai_providers.py [pending]
+### Dependencies: None
+### Description: Modify the HTTP request logic in ai_providers.py to use asynchronous HTTP calls with httpx.AsyncClient.post.
+### Details:
+Identify all instances of requests.post in ai_providers.py. Replace them with httpx.AsyncClient.post. Ensure that the surrounding function is converted to an async function and that the response is handled using await. Update any related error handling and logging to work with the async context.
+
+## 2. Replace time.sleep with asyncio.sleep in ai_providers.py [pending]
+### Dependencies: 28.1
+### Description: Convert blocking sleep calls to non-blocking using asyncio.sleep or implement retry logic with tenacity for backoff.
+### Details:
+Locate all instances of time.sleep in ai_providers.py. Replace them with asyncio.sleep to ensure non-blocking behavior. If retry logic is needed, use the tenacity library to implement retries with exponential backoff. Ensure that the functions using these calls are async.
+
+## 3. Make generate_sitrep in scribe.py an async function [pending]
+### Dependencies: 28.1, 28.2
+### Description: Convert the generate_sitrep function in scribe.py to an async function to support asynchronous operations.
+### Details:
+Modify the generate_sitrep function to be async. Ensure that all internal calls within this function that can be async are awaited. Update any calling code to handle the async nature of this function, including adding await where necessary.
+
+## 4. Replace subprocess.run with asyncio.create_subprocess_exec in git_utils.py and terminal.py [pending]
+### Dependencies: 28.1, 28.2
+### Description: Update shell command execution to be asynchronous by using asyncio.create_subprocess_exec.
+### Details:
+Identify all instances of subprocess.run in git_utils.py and terminal.py. Replace them with asyncio.create_subprocess_exec. Ensure that the output is captured correctly using await process.communicate(). Convert the surrounding functions to async if necessary.
+
+## 5. Update freeze_logic to properly await all async calls [pending]
+### Dependencies: 28.1, 28.2, 28.3, 28.4
+### Description: Ensure that all calls to async functions are properly awaited in freeze_logic and that the daemon watchdog can process events during async AI calls.
+### Details:
+Review the freeze_logic to identify all async function calls. Ensure that each call is properly awaited. Verify that the daemon watchdog is capable of processing events concurrently with async AI operations, making adjustments as necessary to the event loop or task management.
+
