@@ -11,7 +11,7 @@ Execute all manual tests 1.1-3.3. Amnesia Test: Work on repo1 30min, switch away
 Pass all 6 Green Lights + Amnesia/Crash tests. Tune scribe prompt if SITREP insufficient.
 
 # Subtasks:
-## 1. Prepare Environment for Integration Testing [pending]
+## 1. Prepare Environment for Integration Testing [done]
 ### Dependencies: None
 ### Description: Set up the testing environment to ensure all dependencies and configurations are ready for the integration tests.
 ### Details:
