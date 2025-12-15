@@ -31,7 +31,10 @@ def is_ollama_installed() -> bool:
     return shutil.which("ollama") is not None
 
 
-def check_ollama_running(api_tags_url: str = "http://localhost:11434/api/tags", timeout_seconds: float = 2.0) -> bool:
+def check_ollama_running(
+    api_tags_url: str = "http://localhost:11434/api/tags",
+    timeout_seconds: float = 2.0,
+) -> bool:
     try:
         resp = requests.get(api_tags_url, timeout=timeout_seconds)
         return resp.status_code == 200
@@ -49,15 +52,23 @@ def check_ollama_model_present(
         if resp.status_code != 200:
             return False
         models = resp.json().get("models", [])
-        model_names = [m.get("name", "") for m in models if isinstance(m, dict)]
-        return any(model_name in name for name in model_names)
+        model_names = [
+            m.get("name", "") for m in models if isinstance(m, dict)
+        ]
+        return any(
+            name == model_name or name.startswith(f"{model_name}:")
+            for name in model_names
+        )
     except requests.exceptions.RequestException:
         return False
     except (ValueError, KeyError):
         return False
 
 
-def get_ollama_status(model_name: str, api_base: str = "http://localhost:11434") -> DependencyStatus:
+def get_ollama_status(
+    model_name: str,
+    api_base: str = "http://localhost:11434",
+) -> DependencyStatus:
     tags_url = f"{api_base}/api/tags"
     installed = is_ollama_installed()
     running = False
@@ -96,7 +107,10 @@ def get_ollama_status(model_name: str, api_base: str = "http://localhost:11434")
             name="Ollama",
             installed=True,
             running=True,
-            details=f"Running but model '{model_name}' missing (run: ollama pull {model_name})",
+            details=(
+                f"Running but model '{model_name}' missing "
+                f"(run: ollama pull {model_name})"
+            ),
             install_cmd=install_cmd,
             start_cmd=start_cmd,
             check_cmd=check_cmd,
