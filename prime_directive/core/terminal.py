@@ -6,7 +6,7 @@ from typing import Optional, Tuple
 def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
     Captures the terminal state from tmux if running inside a tmux session.
-    
+
     Args:
         repo_id (Optional[str]): If provided, targets the tmux session
             'pd-{repo_id}'. Otherwise captures the current pane.
@@ -31,11 +31,7 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
             cmd.extend(["-t", f"pd-{repo_id}"])
 
         capture_proc = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=2
+            cmd, capture_output=True, text=True, check=False, timeout=2
         )
 
         output_summary = "No tmux session found or capture failed."
@@ -43,12 +39,14 @@ def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
             output_summary = capture_proc.stdout.strip()
 
         # Best-effort extraction of last executed command from captured output.
-        # We keep the existing "unknown" fallback unless we can detect a prompt line.
+        # We keep the existing "unknown" fallback unless we can detect a prompt
+        # line.
         last_command = "unknown"
-        if output_summary and output_summary != "No tmux session found or capture failed.":
-            prompt_re = re.compile(
-                r"^\s*(?:\$|❯|>)\s+(.+?)\s*$"
-            )
+        if (
+            output_summary
+            and output_summary != "No tmux session found or capture failed."
+        ):
+            prompt_re = re.compile(r"^\s*(?:\$|❯|>)\s+(.+?)\s*$")
             for line in reversed(output_summary.splitlines()):
                 m = prompt_re.match(line)
                 if m:
