@@ -8,13 +8,14 @@ from datetime import datetime
 runner = CliRunner()
 
 @pytest.fixture
-def mock_config():
+def mock_config(tmp_path):
+    log_file = tmp_path / "pd.log"
     return OmegaConf.create({
         "system": {
             "editor_cmd": "code", 
             "ai_model": "gpt-4", 
             "db_path": ":memory:",
-            "log_path": "pd.log",
+            "log_path": str(log_file),
             "mock_mode": False
         },
         "repos": {
