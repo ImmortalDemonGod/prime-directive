@@ -7,7 +7,9 @@ def setup_logging(log_file="data/logs/pd.log"):
     """
     Configure logging to file and console.
     """
-    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    log_dir = os.path.dirname(log_file)
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
     
     config = {
         "version": 1,
