@@ -53,6 +53,7 @@ def mock_config(tmp_path):
 @patch("prime_directive.bin.pd.run_switch")
 def test_switch_command(mock_run_switch, mock_load, mock_config):
     mock_load.return_value = mock_config
+    mock_run_switch.return_value = False
 
     result = runner.invoke(app, ["switch", "target-repo"])
 
@@ -71,6 +72,18 @@ def test_switch_command(mock_run_switch, mock_load, mock_config):
     assert "dispose_engine_fn" in kwargs
     assert "console" in kwargs
     assert "logger" in kwargs
+
+
+@patch("prime_directive.bin.pd.load_config")
+@patch("prime_directive.bin.pd.run_switch")
+def test_switch_command_shell_attach_exit_code(
+    mock_run_switch, mock_load, mock_config
+):
+    mock_load.return_value = mock_config
+    mock_run_switch.return_value = True
+
+    result = runner.invoke(app, ["switch", "target-repo"])
+    assert result.exit_code == 88
 
 
 def test_detect_current_repo_id_prefers_longest_prefix():
