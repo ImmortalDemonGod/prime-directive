@@ -1,6 +1,7 @@
 import subprocess
 from typing import List, Dict, Union
 import os
+import re
 
 def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
     """
@@ -47,9 +48,14 @@ def get_status(repo_path: str) -> Dict[str, Union[str, bool, List[str]]]:
         
         # Parse porcelain output for filenames
         # Porcelain format: XY PATH (XY are status codes, space separated from path)
-        # We process lines directly to handle " M file" correctly (leading space is significant)
-        lines = status_output.splitlines()
-        uncommitted_files = [line[3:] for line in lines if len(line) > 3]
+        # Regex captures: (Group 1: Status XY) (Group 2: Path)
+        # Matches start of line, 2 chars for status, 1 space, then the rest is path
+        uncommitted_files = []
+        for line in status_output.splitlines():
+            match = re.match(r"^(.{2}) (.*)$", line)
+            if match:
+                uncommitted_files.append(match.group(2))
+        
         is_dirty = len(uncommitted_files) > 0
 
         # Get diff stat
