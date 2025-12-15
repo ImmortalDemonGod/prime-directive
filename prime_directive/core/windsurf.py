@@ -22,5 +22,5 @@ def launch_editor(repo_path: str, editor_cmd: str = "windsurf"):
         subprocess.Popen([editor_cmd, "-n", repo_path])
     except FileNotFoundError:
         print(f"Error: Could not execute '{editor_cmd}'. Is it installed?")
-    except Exception as e:
+    except OSError as e:
         print(f"Error launching editor: {e}")
