@@ -23,6 +23,11 @@ repos:
     path: /Users/tomriddle1/prime-directive
     priority: 10
     active_branch: main
+  test-repo-alpha:
+    id: test-repo-alpha
+    path: /Users/tomriddle1/prime-directive/tests/fixtures/repos/test-repo-alpha
+    priority: 1
+    active_branch: main
   # Add your other repos here:
   # rna-predict:
   #   id: rna-predict
