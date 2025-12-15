@@ -1,7 +1,7 @@
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from pathlib import Path
 import yaml
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 class SystemConfig(BaseModel):
     editor_cmd: str = Field(default="windsurf")
@@ -13,18 +13,6 @@ class RepoConfig(BaseModel):
     path: str
     priority: int
     active_branch: Optional[str] = None
-
-    @field_validator("path")
-    @classmethod
-    def validate_path(cls, v: str) -> str:
-        # Check if path exists - strictly we might want to allow non-existent paths if we are just configuring
-        # But the PRD says "Validate all repo paths exist"
-        # We'll make it a soft validation or just logged warning in a real app, 
-        # but for strict PRD adherence, let's keep it as is or check existence in the loader.
-        # Pydantic validation happens at instantiation.
-        # Let's assume for now we just validate it's a string. 
-        # Existence check is better done at runtime/loading to avoid crashing on config load if a drive is unmounted.
-        return v
 
 class Registry(BaseModel):
     system: SystemConfig = Field(default_factory=SystemConfig)
