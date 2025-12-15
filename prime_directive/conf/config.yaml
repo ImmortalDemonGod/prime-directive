@@ -2,6 +2,8 @@ system:
   editor_cmd: windsurf
   ai_model: qwen2.5-coder
   db_path: data/prime.db
+  log_path: data/logs/pd.log
+  mock_mode: false
 
 repos:
   test-alpha:
