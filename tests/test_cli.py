@@ -14,6 +14,7 @@ def mock_config(tmp_path):
         "system": {
             "editor_cmd": "code", 
             "ai_model": "gpt-4", 
+            "ai_provider": "ollama",
             "ai_fallback_provider": "none",
             "ai_fallback_model": "gpt-4o-mini",
             "ai_require_confirmation": True,
@@ -93,6 +94,7 @@ def test_status_command(mock_dispose, mock_get_session, mock_init_db, mock_get_s
     
     # Verify cleanup
     mock_dispose.assert_called_once()
+    mock_init_db.assert_awaited_once()
 
 @patch("prime_directive.bin.pd.load_config")
 @patch("shutil.which")
