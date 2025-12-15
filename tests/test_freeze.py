@@ -2,28 +2,28 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, Mock, AsyncMock
 from prime_directive.bin.pd import app
-from prime_directive.core.registry import Registry, RepoConfig, SystemConfig
+from omegaconf import OmegaConf
 
 runner = CliRunner()
 
 @pytest.fixture
-def mock_registry():
-    return Registry(
-        system=SystemConfig(editor_cmd="code", ai_model="gpt-4", db_path=":memory:"),
-        repos={
-            "test-repo": RepoConfig(id="test-repo", path="/tmp/test-repo", priority=10, active_branch="main")
+def mock_config():
+    return OmegaConf.create({
+        "system": {"editor_cmd": "code", "ai_model": "gpt-4", "db_path": ":memory:"},
+        "repos": {
+            "test-repo": {"id": "test-repo", "path": "/tmp/test-repo", "priority": 10, "active_branch": "main"}
         }
-    )
+    })
 
-@patch("prime_directive.bin.pd.load_registry")
+@patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.get_status")
 @patch("prime_directive.bin.pd.capture_terminal_state")
 @patch("prime_directive.bin.pd.get_active_task")
 @patch("prime_directive.bin.pd.generate_sitrep")
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session") # Mocking the async generator
-def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mock_get_active_task, mock_capture_terminal, mock_get_status, mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mock_get_active_task, mock_capture_terminal, mock_get_status, mock_load, mock_config):
+    mock_load.return_value = mock_config
     
     # Mock Git
     mock_get_status.return_value = {
@@ -67,9 +67,9 @@ def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mo
     assert snapshot.git_status_summary == "Branch: main\nDirty: True\nFiles: ['file.py']\nDiff: file.py | 1 +"
     assert snapshot.ai_sitrep == "SITREP: Fixed bug."
 
-@patch("prime_directive.bin.pd.load_registry")
-def test_freeze_command_invalid_repo(mock_load, mock_registry):
-    mock_load.return_value = mock_registry
+@patch("prime_directive.bin.pd.load_config")
+def test_freeze_command_invalid_repo(mock_load, mock_config):
+    mock_load.return_value = mock_config
     result = runner.invoke(app, ["freeze", "invalid-repo"])
     assert result.exit_code == 1
     assert "Repository 'invalid-repo' not found" in result.stdout
