@@ -1,6 +1,5 @@
 import logging
 import logging.config
-import yaml
 import os
 
 def setup_logging(log_file="~/.prime-directive/logs/pd.log"):
