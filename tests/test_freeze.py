@@ -44,6 +44,9 @@ def test_freeze_command(mock_get_session, mock_init_db, mock_generate_sitrep, mo
     
     # Mock DB Session
     mock_session = AsyncMock()
+    # session.add is synchronous in SQLAlchemy
+    mock_session.add = Mock()
+    
     # async generator mock
     async def async_gen(*args, **kwargs):
         yield mock_session
