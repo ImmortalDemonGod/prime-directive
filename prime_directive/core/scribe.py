@@ -37,14 +37,17 @@ def generate_sitrep(
         model (str): The Ollama model to use.
         fallback_provider (str): The fallback provider to use if Ollama fails.
         fallback_model (str): The fallback model to use if Ollama fails.
-        require_confirmation (bool): Whether to require confirmation for OpenAI fallback.
+        require_confirmation (bool): Whether to require confirmation for OpenAI
+            fallback.
         openai_api_url (str): The OpenAI API endpoint.
-        openai_timeout_seconds (float): Timeout in seconds for the OpenAI request.
-        openai_max_tokens (int): Maximum number of tokens for the OpenAI request.
+        openai_timeout_seconds (float): Timeout in seconds for the OpenAI
+            request.
+        openai_max_tokens (int): Maximum number of tokens for the OpenAI
+            request.
         api_url (str): The Ollama API endpoint.
-        timeout_seconds (float): The timeout in seconds for the Ollama API request.
-        max_retries (int): The maximum number of retries for the Ollama API request.
-        backoff_seconds (float): The backoff time in seconds between retries.
+        timeout_seconds (float): Timeout in seconds for the Ollama request.
+        max_retries (int): Maximum number of retries for the Ollama request.
+        backoff_seconds (float): Backoff time in seconds between retries.
 
     Returns:
         str: The generated SITREP string.
@@ -67,7 +70,7 @@ def generate_sitrep(
     {git_state}
     - Recent Terminal Logs:
     {terminal_logs}
-    
+
     Generate a SITREP.
     """
 
@@ -112,7 +115,10 @@ def generate_sitrep(
         last_error = e
 
     if fallback_provider != "openai":
-        message = str(last_error) if last_error is not None else "Unknown error contacting Ollama"
+        if last_error is not None:
+            message = str(last_error)
+        else:
+            message = "Unknown error contacting Ollama"
         return f"Error generating SITREP: {message}"
 
     if require_confirmation:
@@ -120,7 +126,10 @@ def generate_sitrep(
 
     api_key = get_openai_api_key()
     if not api_key:
-        return "Error generating SITREP: OpenAI fallback requested but OPENAI_API_KEY not set"
+        return (
+            "Error generating SITREP: OpenAI fallback requested but "
+            "OPENAI_API_KEY not set"
+        )
 
     try:
         return generate_openai_chat(
