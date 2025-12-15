@@ -49,7 +49,7 @@ def test_ensure_session_exists_inside_tmux(mock_run, mock_which):
 @patch.dict(os.environ, {"TMUX": "something"}, clear=True)
 def test_detach_current(mock_run, mock_which):
     detach_current()
-    mock_run.assert_called_once_with(["tmux", "detach-client"])
+    mock_run.assert_called_once_with(["tmux", "detach-client"], timeout=2)
 
 @patch("shutil.which")
 @patch("subprocess.run")
