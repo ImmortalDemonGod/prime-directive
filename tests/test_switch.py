@@ -8,32 +8,46 @@ from datetime import datetime
 
 runner = CliRunner()
 
+
 @pytest.fixture
 def mock_config(tmp_path):
     log_file = tmp_path / "pd.log"
-    return OmegaConf.create({
-        "system": {
-            "editor_cmd": "code", 
-            "ai_model": "gpt-4", 
-            "ai_fallback_provider": "none",
-            "ai_fallback_model": "gpt-4o-mini",
-            "ai_require_confirmation": True,
-            "openai_api_url": "https://api.openai.com/v1/chat/completions",
-            "openai_timeout_seconds": 10.0,
-            "openai_max_tokens": 150,
-            "ollama_api_url": "http://localhost:11434/api/generate",
-            "ollama_timeout_seconds": 5.0,
-            "ollama_max_retries": 0,
-            "ollama_backoff_seconds": 0.0,
-            "db_path": ":memory:",
-            "log_path": str(log_file),
-            "mock_mode": False
-        },
-        "repos": {
-            "current-repo": {"id": "current-repo", "path": "/tmp/current-repo", "priority": 10, "active_branch": "main"},
-            "target-repo": {"id": "target-repo", "path": "/tmp/target-repo", "priority": 5, "active_branch": "dev"}
+    return OmegaConf.create(
+        {
+            "system": {
+                "editor_cmd": "code",
+                "ai_model": "gpt-4",
+                "ai_fallback_provider": "none",
+                "ai_fallback_model": "gpt-4o-mini",
+                "ai_require_confirmation": True,
+                "openai_api_url": "https://api.openai.com/v1/chat/completions",
+                "openai_timeout_seconds": 10.0,
+                "openai_max_tokens": 150,
+                "ollama_api_url": "http://localhost:11434/api/generate",
+                "ollama_timeout_seconds": 5.0,
+                "ollama_max_retries": 0,
+                "ollama_backoff_seconds": 0.0,
+                "db_path": ":memory:",
+                "log_path": str(log_file),
+                "mock_mode": False,
+            },
+            "repos": {
+                "current-repo": {
+                    "id": "current-repo",
+                    "path": "/tmp/current-repo",
+                    "priority": 10,
+                    "active_branch": "main",
+                },
+                "target-repo": {
+                    "id": "target-repo",
+                    "path": "/tmp/target-repo",
+                    "priority": 5,
+                    "active_branch": "dev",
+                },
+            },
         }
-    })
+    )
+
 
 @patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.run_switch")
@@ -41,7 +55,7 @@ def test_switch_command(mock_run_switch, mock_load, mock_config):
     mock_load.return_value = mock_config
 
     result = runner.invoke(app, ["switch", "target-repo"])
-    
+
     assert result.exit_code == 0
 
     mock_run_switch.assert_called_once()
@@ -66,6 +80,7 @@ def test_detect_current_repo_id_prefers_longest_prefix():
     }
     cwd = "/tmp/work/project/subdir"
     assert detect_current_repo_id(cwd, repos) == "inner"
+
 
 @patch("prime_directive.bin.pd.load_config")
 def test_switch_invalid_repo(mock_load, mock_config):
