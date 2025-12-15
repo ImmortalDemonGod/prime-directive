@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 from sqlmodel import select
 from datetime import datetime
-from prime_directive.core.db import Repository, ContextSnapshot, init_db, get_session, get_engine
+from prime_directive.core.db import Repository, ContextSnapshot, init_db, get_session, dispose_engine
 import os
 
 @pytest_asyncio.fixture
@@ -14,8 +14,7 @@ async def async_db_session(tmp_path):
         yield session
     
     # Cleanup (handled by tmp_path usually, but good practice if using engine explicitly)
-    engine = get_engine(str(db_path))
-    await engine.dispose()
+    await dispose_engine(str(db_path))
 
 @pytest.mark.asyncio
 async def test_repository_crud(async_db_session):
@@ -39,6 +38,15 @@ async def test_repository_crud(async_db_session):
 
 @pytest.mark.asyncio
 async def test_snapshot_creation(async_db_session):
+    repo = Repository(
+        id="test-repo",
+        path="/tmp/test",
+        priority=1,
+        active_branch="main",
+    )
+    async_db_session.add(repo)
+    await async_db_session.commit()
+
     snapshot = ContextSnapshot(
         repo_id="test-repo",
         timestamp=datetime.utcnow(),
@@ -59,3 +67,17 @@ async def test_snapshot_creation(async_db_session):
     assert fetched_snapshot is not None
     assert fetched_snapshot.git_status_summary == "clean"
     assert isinstance(fetched_snapshot.timestamp, datetime)
+
+@pytest.mark.asyncio
+async def test_snapshot_fk_enforced(async_db_session):
+    snapshot = ContextSnapshot(
+        repo_id="missing-repo",
+        timestamp=datetime.utcnow(),
+        git_status_summary="clean",
+        terminal_last_command="ls",
+        terminal_output_summary="file1 file2",
+        ai_sitrep="All good",
+    )
+    async_db_session.add(snapshot)
+    with pytest.raises(Exception):
+        await async_db_session.commit()
