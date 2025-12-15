@@ -1,113 +1,134 @@
-# How to develop on this project
+# Contributing to Prime Directive
 
-prime_directive welcomes contributions from the community.
+Prime Directive welcomes contributions from the community!
 
-**You need PYTHON3!**
+## Requirements
 
-This instructions are for linux base systems. (Linux, MacOS, BSD, etc.)
-## Setting up your own fork of this repo.
+- **Python 3.11+**
+- **uv** (recommended) or pip
+- **tmux** — For testing tmux integration
+- **Ollama** (optional) — For testing AI features locally
 
-- On github interface click on `Fork` button.
-- Clone your fork of this repo. `git clone git@github.com:YOUR_GIT_USERNAME/prime-directive.git`
-- Enter the directory `cd prime-directive`
-- Add upstream repo `git remote add upstream https://github.com/ImmortalDemonGod/prime-directive`
+## Getting Started
 
-## Setting up your own virtual environment
+### 1. Fork and Clone
 
-Run `make virtualenv` to create a virtual environment.
-then activate it with `source .venv/bin/activate`.
-
-## Install the project in develop mode
-
-Run `make install` to install the project in develop mode.
-
-## Run the tests to ensure everything is working
-
-Run `make test` to run the tests.
-
-## Create a new branch to work on your contribution
-
-Run `git checkout -b my_contribution`
-
-## Make your changes
-
-Edit the files using your preferred editor. (we recommend VIM or VSCode)
-
-## Format the code
-
-Run `make fmt` to format the code.
-
-## Run the linter
-
-Run `make lint` to run the linter.
-
-## Test your changes
-
-Run `make test` to run the tests.
-
-Ensure code coverage report shows `100%` coverage, add tests to your PR.
-
-## Build the docs locally
-
-Run `make docs` to build the docs.
-
-Ensure your new changes are documented.
-
-## Commit your changes
-
-This project uses [conventional git commit messages](https://www.conventionalcommits.org/en/v1.0.0/).
-
-Example: `fix(package): update setup.py arguments 🎉` (emojis are fine too)
-
-## Push your changes to your fork
-
-Run `git push origin my_contribution`
-
-## Submit a pull request
-
-On github interface, click on `Pull Request` button.
-
-Wait CI to run and one of the developers will review your PR.
-## Makefile utilities
-
-This project comes with a `Makefile` that contains a number of useful utility.
-
-```bash 
-❯ make
-Usage: make <target>
-
-Targets:
-help:             ## Show the help.
-install:          ## Install the project in dev mode.
-fmt:              ## Format code using black & isort.
-lint:             ## Run pep8, black, mypy linters.
-test: lint        ## Run tests and generate coverage report.
-watch:            ## Run tests on every change.
-clean:            ## Clean unused files.
-virtualenv:       ## Create a virtual environment.
-release:          ## Create a new tag for release.
-docs:             ## Build the documentation.
-switch-to-poetry: ## Switch to poetry package manager.
-init:             ## Initialize the project based on an application template.
+```bash
+# Fork via GitHub, then clone your fork
+git clone git@github.com:YOUR_USERNAME/prime-directive.git
+cd prime-directive
+git remote add upstream https://github.com/ImmortalDemonGod/prime-directive
 ```
 
-## Making a new release
+### 2. Set Up Development Environment
 
-This project uses [semantic versioning](https://semver.org/) and tags releases with `X.Y.Z`
-Every time a new tag is created and pushed to the remote repo, github actions will
-automatically create a new release on github and trigger a release on PyPI.
+```bash
+# Using uv (recommended)
+uv venv
+source .venv/bin/activate
+uv pip install -e ".[dev]"
 
-For this to work you need to setup a secret called `PIPY_API_TOKEN` on the project settings>secrets, 
-this token can be generated on [pypi.org](https://pypi.org/account/).
+# Or using make
+make virtualenv
+source .venv/bin/activate
+make install
+```
 
-To trigger a new release all you need to do is.
+### 3. Verify Setup
 
-1. If you have changes to add to the repo
-    * Make your changes following the steps described above.
-    * Commit your changes following the [conventional git commit messages](https://www.conventionalcommits.org/en/v1.0.0/).
-2. Run the tests to ensure everything is working.
-4. Run `make release` to create a new tag and push it to the remote repo.
+```bash
+# Run tests
+pytest
 
-the `make release` will ask you the version number to create the tag, ex: type `0.1.1` when you are asked.
+# Check linting
+make lint
 
-> **CAUTION**:  The make release will change local changelog files and commit all the unstaged changes you have.
+# Run the CLI
+pd doctor
+```
+
+## Development Workflow
+
+### Create a Feature Branch
+
+```bash
+git checkout -b feature/my-contribution
+```
+
+### Make Changes
+
+- Follow existing code patterns and style
+- Add tests for new functionality
+- Update documentation as needed
+
+### Run Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=prime_directive
+
+# Run specific test file
+pytest tests/test_cli.py -v
+```
+
+### Format and Lint
+
+```bash
+# Format code
+make fmt
+
+# Run linters
+make lint
+```
+
+### Commit Changes
+
+This project uses [conventional commits](https://www.conventionalcommits.org/):
+
+```bash
+git commit -m "feat(cli): add new status command"
+git commit -m "fix(db): resolve async session leak"
+git commit -m "docs: update installation instructions"
+```
+
+### Submit Pull Request
+
+```bash
+git push origin feature/my-contribution
+```
+
+Then open a PR on GitHub. CI will run automatically.
+
+## Project Structure
+
+```
+prime_directive/
+├── bin/           # CLI entry points
+├── core/          # Core modules
+├── conf/          # Hydra configuration
+└── system/        # Shell integration
+
+tests/             # pytest test suite
+docs/              # Documentation
+```
+
+## Code Style
+
+- Use type hints for all functions
+- Follow PEP 8 guidelines
+- Use async/await for database operations
+- Keep functions focused and testable
+
+## Testing Guidelines
+
+- Write tests for all new functionality
+- Use `pytest` fixtures for common setup
+- Mock external dependencies (Ollama, file system, subprocess)
+- Test both success and error paths
+
+## Questions?
+
+Open an issue on GitHub for questions or discussion.
