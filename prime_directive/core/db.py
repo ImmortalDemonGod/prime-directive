@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict
 from sqlmodel import SQLModel, Field, Relationship
 from sqlalchemy import Index, event
@@ -18,7 +18,7 @@ class Repository(SQLModel, table=True):
 class ContextSnapshot(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     repo_id: str = Field(foreign_key="repository.id", index=True)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     git_status_summary: str
     terminal_last_command: str
     terminal_output_summary: str
@@ -55,7 +55,7 @@ def get_engine(db_path: str = "data/prime.db"):
     )
 
     @event.listens_for(engine.sync_engine, "connect")
-    def _set_sqlite_pragma(dbapi_connection, connection_record):
+    def _set_sqlite_pragma(dbapi_connection, _connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         cursor.close()
