@@ -62,6 +62,19 @@ class EventLog(SQLModel, table=True):  # type: ignore[call-arg]
     event_type: EventType = Field(index=True)
 
 
+class AIUsageLog(SQLModel, table=True):  # type: ignore[call-arg]
+    """Track AI provider usage for budget enforcement."""
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=_utcnow, index=True)
+    provider: str = Field(index=True)  # "ollama" or "openai"
+    model: str
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    cost_estimate_usd: float = Field(default=0.0)
+    success: bool = Field(default=True)
+    repo_id: Optional[str] = Field(default=None)
+
+
 # Database Connection
 # We will use a function to initialize the engine to allow for configuration
 _engine_lock = threading.Lock()
