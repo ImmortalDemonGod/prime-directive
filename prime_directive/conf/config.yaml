@@ -3,6 +3,7 @@ system:
   editor_args:
     - -n
   ai_model: gpt-4o-mini
+  ai_model_hq: gpt-4o  # High-quality model for --hq freezes
   ai_provider: openai
   ai_fallback_provider: none
   ai_fallback_model: gpt-4o-mini
