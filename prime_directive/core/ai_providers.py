@@ -55,7 +55,7 @@ async def get_monthly_usage(db_path: str) -> Tuple[float, int]:
         stmt = (
             select(
                 func.coalesce(func.sum(cost_col), 0.0),
-                func.count(AIUsageLog.id),
+                func.count(1),
             )
             .where(ts_col >= month_start)
             .where(provider_col == "openai")  # Only track paid provider
