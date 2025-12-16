@@ -732,7 +732,7 @@
           17,
           19
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -740,7 +740,7 @@
             "description": "Create an integration test harness that operates in mock mode to simulate the end-to-end workflow without external dependencies.",
             "dependencies": [],
             "details": "Develop a test harness that can simulate the entire workflow in a controlled environment. Ensure it can mock external services and dependencies to allow for isolated testing.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify the harness can run basic workflow simulations without real external service calls."
           },
           {
@@ -751,7 +751,7 @@
               1
             ],
             "details": "Write tests that execute the freeze and switch operations, ensuring that the system behaves as expected through the entire workflow.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the tests in the mock mode harness and verify that the operations complete successfully without errors."
           },
           {
@@ -762,7 +762,7 @@
               1
             ],
             "details": "Introduce a failure in the mock mode to simulate Ollama being down and observe how the system handles the failure.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Check that the system continues to operate with reduced functionality and logs appropriate error messages."
           },
           {
@@ -771,7 +771,7 @@
             "description": "Enhance existing git parsing tests to cover scenarios involving file renames, copies, and merge conflicts.",
             "dependencies": [],
             "details": "Add test cases to the git parsing suite that specifically address the handling of renames, copies, and conflicts in git repositories.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the extended test suite and ensure all new scenarios are correctly parsed and handled."
           },
           {
@@ -782,7 +782,7 @@
               4
             ],
             "details": "Use a property-based testing framework like Hypothesis to generate a wide range of inputs and validate the parsing logic against them.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify that the parsing logic handles all generated inputs without errors or unexpected behavior."
           },
           {
@@ -795,7 +795,7 @@
               3
             ],
             "details": "Write detailed documentation explaining the purpose, setup, and execution of the integration and chaos tests, including any mock configurations.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Review the documentation for completeness and clarity, ensuring it can be followed by other developers."
           },
           {
@@ -809,7 +809,7 @@
               5
             ],
             "details": "Modify the CI configuration to include the new integration, chaos, and parsing tests, ensuring they run in a CI-safe environment.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Trigger the CI pipeline and verify that all tests execute successfully and report results as expected."
           }
         ]
@@ -838,7 +838,7 @@
           6,
           22
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": []
       },
       {
@@ -852,7 +852,7 @@
           3,
           23
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -860,7 +860,7 @@
             "description": "Create a schema for an SQLite table to track AI fallback usage, including fields for provider, timestamp, token counts, cost estimates, and outcome.",
             "dependencies": [],
             "details": "Design a table with columns: id (primary key), provider (text), timestamp (datetime), token_count (integer), cost_estimate (real), and outcome (text). Ensure the table can efficiently handle queries for monthly aggregation.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify the table creation with a migration script and check that all fields are correctly set up."
           },
           {
@@ -871,7 +871,7 @@
               1
             ],
             "details": "Modify the provider manager to insert a new record into the SQLite table each time an AI fallback is triggered. Ensure all relevant data is captured accurately.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Simulate AI fallback usage and verify that records are correctly inserted into the database."
           },
           {
@@ -882,7 +882,7 @@
               2
             ],
             "details": "Implement a query that sums token counts and cost estimates for the current month, grouped by provider. Ensure the function can be called to retrieve these aggregates efficiently.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Test the aggregation function with sample data to ensure it returns correct monthly totals."
           },
           {
@@ -893,7 +893,7 @@
               3
             ],
             "details": "Define budget limits and implement checks in the provider manager to compare current usage against these limits. Trigger alerts or block further usage if limits are exceeded.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Set a budget limit and simulate usage to test that the system correctly enforces the limit and prevents overuse."
           },
           {
@@ -904,7 +904,7 @@
               3
             ],
             "details": "Develop a command (e.g., 'pd ai-usage') that retrieves and displays aggregated usage data for the current month. Include details such as total tokens used and cost estimates.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run the CLI command and verify that it outputs accurate and complete usage data."
           },
           {
@@ -919,7 +919,7 @@
               5
             ],
             "details": "Write unit and integration tests for each component: schema setup, logging, aggregation, budget checks, and CLI reporting. Use mock data to simulate various scenarios.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Execute the test suite to confirm that all components function correctly and handle edge cases as expected."
           }
         ]
@@ -1208,7 +1208,7 @@
     ],
     "metadata": {
       "created": "2025-12-15T00:38:44.382Z",
-      "updated": "2025-12-16T01:38:01.165Z",
+      "updated": "2025-12-16T01:49:18.045Z",
       "description": "Tasks for master context"
     }
   }
