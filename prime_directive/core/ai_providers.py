@@ -42,16 +42,16 @@ async def get_monthly_usage(db_path: str) -> Tuple[float, int]:
     from typing import cast, Any
 
     await init_db(db_path)
-    
+
     # Get first day of current month
     now = datetime.now(timezone.utc)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    
+
     async for session in get_session(db_path):
         ts_col = cast(Any, AIUsageLog.timestamp)
         provider_col = cast(Any, AIUsageLog.provider)
         cost_col = cast(Any, AIUsageLog.cost_estimate_usd)
-        
+
         stmt = (
             select(
                 func.coalesce(func.sum(cost_col), 0.0),
@@ -63,7 +63,7 @@ async def get_monthly_usage(db_path: str) -> Tuple[float, int]:
         result = await session.execute(stmt)
         row = result.one()
         return float(row[0]), int(row[1])
-    
+
     return 0.0, 0
 
 
@@ -73,7 +73,11 @@ async def check_budget(
 ) -> Tuple[bool, float, float]:
     """Check if within budget. Returns (within_budget, current_usage, budget)."""
     current_usage, _ = await get_monthly_usage(db_path)
-    return current_usage < monthly_budget_usd, current_usage, monthly_budget_usd
+    return (
+        current_usage < monthly_budget_usd,
+        current_usage,
+        monthly_budget_usd,
+    )
 
 
 def estimate_cost(output_tokens: int, cost_per_1k: float = 0.002) -> float:
