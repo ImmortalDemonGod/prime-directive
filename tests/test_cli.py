@@ -178,6 +178,57 @@ def test_install_hooks_creates_post_commit(mock_load, tmp_path, mock_config):
 
 
 @patch("prime_directive.bin.pd.load_config")
+def test_install_hooks_missing_git_dir_exits_1(
+    mock_load,
+    tmp_path,
+    mock_config,
+):
+    repo_path = tmp_path / "repo1"
+    repo_path.mkdir(parents=True)
+
+    conf_dict = OmegaConf.to_container(mock_config, resolve=True)
+    conf_dict["repos"]["repo1"]["path"] = str(repo_path)
+    cfg = OmegaConf.create(conf_dict)
+    mock_load.return_value = cfg
+
+    result = runner.invoke(app, ["install-hooks", "repo1"])
+    assert result.exit_code == 1
+    assert "missing .git" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_install_hooks_permission_denied_exits_1(
+    mock_load,
+    tmp_path,
+    mock_config,
+    monkeypatch,
+):
+    repo_path = tmp_path / "repo1"
+    hooks_dir = repo_path / ".git" / "hooks"
+    hooks_dir.mkdir(parents=True)
+
+    conf_dict = OmegaConf.to_container(mock_config, resolve=True)
+    conf_dict["repos"]["repo1"]["path"] = str(repo_path)
+    cfg = OmegaConf.create(conf_dict)
+    mock_load.return_value = cfg
+
+    import builtins
+
+    real_open = builtins.open
+
+    def open_side_effect(path, *args, **kwargs):
+        if str(path).endswith("post-commit"):
+            raise PermissionError("permission denied")
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", open_side_effect)
+
+    result = runner.invoke(app, ["install-hooks", "repo1"])
+    assert result.exit_code == 1
+    assert "failed to install post-commit hook" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session")
 @patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
