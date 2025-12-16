@@ -91,6 +91,7 @@ async def freeze_logic(
     human_blocker: Optional[str] = None,
     human_next_step: Optional[str] = None,
     skip_terminal_capture: bool = False,
+    use_hq_model: bool = False,
 ):
     """Core freeze logic separated for reuse (Async)."""
     if repo_id not in config.repos:
@@ -162,8 +163,8 @@ async def freeze_logic(
             human_blocker=human_blocker,
             human_next_step=human_next_step,
             human_note=human_note,
-            model=config.system.ai_model,
-            provider=config.system.ai_provider,
+            model=getattr(config.system, 'ai_model_hq', config.system.ai_model) if use_hq_model else config.system.ai_model,
+            provider="openai" if use_hq_model else config.system.ai_provider,
             fallback_provider=config.system.ai_fallback_provider,
             fallback_model=config.system.ai_fallback_model,
             require_confirmation=config.system.ai_require_confirmation,
@@ -264,6 +265,11 @@ def freeze(
         "--no-interview",
         help="Disable interactive interview prompts",
     ),
+    hq: bool = typer.Option(
+        False,
+        "--hq",
+        help="Use high-quality AI model (more expensive, better results)",
+    ),
 ):
     """
     Snapshot the current state of a repository (Git, Terminal, Task) and
@@ -322,6 +328,7 @@ def freeze(
                 human_objective=objective,
                 human_blocker=blocker,
                 human_next_step=next_step,
+                use_hq_model=hq,
             )
         except ValueError:
             raise typer.Exit(code=1) from None
@@ -625,6 +632,147 @@ def status_command():
 
     asyncio.run(run_status())
     console.print(table)
+
+
+@app.command("sitrep")
+def sitrep(
+    repo_id: str,
+    deep_dive: bool = typer.Option(
+        False,
+        "--deep-dive",
+        help="Generate longitudinal summary from historical snapshots using HQ model",
+    ),
+    limit: int = typer.Option(
+        5,
+        "--limit",
+        "-l",
+        help="Number of historical snapshots to include (default: 5)",
+    ),
+):
+    """
+    Display or generate a SITREP for a repository.
+
+    With --deep-dive: Retrieves historical snapshots and generates a
+    comprehensive longitudinal summary using the high-quality AI model.
+    """
+    logger.info(f"Command: sitrep {repo_id} (deep_dive={deep_dive})")
+    cfg = load_config()
+    setup_logging(cfg.system.log_path)
+
+    if repo_id not in cfg.repos:
+        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found.")
+        raise typer.Exit(code=1)
+
+    async def run_sitrep():
+        await init_db(cfg.system.db_path)
+        try:
+            async for session in get_session(cfg.system.db_path):
+                repo_id_col = cast(Any, ContextSnapshot.repo_id)
+                ts_col = cast(Any, ContextSnapshot.timestamp)
+                stmt = (
+                    select(ContextSnapshot)
+                    .where(repo_id_col == repo_id)
+                    .order_by(ts_col.desc())
+                    .limit(limit)
+                )
+                result = await session.execute(stmt)
+                snapshots = list(result.scalars().all())
+
+                if not snapshots:
+                    console.print(f"[yellow]No snapshots found for {repo_id}[/yellow]")
+                    return
+
+                if not deep_dive:
+                    # Just show the latest snapshot
+                    latest = snapshots[0]
+                    console.print(f"\n[bold reverse] SITREP for {repo_id} [/bold reverse]")
+                    console.print(f"[bold yellow]Timestamp:[/bold yellow] {latest.timestamp}")
+                    if latest.human_objective:
+                        console.print(f"[bold magenta]Objective:[/bold magenta] {latest.human_objective}")
+                    if latest.human_blocker:
+                        console.print(f"[bold magenta]Blocker:[/bold magenta] {latest.human_blocker}")
+                    if latest.human_next_step:
+                        console.print(f"[bold magenta]Next Step:[/bold magenta] {latest.human_next_step}")
+                    if latest.human_note:
+                        console.print(f"[bold magenta]Note:[/bold magenta] {latest.human_note}")
+                    console.print(f"[bold cyan]AI Summary:[/bold cyan] {latest.ai_sitrep}")
+                    return
+
+                # Deep dive: compile historical narrative
+                console.print(f"[bold blue]Generating deep-dive analysis for {repo_id}...[/bold blue]")
+                console.print(f"[dim]Analyzing {len(snapshots)} historical snapshots...[/dim]")
+
+                # Build historical narrative
+                history_entries = []
+                for i, snap in enumerate(reversed(snapshots)):  # oldest first
+                    entry = f"--- Snapshot {i+1} ({snap.timestamp}) ---\n"
+                    if snap.human_objective:
+                        entry += f"Objective: {snap.human_objective}\n"
+                    if snap.human_blocker:
+                        entry += f"Blocker: {snap.human_blocker}\n"
+                    if snap.human_next_step:
+                        entry += f"Next Step: {snap.human_next_step}\n"
+                    if snap.human_note:
+                        entry += f"Notes: {snap.human_note}\n"
+                    entry += f"AI Summary: {snap.ai_sitrep}\n"
+                    entry += f"Git State: {snap.git_status_summary}\n"
+                    history_entries.append(entry)
+
+                historical_narrative = "\n".join(history_entries)
+
+                # Generate longitudinal summary using HQ model
+                from prime_directive.core.ai_providers import (
+                    generate_openai_chat,
+                    get_openai_api_key,
+                )
+
+                api_key = get_openai_api_key()
+                if not api_key:
+                    console.print("[bold red]Error:[/bold red] OPENAI_API_KEY not set (required for deep-dive)")
+                    return
+
+                system_prompt = (
+                    "You are a senior engineering assistant analyzing a developer's work history. "
+                    "Given a series of timestamped context snapshots, generate a comprehensive "
+                    "longitudinal summary that: 1) Identifies the overarching goals, "
+                    "2) Highlights what approaches were tried and failed, "
+                    "3) Notes key blockers and uncertainties, "
+                    "4) Recommends the immediate next action based on the trajectory. "
+                    "Be specific and actionable. Max 200 words."
+                )
+
+                prompt = f"""
+Repository: {repo_id}
+Number of snapshots: {len(snapshots)}
+Time span: {snapshots[-1].timestamp} to {snapshots[0].timestamp}
+
+Historical Context (oldest to newest):
+{historical_narrative}
+
+Generate a longitudinal SITREP that helps the developer resume work effectively.
+"""
+
+                hq_model = getattr(cfg.system, 'ai_model_hq', 'gpt-4o')
+                try:
+                    summary = await generate_openai_chat(
+                        api_url=cfg.system.openai_api_url,
+                        api_key=api_key,
+                        model=hq_model,
+                        system=system_prompt,
+                        prompt=prompt,
+                        timeout_seconds=30.0,
+                        max_tokens=500,
+                    )
+
+                    console.print(f"\n[bold reverse] DEEP-DIVE SITREP for {repo_id} [/bold reverse]")
+                    console.print(f"[dim]Based on {len(snapshots)} snapshots from {snapshots[-1].timestamp} to {snapshots[0].timestamp}[/dim]")
+                    console.print(f"\n[bold cyan]{summary}[/bold cyan]")
+                except Exception as e:
+                    console.print(f"[bold red]Error generating deep-dive:[/bold red] {e}")
+        finally:
+            await dispose_engine()
+
+    asyncio.run(run_sitrep())
 
 
 @app.command("doctor")
