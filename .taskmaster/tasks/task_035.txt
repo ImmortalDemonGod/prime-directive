@@ -1,0 +1,14 @@
+# Task ID: 35
+# Title: Enable WAL Mode for SQLite Database
+# Status: pending
+# Dependencies: 3
+# Priority: low
+# Description: Modify core/db.py to set SQLite journal mode to WAL (Write-Ahead Logging) instead of DELETE.
+# Details:
+To enable WAL mode for the SQLite database, modify the database connection setup in core/db.py. Add the SQL command `PRAGMA journal_mode=WAL;` immediately after establishing a connection to the SQLite database. This change will help prevent database locking issues when the daemon and CLI access the database concurrently. Ensure that the connection is properly closed after operations to maintain database integrity. Review the SQLite documentation on WAL mode to understand its benefits and limitations, such as increased disk space usage and potential performance impacts.
+
+# Test Strategy:
+1. Modify the existing database connection tests in tests/test_db.py to verify that the journal mode is set to WAL. 
+2. Use a test database and execute a connection setup, then query `PRAGMA journal_mode;` to confirm it returns 'wal'. 
+3. Conduct concurrent read/write operations from both the daemon and CLI to ensure no locking issues occur. 
+4. Verify that the database integrity is maintained after multiple concurrent operations.

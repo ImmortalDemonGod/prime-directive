@@ -1,0 +1,15 @@
+# Task ID: 30
+# Title: Implement Interactive Freeze Protocol
+# Status: pending
+# Dependencies: 6, 7, 12
+# Priority: high
+# Description: Refactor the pd freeze command to initiate an interactive interview process instead of using a single --note flag.
+# Details:
+Refactor the existing pd freeze command to default to an interactive multi-question interview. This interview will replace the current --note flag and will consist of the following questions: 1) What is the primary objective of this session? 2) What didn't work or what is the key uncertainty? 3) What is the next concrete action? 4) Optional: Any additional notes or brain dump. Update the ContextSnapshot schema in core/db.py to include new structured fields: human_objective, human_blocker, human_next_step. Ensure that the responses to these questions are stored in the database in a structured format to improve the quality of AI-generated SITREPs. Consider user experience and ensure the interview is user-friendly and intuitive.
+
+# Test Strategy:
+1. Run the pd freeze command and verify that the interactive interview is initiated.
+2. Answer each question in the interview and complete the process.
+3. Check the database to ensure that the responses are stored correctly in the new structured fields: human_objective, human_blocker, human_next_step.
+4. Verify that the AI-generated SITREP uses the new structured data fields to produce a coherent summary.
+5. Conduct user testing to ensure the interview process is intuitive and user-friendly.

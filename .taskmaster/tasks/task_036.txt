@@ -1,0 +1,11 @@
+# Task ID: 36
+# Title: Remove Dead Configuration Code
+# Status: pending
+# Dependencies: 20
+# Priority: low
+# Description: Delete the unused core/registry.py, system/registry.yaml, and tests/test_registry.py files to finalize the configuration unification.
+# Details:
+To complete the configuration unification, remove the following files: core/registry.py, system/registry.yaml, and tests/test_registry.py. These files are remnants of the old configuration system and are no longer needed since Hydra is now the active configuration system. Before deleting these files, conduct a thorough search across the codebase to ensure no other parts of the system depend on them. Use tools like 'grep' or IDE search functionalities to confirm that there are no references to these files. Once confirmed, safely delete the files and commit the changes.
+
+# Test Strategy:
+1. Use a code search tool to verify that there are no references to core/registry.py, system/registry.yaml, and tests/test_registry.py in the codebase. 2. After deletion, run the full test suite to ensure no tests fail due to missing files. 3. Manually inspect the configuration setup to confirm that Hydra is functioning as expected without the deleted files.

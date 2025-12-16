@@ -7,7 +7,9 @@ from hydra.core.config_store import ConfigStore
 @dataclass
 class SystemConfig:
     editor_cmd: str = "windsurf"
+    editor_args: list[str] = field(default_factory=lambda: ["-n"])
     ai_model: str = "qwen2.5-coder"
+    ai_model_hq: str = "gpt-4o"  # High-quality model for important freezes
     ai_provider: str = "ollama"
     ai_fallback_provider: str = "none"
     ai_fallback_model: str = "gpt-4o-mini"
@@ -19,6 +21,10 @@ class SystemConfig:
     ollama_timeout_seconds: float = 5.0
     ollama_max_retries: int = 2
     ollama_backoff_seconds: float = 0.5
+    ai_monthly_budget_usd: float = 10.0
+    # Monthly budget for paid AI providers
+    ai_cost_per_1k_tokens: float = 0.002
+    # Estimated cost per 1K tokens (output)
     db_path: str = "data/prime.db"
     log_path: str = "data/logs/pd.log"
     mock_mode: bool = False

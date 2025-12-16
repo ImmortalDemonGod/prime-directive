@@ -1,6 +1,9 @@
 system:
   editor_cmd: windsurf
+  editor_args:
+    - -n
   ai_model: gpt-4o-mini
+  ai_model_hq: gpt-4o  # High-quality model for --hq freezes
   ai_provider: openai
   ai_fallback_provider: none
   ai_fallback_model: gpt-4o-mini
@@ -12,6 +15,8 @@ system:
   ollama_timeout_seconds: 5.0
   ollama_max_retries: 2
   ollama_backoff_seconds: 0.5
+  ai_monthly_budget_usd: 10.0  # Monthly budget for paid AI (OpenAI)
+  ai_cost_per_1k_tokens: 0.002  # Estimated cost per 1K output tokens
   db_path: ~/.prime-directive/data/prime.db
   log_path: ~/.prime-directive/logs/pd.log
   mock_mode: false

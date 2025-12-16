@@ -1,0 +1,11 @@
+# Task ID: 33
+# Title: Implement Longitudinal SITREP with Deep-Dive Command
+# Status: pending
+# Dependencies: 11, 30, 34
+# Priority: medium
+# Description: Develop a new command 'pd sitrep --deep-dive <repo_id>' to generate a longitudinal summary from historical ContextSnapshot records.
+# Details:
+Create a new command in the CLI tool, 'pd sitrep --deep-dive <repo_id>', which retrieves the last 3-5 ContextSnapshot records from the database. These records should include structured human notes (objective, blocker, next_step) and previous AI summaries. Compile these into a historical narrative and send it to the ai_model_hq for processing. The AI model should generate a detailed longitudinal summary that outlines the problems being addressed, failed approaches, and recommended next steps. This feature is designed to address the cold start problem after long absences by providing a comprehensive overview of past activities and insights. Ensure integration with the interactive freeze protocol and tiered AI model support for seamless operation.
+
+# Test Strategy:
+1. Create mock ContextSnapshot records in the database with varying objectives, blockers, and next steps. 2. Execute 'pd sitrep --deep-dive <repo_id>' and verify that the command retrieves the correct records. 3. Check that the compiled narrative is correctly formatted and sent to ai_model_hq. 4. Validate that the AI-generated summary accurately reflects the historical context and provides actionable next steps. 5. Test the command with different AI model configurations to ensure compatibility with tiered AI model support.

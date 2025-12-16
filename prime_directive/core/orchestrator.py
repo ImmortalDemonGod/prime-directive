@@ -5,7 +5,7 @@ import asyncio
 
 from sqlalchemy import select
 
-from prime_directive.core.db import ContextSnapshot
+from prime_directive.core.db import ContextSnapshot, EventLog, EventType
 
 
 def _is_path_prefix(prefix: str, path: str) -> bool:
@@ -48,7 +48,7 @@ async def switch_logic(
     cwd: str,
     freeze_fn: Callable[[str, Any], Any],
     ensure_session_fn: Callable[..., Any],
-    launch_editor_fn: Callable[[str, str], Any],
+    launch_editor_fn: Callable[[str, str, list[str]], Any],
     init_db_fn: Callable[[str], Any],
     get_session_fn: Callable[[str], Any],
     dispose_engine_fn: Callable[..., Any],
@@ -84,10 +84,19 @@ async def switch_logic(
             logger.info(f"MOCK MODE: launch_editor({target_path})")
         else:
             ensure_session_fn(target_repo_id, target_path, attach=False)
-            launch_editor_fn(target_path, cfg.system.editor_cmd)
+            editor_args = getattr(cfg.system, "editor_args", ["-n"])
+            launch_editor_fn(target_path, cfg.system.editor_cmd, editor_args)
 
         await init_db_fn(cfg.system.db_path)
         async for session in get_session_fn(cfg.system.db_path):
+            session.add(
+                EventLog(
+                    repo_id=target_repo_id,
+                    event_type=EventType.SWITCH_IN,
+                )
+            )
+            await session.commit()
+
             repo_id_col = cast(Any, ContextSnapshot.repo_id)
             ts_col = cast(Any, ContextSnapshot.timestamp)
             stmt = (
@@ -127,13 +136,13 @@ def run_switch(
     cwd: str,
     freeze_fn: Callable[[str, Any], Any],
     ensure_session_fn: Callable[..., Any],
-    launch_editor_fn: Callable[[str, str], Any],
+    launch_editor_fn: Callable[[str, str, list[str]], Any],
     init_db_fn: Callable[[str], Any],
     get_session_fn: Callable[[str], Any],
     dispose_engine_fn: Callable[..., Any],
     console: Any,
     logger: logging.Logger,
-) -> None:
+) -> bool:
 
     asyncio.run(
         switch_logic(
@@ -152,5 +161,6 @@ def run_switch(
     )
 
     if (not cfg.system.mock_mode) and (not os.environ.get("TMUX")):
-        target_path = cfg.repos[target_repo_id].path
-        ensure_session_fn(target_repo_id, target_path)
+        return True
+
+    return False

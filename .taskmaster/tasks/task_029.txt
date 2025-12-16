@@ -1,0 +1,17 @@
+# Task ID: 29
+# Title: Fix Daemon Context Awareness for IDE Environments
+# Status: pending
+# Dependencies: 7, 14, 28
+# Priority: medium
+# Description: Improve the daemon's context awareness by checking for tmux sessions and IDE environments, and provide alternative context capture methods.
+# Details:
+1. Modify `pd_daemon.py` to check if a tmux session exists and has active clients before attempting to capture terminal output. Use `subprocess.run(['tmux', 'has-session', '-t', session_name])` to verify session existence and `tmux list-clients` to check for active clients.
+2. If no tmux session is found or no active clients are present, skip terminal capture and log a warning instead of returning ghost data.
+3. Detect IDE environments by checking the `TERM_PROGRAM` and `VSCODE` environment variables. If detected, adjust the daemon's behavior to avoid tmux assumptions.
+4. Implement alternative context capture methods for IDE environments, such as capturing the last command from the integrated terminal or using IDE-specific APIs if available.
+
+# Test Strategy:
+1. Test in a tmux environment: Ensure that the daemon correctly identifies active tmux sessions and captures terminal output only when sessions are valid.
+2. Test in an IDE environment (e.g., VS Code): Verify that the daemon detects the IDE environment using environment variables and skips tmux-specific operations.
+3. Simulate absence of tmux sessions: Confirm that the daemon logs a warning and does not attempt to capture terminal output.
+4. Check alternative context capture: In an IDE, ensure that the daemon captures the last command or relevant context from the IDE terminal.

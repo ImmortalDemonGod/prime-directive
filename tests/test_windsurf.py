@@ -25,6 +25,18 @@ def test_launch_editor_custom_cmd(mock_popen, mock_which):
 
 @patch("shutil.which")
 @patch("subprocess.Popen")
+def test_launch_editor_custom_args(mock_popen, mock_which):
+    mock_which.return_value = "/usr/bin/code"
+
+    launch_editor("/path/to/repo", "code", ["--reuse-window"])
+
+    mock_popen.assert_called_once_with(
+        ["code", "--reuse-window", "/path/to/repo"]
+    )
+
+
+@patch("shutil.which")
+@patch("subprocess.Popen")
 def test_launch_editor_not_found(mock_popen, mock_which):
     mock_which.return_value = None
 

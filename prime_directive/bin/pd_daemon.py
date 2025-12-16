@@ -1,6 +1,8 @@
 import time
 import os
 import typer
+import subprocess
+import shutil
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from rich.console import Console
@@ -11,6 +13,54 @@ from prime_directive.core.db import dispose_engine
 
 app = typer.Typer()
 console = Console()
+
+
+def _is_ide_environment() -> bool:
+    term_program = (os.environ.get("TERM_PROGRAM") or "").lower()
+    if os.environ.get("VSCODE"):
+        return True
+    if "vscode" in term_program or "windsurf" in term_program:
+        return True
+    return False
+
+
+def _tmux_session_has_active_clients(session_name: str) -> bool:
+    if not shutil.which("tmux"):
+        return False
+
+    try:
+        result = subprocess.run(
+            ["tmux", "has-session", "-t", session_name],
+            capture_output=True,
+            timeout=2,
+        )
+    except subprocess.TimeoutExpired:
+        return False
+
+    if result.returncode != 0:
+        return False
+
+    try:
+        clients = subprocess.run(
+            ["tmux", "list-clients", "-t", session_name],
+            capture_output=True,
+            timeout=2,
+        )
+    except subprocess.TimeoutExpired:
+        return False
+
+    if clients.returncode != 0:
+        return False
+
+    return bool(clients.stdout.strip())
+
+
+def _should_skip_terminal_capture(repo_id: str) -> bool:
+    if _is_ide_environment():
+        return True
+
+    session_name = f"pd-{repo_id}"
+    return not _tmux_session_has_active_clients(session_name)
 
 
 class AutoFreezeHandler(FileSystemEventHandler):
@@ -69,7 +119,16 @@ def main(
 
     async def run_freeze(repo_id, cfg):
         try:
-            await freeze_logic(repo_id, cfg)
+            skip_terminal_capture = _should_skip_terminal_capture(repo_id)
+            if skip_terminal_capture:
+                console.print(
+                    f"[yellow]Skipping terminal capture for {repo_id}[/yellow]"
+                )
+            await freeze_logic(
+                repo_id,
+                cfg,
+                skip_terminal_capture=skip_terminal_capture,
+            )
         finally:
             await dispose_engine()
 

@@ -33,6 +33,7 @@ jobs:
 
   tests_linux:
     needs: linter
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -49,12 +50,16 @@ jobs:
       - name: Run tests
         run: make test
       - name: "Upload coverage to Codecov"
-        uses: codecov/codecov-action@v5
-        # with:
-        #   fail_ci_if_error: true
+        uses: codecov/codecov-action@v4
+        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
+        continue-on-error: true
+        with:
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   tests_mac:
     needs: linter
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -73,6 +78,7 @@ jobs:
 
   tests_win:
     needs: linter
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:

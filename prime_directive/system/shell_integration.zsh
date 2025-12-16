@@ -5,7 +5,23 @@
 # alias pd="uv run pd" # Uncomment if not installed globally
 
 pd() {
+    local subcmd="$1"
+    local target_repo_id="$2"
+
     command pd "$@"
+    local rc=$?
+
+    if [[ "$subcmd" == "switch" && $rc -eq 88 ]]; then
+        local session_name="pd-${target_repo_id}"
+        if [[ -n "$TMUX" ]]; then
+            tmux switch-client -t "$session_name"
+        else
+            tmux attach-session -t "$session_name"
+        fi
+        return $?
+    fi
+
+    return $rc
 }
 
 # Hooks into directory changes to detect Prime Directive repositories

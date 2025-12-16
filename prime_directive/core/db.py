@@ -1,6 +1,7 @@
 import os
 import threading
 from datetime import datetime, timezone
+from enum import Enum
 from typing import Optional, Dict, AsyncGenerator
 
 from sqlmodel import SQLModel, Field, Relationship
@@ -38,12 +39,41 @@ class ContextSnapshot(SQLModel, table=True):  # type: ignore[call-arg]
     terminal_output_summary: str
     ai_sitrep: str
     human_note: Optional[str] = Field(default=None)
+    human_objective: Optional[str] = Field(default=None)
+    human_blocker: Optional[str] = Field(default=None)
+    human_next_step: Optional[str] = Field(default=None)
 
     repo: Optional[Repository] = Relationship(back_populates="snapshots")
 
     __table_args__ = (
         Index("ix_contextsnapshot_repo_id_timestamp", "repo_id", "timestamp"),
     )
+
+
+class EventType(str, Enum):
+    SWITCH_IN = "SWITCH_IN"
+    COMMIT = "COMMIT"
+
+
+class EventLog(SQLModel, table=True):  # type: ignore[call-arg]
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=_utcnow)
+    repo_id: str = Field(index=True)
+    event_type: EventType = Field(index=True)
+
+
+class AIUsageLog(SQLModel, table=True):  # type: ignore[call-arg]
+    """Track AI provider usage for budget enforcement."""
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    timestamp: datetime = Field(default_factory=_utcnow, index=True)
+    provider: str = Field(index=True)  # "ollama" or "openai"
+    model: str
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    cost_estimate_usd: float = Field(default=0.0)
+    success: bool = Field(default=True)
+    repo_id: Optional[str] = Field(default=None)
 
 
 # Database Connection
@@ -83,6 +113,7 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
         def _set_sqlite_pragma(dbapi_connection, _connection_record):
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.execute("PRAGMA journal_mode=WAL")
             cursor.close()
 
         _async_engines[db_path] = engine

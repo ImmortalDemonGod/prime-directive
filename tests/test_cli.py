@@ -3,6 +3,9 @@ from typer.testing import CliRunner
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
 from prime_directive.bin.pd import app
 from omegaconf import OmegaConf
+from datetime import datetime, timezone
+
+from prime_directive.core.db import EventLog, EventType
 
 runner = CliRunner()
 
@@ -59,7 +62,7 @@ def test_list_command(mock_load, mock_config):
 
 
 @patch("prime_directive.bin.pd.load_config")
-@patch("prime_directive.bin.pd.get_status")
+@patch("prime_directive.bin.pd.get_status", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.get_session")
 @patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
@@ -152,3 +155,146 @@ def test_doctor_command(
     assert "Prime Directive Doctor" in result.stdout
     assert "Tmux Installed" in result.stdout
     assert "✅" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_install_hooks_creates_post_commit(mock_load, tmp_path, mock_config):
+    repo_path = tmp_path / "repo1"
+    hooks_dir = repo_path / ".git" / "hooks"
+    hooks_dir.mkdir(parents=True)
+
+    conf_dict = OmegaConf.to_container(mock_config, resolve=True)
+    conf_dict["repos"]["repo1"]["path"] = str(repo_path)
+    cfg = OmegaConf.create(conf_dict)
+    mock_load.return_value = cfg
+
+    result = runner.invoke(app, ["install-hooks", "repo1"])
+    assert result.exit_code == 0
+
+    hook_path = hooks_dir / "post-commit"
+    assert hook_path.exists()
+    content = hook_path.read_text(encoding="utf-8")
+    assert "_internal-log-commit repo1" in content
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_install_hooks_missing_git_dir_exits_1(
+    mock_load,
+    tmp_path,
+    mock_config,
+):
+    repo_path = tmp_path / "repo1"
+    repo_path.mkdir(parents=True)
+
+    conf_dict = OmegaConf.to_container(mock_config, resolve=True)
+    conf_dict["repos"]["repo1"]["path"] = str(repo_path)
+    cfg = OmegaConf.create(conf_dict)
+    mock_load.return_value = cfg
+
+    result = runner.invoke(app, ["install-hooks", "repo1"])
+    assert result.exit_code == 1
+    assert "missing .git" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_install_hooks_permission_denied_exits_1(
+    mock_load,
+    tmp_path,
+    mock_config,
+    monkeypatch,
+):
+    repo_path = tmp_path / "repo1"
+    hooks_dir = repo_path / ".git" / "hooks"
+    hooks_dir.mkdir(parents=True)
+
+    conf_dict = OmegaConf.to_container(mock_config, resolve=True)
+    conf_dict["repos"]["repo1"]["path"] = str(repo_path)
+    cfg = OmegaConf.create(conf_dict)
+    mock_load.return_value = cfg
+
+    import builtins
+
+    real_open = builtins.open
+
+    def open_side_effect(path, *args, **kwargs):
+        if str(path).endswith("post-commit"):
+            raise PermissionError
+        return real_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "open", open_side_effect)
+
+    result = runner.invoke(app, ["install-hooks", "repo1"])
+    assert result.exit_code == 1
+    assert "failed to install post-commit hook" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+@patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
+@patch("prime_directive.bin.pd.get_session")
+@patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
+def test_internal_log_commit_writes_event(
+    _mock_dispose,
+    mock_get_session,
+    _mock_init_db,
+    mock_load,
+    mock_config,
+):
+    mock_load.return_value = mock_config
+
+    session = MagicMock()
+    session.add = MagicMock()
+    session.commit = AsyncMock()
+
+    async def async_gen(_db_path=None):
+        yield session
+
+    mock_get_session.side_effect = async_gen
+
+    result = runner.invoke(app, ["_internal-log-commit", "repo1"])
+    assert result.exit_code == 0
+
+    added = session.add.call_args[0][0]
+    assert isinstance(added, EventLog)
+    assert added.repo_id == "repo1"
+    assert added.event_type == EventType.COMMIT
+
+
+@patch("prime_directive.bin.pd.load_config")
+@patch("prime_directive.bin.pd.init_db", new_callable=AsyncMock)
+@patch("prime_directive.bin.pd.get_session")
+@patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
+def test_metrics_reports_ttc(
+    _mock_dispose,
+    mock_get_session,
+    _mock_init_db,
+    mock_load,
+    mock_config,
+):
+    mock_load.return_value = mock_config
+
+    t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
+    events = [
+        EventLog(
+            repo_id="repo1", event_type=EventType.SWITCH_IN, timestamp=t0
+        ),
+        EventLog(
+            repo_id="repo1",
+            event_type=EventType.COMMIT,
+            timestamp=t0.replace(minute=t0.minute + 1),
+        ),
+    ]
+
+    session = MagicMock()
+    result_obj = MagicMock()
+    result_obj.scalars.return_value.all.return_value = events
+    session.execute = AsyncMock(return_value=result_obj)
+
+    async def async_gen(_db_path=None):
+        yield session
+
+    mock_get_session.side_effect = async_gen
+
+    result = runner.invoke(app, ["metrics", "--repo", "repo1"])
+    assert result.exit_code == 0
+    assert "Prime Directive Metrics" in result.stdout
+    assert "repo1" in result.stdout

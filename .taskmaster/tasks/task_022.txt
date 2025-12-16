@@ -1,6 +1,6 @@
 # Task ID: 22
 # Title: Tier 1: Smart dependency detection + actionable guidance (no auto-install of system deps)
-# Status: pending
+# Status: done
 # Dependencies: 10
 # Priority: high
 # Description: Add dependency detection utilities and enhance pd doctor to provide copy-paste install/start/pull guidance for Ollama and optional OpenAI fallback.

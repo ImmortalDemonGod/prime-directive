@@ -1,5 +1,6 @@
-import subprocess
-from typing import List, Dict, Union
+import asyncio
+from asyncio.subprocess import PIPE
+from typing import List, Dict, Union, Optional
 import os
 import re
 
@@ -7,7 +8,74 @@ import re
 GitStatus = Dict[str, Union[str, bool, List[str]]]
 
 
-def get_status(repo_path: str) -> GitStatus:
+async def _run_git_command(
+    repo_path: str,
+    args: list[str],
+    *,
+    timeout_seconds: float,
+) -> tuple[int, str, str]:
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        cwd=repo_path,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
+    try:
+        stdout_b, stderr_b = await asyncio.wait_for(
+            proc.communicate(), timeout=timeout_seconds
+        )
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.communicate()
+        raise
+
+    stdout = stdout_b.decode(errors="replace")
+    stderr = stderr_b.decode(errors="replace")
+    returncode = proc.returncode if proc.returncode is not None else 1
+    return returncode, stdout, stderr
+
+
+async def get_last_touched(repo_path: str) -> Optional[float]:
+    """
+    Get the timestamp of the most recently modified file in the repo,
+    respecting .gitignore by using 'git ls-files'.
+    """
+    if not os.path.exists(os.path.join(repo_path, ".git")):
+        return None
+
+    try:
+        # List all tracked files + others/exclude standard
+        # -c: cached
+        # -o: others (untracked)
+        # --exclude-standard: respect .gitignore
+        rc, out, _err = await _run_git_command(
+            repo_path,
+            ["git", "ls-files", "-c", "-o", "--exclude-standard"],
+            timeout_seconds=5,
+        )
+        if rc != 0:
+            return None
+
+        files = [f for f in out.splitlines() if f.strip()]
+        if not files:
+            return None
+
+        max_mtime = 0.0
+        for f in files:
+            full_path = os.path.join(repo_path, f)
+            try:
+                stat = os.stat(full_path)
+                if stat.st_mtime > max_mtime:
+                    max_mtime = stat.st_mtime
+            except OSError:
+                pass
+
+        return max_mtime if max_mtime > 0 else None
+    except Exception:
+        return None
+
+
+async def get_status(repo_path: str) -> GitStatus:
     """
     Capture git status for a repository.
 
@@ -29,29 +97,22 @@ def get_status(repo_path: str) -> GitStatus:
 
     try:
         # Get current branch
-        branch_proc = subprocess.run(
+        rc, branch_out, _branch_err = await _run_git_command(
+            repo_path,
             ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
+            timeout_seconds=5,
         )
-        if branch_proc.returncode == 0:
-            branch = branch_proc.stdout.strip()
+        if rc == 0:
+            branch = branch_out.strip()
         else:
             branch = "unknown"
 
         # Get status (porcelain)
-        status_proc = subprocess.run(
+        _rc, status_output, _status_err = await _run_git_command(
+            repo_path,
             ["git", "status", "--porcelain"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
+            timeout_seconds=5,
         )
-        status_output = status_proc.stdout
 
         # Parse porcelain output for filenames
         # Porcelain format: XY PATH (XY are status codes, space separated from
@@ -68,15 +129,12 @@ def get_status(repo_path: str) -> GitStatus:
         is_dirty = len(uncommitted_files) > 0
 
         # Get diff stat
-        diff_proc = subprocess.run(
+        _rc, diff_out, _diff_err = await _run_git_command(
+            repo_path,
             ["git", "diff", "--stat"],
-            cwd=repo_path,
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=5,
+            timeout_seconds=5,
         )
-        diff_stat = diff_proc.stdout.strip()
+        diff_stat = diff_out.strip()
 
         return {
             "branch": branch,
@@ -84,7 +142,7 @@ def get_status(repo_path: str) -> GitStatus:
             "uncommitted_files": uncommitted_files,
             "diff_stat": diff_stat,
         }
-    except subprocess.TimeoutExpired:
+    except asyncio.TimeoutError:
         return {
             "branch": "timeout",
             "is_dirty": False,
