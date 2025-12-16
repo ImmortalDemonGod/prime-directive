@@ -218,7 +218,7 @@ def test_install_hooks_permission_denied_exits_1(
 
     def open_side_effect(path, *args, **kwargs):
         if str(path).endswith("post-commit"):
-            raise PermissionError("permission denied")
+            raise PermissionError
         return real_open(path, *args, **kwargs)
 
     monkeypatch.setattr(builtins, "open", open_side_effect)
@@ -233,9 +233,9 @@ def test_install_hooks_permission_denied_exits_1(
 @patch("prime_directive.bin.pd.get_session")
 @patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
 def test_internal_log_commit_writes_event(
-    mock_dispose,
+    _mock_dispose,
     mock_get_session,
-    mock_init_db,
+    _mock_init_db,
     mock_load,
     mock_config,
 ):
@@ -264,9 +264,9 @@ def test_internal_log_commit_writes_event(
 @patch("prime_directive.bin.pd.get_session")
 @patch("prime_directive.bin.pd.dispose_engine", new_callable=AsyncMock)
 def test_metrics_reports_ttc(
-    mock_dispose,
+    _mock_dispose,
     mock_get_session,
-    mock_init_db,
+    _mock_init_db,
     mock_load,
     mock_config,
 ):
