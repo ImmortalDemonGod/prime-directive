@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+import logging
 
 import httpx
 
@@ -6,7 +7,12 @@ from prime_directive.core.ai_providers import (
     generate_ollama,
     generate_openai_chat,
     get_openai_api_key,
+    log_ai_usage,
+    check_budget,
+    estimate_cost,
 )
+
+logger = logging.getLogger("prime_directive")
 
 
 async def generate_sitrep(
@@ -30,6 +36,9 @@ async def generate_sitrep(
     timeout_seconds: float = 5.0,
     max_retries: int = 0,
     backoff_seconds: float = 0.0,
+    db_path: Optional[str] = None,
+    monthly_budget_usd: float = 10.0,
+    cost_per_1k_tokens: float = 0.002,
 ) -> str:
     """
     Generates a SITREP summary using Ollama.
@@ -102,8 +111,16 @@ async def generate_sitrep(
         api_key = get_openai_api_key()
         if not api_key:
             return "Error generating SITREP: OPENAI_API_KEY not set"
+        
+        # Budget check for paid provider
+        if db_path:
+            within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+            if not within_budget:
+                logger.warning(f"Budget exceeded: ${current:.2f}/${budget:.2f}")
+                return f"Error generating SITREP: Monthly budget exceeded (${current:.2f}/${budget:.2f})"
+        
         try:
-            return await generate_openai_chat(
+            result = await generate_openai_chat(
                 api_url=openai_api_url,
                 api_key=api_key,
                 model=model,
@@ -112,7 +129,34 @@ async def generate_sitrep(
                 timeout_seconds=openai_timeout_seconds,
                 max_tokens=openai_max_tokens,
             )
+            # Log usage (estimate tokens from response length)
+            if db_path:
+                output_tokens = len(result.split()) * 1.3  # rough estimate
+                cost = estimate_cost(int(output_tokens), cost_per_1k_tokens)
+                await log_ai_usage(
+                    db_path=db_path,
+                    provider="openai",
+                    model=model,
+                    input_tokens=0,  # not tracked
+                    output_tokens=int(output_tokens),
+                    cost_estimate_usd=cost,
+                    success=True,
+                    repo_id=repo_id,
+                )
+                logger.info(f"OpenAI call logged: ~{int(output_tokens)} tokens, ${cost:.4f}")
+            return result
         except (httpx.HTTPError, ValueError) as e:
+            if db_path:
+                await log_ai_usage(
+                    db_path=db_path,
+                    provider="openai",
+                    model=model,
+                    input_tokens=0,
+                    output_tokens=0,
+                    cost_estimate_usd=0.0,
+                    success=False,
+                    repo_id=repo_id,
+                )
             return f"Error generating SITREP: {e!s}"
 
     # Default: Use Ollama as primary provider
@@ -147,8 +191,15 @@ async def generate_sitrep(
             "OPENAI_API_KEY not set"
         )
 
+    # Budget check for fallback
+    if db_path:
+        within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+        if not within_budget:
+            logger.warning(f"Budget exceeded for fallback: ${current:.2f}/${budget:.2f}")
+            return f"Error generating SITREP: Monthly budget exceeded (${current:.2f}/${budget:.2f})"
+
     try:
-        return await generate_openai_chat(
+        result = await generate_openai_chat(
             api_url=openai_api_url,
             api_key=api_key,
             model=fallback_model,
@@ -157,5 +208,32 @@ async def generate_sitrep(
             timeout_seconds=openai_timeout_seconds,
             max_tokens=openai_max_tokens,
         )
+        # Log fallback usage
+        if db_path:
+            output_tokens = len(result.split()) * 1.3
+            cost = estimate_cost(int(output_tokens), cost_per_1k_tokens)
+            await log_ai_usage(
+                db_path=db_path,
+                provider="openai",
+                model=fallback_model,
+                input_tokens=0,
+                output_tokens=int(output_tokens),
+                cost_estimate_usd=cost,
+                success=True,
+                repo_id=repo_id,
+            )
+            logger.info(f"OpenAI fallback logged: ~{int(output_tokens)} tokens, ${cost:.4f}")
+        return result
     except (httpx.HTTPError, ValueError) as e:
+        if db_path:
+            await log_ai_usage(
+                db_path=db_path,
+                provider="openai",
+                model=fallback_model,
+                input_tokens=0,
+                output_tokens=0,
+                cost_estimate_usd=0.0,
+                success=False,
+                repo_id=repo_id,
+            )
         return f"Error generating SITREP: {e!s}"
