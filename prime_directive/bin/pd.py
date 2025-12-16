@@ -778,6 +778,83 @@ Generate a longitudinal SITREP that helps the developer resume work effectively.
     asyncio.run(run_sitrep())
 
 
+@app.command("ai-usage")
+def ai_usage():
+    """Display AI usage statistics and budget status for the current month."""
+    logger.info("Command: ai-usage")
+    cfg = load_config()
+    setup_logging(cfg.system.log_path)
+
+    from prime_directive.core.ai_providers import get_monthly_usage
+    from prime_directive.core.db import AIUsageLog
+
+    async def run_usage():
+        await init_db(cfg.system.db_path)
+        try:
+            # Get monthly totals
+            total_cost, call_count = await get_monthly_usage(cfg.system.db_path)
+            budget = getattr(cfg.system, 'ai_monthly_budget_usd', 10.0)
+            remaining = max(0, budget - total_cost)
+            pct_used = (total_cost / budget * 100) if budget > 0 else 0
+
+            console.print("\n[bold reverse] AI Usage Report [/bold reverse]")
+            console.print(f"[bold]Month-to-Date (OpenAI):[/bold]")
+            console.print(f"  Calls: {call_count}")
+            console.print(f"  Cost:  ${total_cost:.4f}")
+            console.print(f"  Budget: ${budget:.2f}")
+            console.print(f"  Remaining: ${remaining:.4f} ({100-pct_used:.1f}%)")
+
+            if pct_used >= 90:
+                console.print(f"  [bold red]⚠️  {pct_used:.1f}% of budget used![/bold red]")
+            elif pct_used >= 75:
+                console.print(f"  [bold yellow]⚠️  {pct_used:.1f}% of budget used[/bold yellow]")
+            else:
+                console.print(f"  [green]✅ {pct_used:.1f}% of budget used[/green]")
+
+            # Show recent calls
+            async for session in get_session(cfg.system.db_path):
+                from datetime import datetime, timezone
+                now = datetime.now(timezone.utc)
+                month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+                ts_col = cast(Any, AIUsageLog.timestamp)
+                stmt = (
+                    select(AIUsageLog)
+                    .where(ts_col >= month_start)
+                    .order_by(ts_col.desc())
+                    .limit(10)
+                )
+                result = await session.execute(stmt)
+                recent = list(result.scalars().all())
+
+                if recent:
+                    console.print("\n[bold]Recent Calls:[/bold]")
+                    table = Table(show_header=True)
+                    table.add_column("Time", style="dim")
+                    table.add_column("Provider")
+                    table.add_column("Model")
+                    table.add_column("Tokens")
+                    table.add_column("Cost")
+                    table.add_column("Status")
+
+                    for log in recent:
+                        status = "[green]✓[/green]" if log.success else "[red]✗[/red]"
+                        table.add_row(
+                            log.timestamp.strftime("%m-%d %H:%M"),
+                            log.provider,
+                            log.model,
+                            str(log.output_tokens),
+                            f"${log.cost_estimate_usd:.4f}",
+                            status,
+                        )
+                    console.print(table)
+                break
+        finally:
+            await dispose_engine()
+
+    asyncio.run(run_usage())
+
+
 @app.command("doctor")
 def doctor():
     """Diagnose system dependencies and configuration."""
