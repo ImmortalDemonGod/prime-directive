@@ -20,7 +20,7 @@ from omegaconf import DictConfig
 
 # Core imports
 from prime_directive.core.config import register_configs
-from prime_directive.core.git_utils import GitStatus, get_status
+from prime_directive.core.git_utils import GitStatus, get_status, get_last_touched
 from prime_directive.core.db import (
     ContextSnapshot,
     EventLog,
