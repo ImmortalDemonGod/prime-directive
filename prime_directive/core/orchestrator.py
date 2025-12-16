@@ -48,13 +48,13 @@ async def switch_logic(
     cwd: str,
     freeze_fn: Callable[[str, Any], Any],
     ensure_session_fn: Callable[..., Any],
-    launch_editor_fn: Callable[[str, str], Any],
+    launch_editor_fn: Callable[[str, str, list[str]], Any],
     init_db_fn: Callable[[str], Any],
     get_session_fn: Callable[[str], Any],
     dispose_engine_fn: Callable[..., Any],
     console: Any,
     logger: logging.Logger,
-) -> bool:
+) -> None:
     try:
         current_repo_id = detect_current_repo_id(cwd, cfg.repos)
 
@@ -136,7 +136,7 @@ def run_switch(
     cwd: str,
     freeze_fn: Callable[[str, Any], Any],
     ensure_session_fn: Callable[..., Any],
-    launch_editor_fn: Callable[[str, str], Any],
+    launch_editor_fn: Callable[[str, str, list[str]], Any],
     init_db_fn: Callable[[str], Any],
     get_session_fn: Callable[[str], Any],
     dispose_engine_fn: Callable[..., Any],
