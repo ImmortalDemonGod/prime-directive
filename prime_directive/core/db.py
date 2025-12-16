@@ -64,6 +64,7 @@ class EventLog(SQLModel, table=True):  # type: ignore[call-arg]
 
 class AIUsageLog(SQLModel, table=True):  # type: ignore[call-arg]
     """Track AI provider usage for budget enforcement."""
+
     id: Optional[int] = Field(default=None, primary_key=True)
     timestamp: datetime = Field(default_factory=_utcnow, index=True)
     provider: str = Field(index=True)  # "ollama" or "openai"
