@@ -31,7 +31,8 @@ async def _run_git_command(
 
     stdout = stdout_b.decode(errors="replace")
     stderr = stderr_b.decode(errors="replace")
-    return proc.returncode, stdout, stderr
+    returncode = proc.returncode if proc.returncode is not None else 1
+    return returncode, stdout, stderr
 
 
 async def get_last_touched(repo_path: str) -> Optional[float]:
