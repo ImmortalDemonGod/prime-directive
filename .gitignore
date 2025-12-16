@@ -151,3 +151,6 @@ node_modules/
 *.sw?
 # OS specific
 .DS_Storedata/
+
+tests/fixtures/repos/test-repo-alpha/
+tests/fixtures/repos/test-repo-beta/
