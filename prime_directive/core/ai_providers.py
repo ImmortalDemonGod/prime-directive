@@ -71,7 +71,10 @@ async def check_budget(
     db_path: str,
     monthly_budget_usd: float,
 ) -> Tuple[bool, float, float]:
-    """Check if within budget. Returns (within_budget, current_usage, budget)."""
+    """Check if within budget.
+
+    Returns (within_budget, current_usage, budget).
+    """
     current_usage, _ = await get_monthly_usage(db_path)
     return (
         current_usage < monthly_budget_usd,
