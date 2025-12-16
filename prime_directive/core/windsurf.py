@@ -1,8 +1,13 @@
 import subprocess
 import shutil
+from typing import Optional
 
 
-def launch_editor(repo_path: str, editor_cmd: str = "windsurf"):
+def launch_editor(
+    repo_path: str,
+    editor_cmd: str = "windsurf",
+    editor_args: Optional[list[str]] = None,
+):
     """
     Launches the specified editor for the given repository path.
 
@@ -17,10 +22,9 @@ def launch_editor(repo_path: str, editor_cmd: str = "windsurf"):
         return
 
     try:
-        # -n forces a new window/instance, which is standard VS Code / Windsurf
-        # CLI behavior
-        # This allows multiple projects to be open simultaneously.
-        subprocess.Popen([editor_cmd, "-n", repo_path])
+        if editor_args is None:
+            editor_args = ["-n"]
+        subprocess.Popen([editor_cmd, *editor_args, repo_path])
     except FileNotFoundError:
         print(f"Error: Could not execute '{editor_cmd}'. Is it installed?")
     except OSError as e:
