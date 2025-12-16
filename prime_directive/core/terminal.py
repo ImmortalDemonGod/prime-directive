@@ -9,7 +9,11 @@ async def _run_tmux_command(
     *,
     timeout_seconds: float,
 ) -> tuple[int, str, str]:
-    proc = await asyncio.create_subprocess_exec(*args, stdout=PIPE, stderr=PIPE)
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=PIPE,
+        stderr=PIPE,
+    )
     try:
         stdout_b, stderr_b = await asyncio.wait_for(
             proc.communicate(), timeout=timeout_seconds
@@ -21,10 +25,13 @@ async def _run_tmux_command(
 
     stdout = stdout_b.decode(errors="replace")
     stderr = stderr_b.decode(errors="replace")
-    return proc.returncode, stdout, stderr
+    returncode = proc.returncode if proc.returncode is not None else 1
+    return returncode, stdout, stderr
 
 
-async def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
+async def capture_terminal_state(
+    repo_id: Optional[str] = None,
+) -> Tuple[str, str]:
     """
     Captures the terminal state from tmux if running inside a tmux session.
 
@@ -51,7 +58,10 @@ async def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, st
         if repo_id:
             cmd.extend(["-t", f"pd-{repo_id}"])
 
-        returncode, stdout, _stderr = await _run_tmux_command(cmd, timeout_seconds=2)
+        returncode, stdout, _stderr = await _run_tmux_command(
+            cmd,
+            timeout_seconds=2,
+        )
 
         output_summary = "No tmux session found or capture failed."
         if returncode == 0:
