@@ -30,7 +30,9 @@ def test_launch_editor_custom_args(mock_popen, mock_which):
 
     launch_editor("/path/to/repo", "code", ["--reuse-window"])
 
-    mock_popen.assert_called_once_with(["code", "--reuse-window", "/path/to/repo"])
+    mock_popen.assert_called_once_with(
+        ["code", "--reuse-window", "/path/to/repo"]
+    )
 
 
 @patch("shutil.which")
