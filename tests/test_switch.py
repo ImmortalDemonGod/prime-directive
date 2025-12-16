@@ -2,7 +2,10 @@ import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, MagicMock, AsyncMock, call
 from prime_directive.bin.pd import app
-from prime_directive.core.orchestrator import detect_current_repo_id, switch_logic
+from prime_directive.core.orchestrator import (
+    detect_current_repo_id,
+    switch_logic,
+)
 from omegaconf import OmegaConf
 from datetime import datetime
 import logging
