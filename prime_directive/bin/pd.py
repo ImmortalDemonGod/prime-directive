@@ -15,7 +15,7 @@ from sqlalchemy import select
 import typer
 
 # Hydra imports
-from hydra import compose, initialize
+from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig
 
@@ -67,10 +67,13 @@ def load_config() -> DictConfig:
     # Register structured configs
     register_configs()
 
-    # Initialize Hydra - use relative path from this module's location
-    # ../conf is relative to prime_directive/bin/pd.py -> prime_directive/conf
+    # Compute absolute path to conf directory relative to this file
+    # pd.py is in prime_directive/bin/, conf is in prime_directive/conf/
+    conf_dir = Path(__file__).parent.parent / "conf"
+    conf_path = str(conf_dir.resolve())
+
     try:
-        with initialize(version_base=None, config_path="../conf"):
+        with initialize_config_dir(version_base=None, config_dir=conf_path):
             cfg = compose(config_name="config")
             return cfg
     except Exception as e:
