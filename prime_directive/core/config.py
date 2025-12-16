@@ -7,6 +7,7 @@ from hydra.core.config_store import ConfigStore
 @dataclass
 class SystemConfig:
     editor_cmd: str = "windsurf"
+    editor_args: list[str] = field(default_factory=lambda: ["-n"])
     ai_model: str = "qwen2.5-coder"
     ai_provider: str = "ollama"
     ai_fallback_provider: str = "none"
