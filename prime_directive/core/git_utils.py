@@ -1,6 +1,6 @@
 import asyncio
 from asyncio.subprocess import PIPE
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Optional
 import os
 import re
 
@@ -32,6 +32,46 @@ async def _run_git_command(
     stdout = stdout_b.decode(errors="replace")
     stderr = stderr_b.decode(errors="replace")
     return proc.returncode, stdout, stderr
+
+
+async def get_last_touched(repo_path: str) -> Optional[float]:
+    """
+    Get the timestamp of the most recently modified file in the repo,
+    respecting .gitignore by using 'git ls-files'.
+    """
+    if not os.path.exists(os.path.join(repo_path, ".git")):
+        return None
+
+    try:
+        # List all tracked files + others/exclude standard
+        # -c: cached
+        # -o: others (untracked)
+        # --exclude-standard: respect .gitignore
+        rc, out, _err = await _run_git_command(
+            repo_path,
+            ["git", "ls-files", "-c", "-o", "--exclude-standard"],
+            timeout_seconds=5,
+        )
+        if rc != 0:
+            return None
+
+        files = [f for f in out.splitlines() if f.strip()]
+        if not files:
+            return None
+
+        max_mtime = 0.0
+        for f in files:
+            full_path = os.path.join(repo_path, f)
+            try:
+                stat = os.stat(full_path)
+                if stat.st_mtime > max_mtime:
+                    max_mtime = stat.st_mtime
+            except OSError:
+                pass
+
+        return max_mtime if max_mtime > 0 else None
+    except Exception:
+        return None
 
 
 async def get_status(repo_path: str) -> GitStatus:
