@@ -20,7 +20,7 @@ from omegaconf import DictConfig
 
 # Core imports
 from prime_directive.core.config import register_configs
-from prime_directive.core.git_utils import GitStatus, get_status, get_last_touched
+from prime_directive.core.git_utils import GitStatus, get_status
 from prime_directive.core.db import (
     ContextSnapshot,
     EventLog,
@@ -154,6 +154,20 @@ async def freeze_logic(
         logger.info("MOCK MODE: Skipping AI generation")
         sitrep = "MOCK: SITREP generated without AI."
     else:
+        if use_hq_model:
+            selected_model = getattr(
+                config.system,
+                "ai_model_hq",
+                config.system.ai_model,
+            )
+            selected_provider = "openai"
+        else:
+            selected_model = config.system.ai_model
+            selected_provider = config.system.ai_provider
+
+        monthly_budget = getattr(config.system, "ai_monthly_budget_usd", 10.0)
+        cost_per_1k = getattr(config.system, "ai_cost_per_1k_tokens", 0.002)
+
         sitrep = await generate_sitrep(
             repo_id=repo_id,
             git_state=git_summary,
@@ -163,8 +177,8 @@ async def freeze_logic(
             human_blocker=human_blocker,
             human_next_step=human_next_step,
             human_note=human_note,
-            model=getattr(config.system, 'ai_model_hq', config.system.ai_model) if use_hq_model else config.system.ai_model,
-            provider="openai" if use_hq_model else config.system.ai_provider,
+            model=selected_model,
+            provider=selected_provider,
             fallback_provider=config.system.ai_fallback_provider,
             fallback_model=config.system.ai_fallback_model,
             require_confirmation=config.system.ai_require_confirmation,
@@ -176,8 +190,8 @@ async def freeze_logic(
             max_retries=config.system.ollama_max_retries,
             backoff_seconds=config.system.ollama_backoff_seconds,
             db_path=config.system.db_path,
-            monthly_budget_usd=getattr(config.system, 'ai_monthly_budget_usd', 10.0),
-            cost_per_1k_tokens=getattr(config.system, 'ai_cost_per_1k_tokens', 0.002),
+            monthly_budget_usd=monthly_budget,
+            cost_per_1k_tokens=cost_per_1k,
         )
     logger.info(f"Generated SITREP for {repo_id}")
 
@@ -234,7 +248,9 @@ async def freeze_logic(
                 f"{human_next_step}"
             )
         if human_note:
-            console.print(f"[bold magenta]YOUR NOTE:[/bold magenta] {human_note}")
+            console.print(
+                f"[bold magenta]YOUR NOTE:[/bold magenta] {human_note}"
+            )
         console.print(f"[italic]{sitrep}[/italic]")
         logger.info(f"{msg}. SITREP: {sitrep}. Note: {human_note}")
 
@@ -386,7 +402,9 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
         logger.error(msg)
         raise typer.Exit(code=1)
 
-    target_repo_ids = [repo_id] if repo_id is not None else list(cfg.repos.keys())
+    target_repo_ids = (
+        [repo_id] if repo_id is not None else list(cfg.repos.keys())
+    )
 
     for rid in target_repo_ids:
         repo_path = cfg.repos[rid].path
@@ -404,14 +422,17 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
 
         script = (
             "#!/bin/sh\n"
-            f"command pd _internal-log-commit {rid} >/dev/null 2>&1 || true\n"
+            f"command pd _internal-log-commit {rid} "
+            ">/dev/null 2>&1 || true\n"
         )
         with open(hook_path, "w", encoding="utf-8") as f:
             f.write(script)
 
         os.chmod(hook_path, 0o755)
 
-        console.print(f"[green]Installed post-commit hook:[/green] {hook_path}")
+        console.print(
+            f"[green]Installed post-commit hook:[/green] {hook_path}"
+        )
         logger.info(f"Installed post-commit hook for {rid}: {hook_path}")
 
 
@@ -424,7 +445,12 @@ def internal_log_commit(repo_id: str):
         try:
             await init_db(cfg.system.db_path)
             async for session in get_session(cfg.system.db_path):
-                session.add(EventLog(repo_id=repo_id, event_type=EventType.COMMIT))
+                session.add(
+                    EventLog(
+                        repo_id=repo_id,
+                        event_type=EventType.COMMIT,
+                    )
+                )
                 await session.commit()
         finally:
             await dispose_engine()
@@ -433,7 +459,7 @@ def internal_log_commit(repo_id: str):
 
 
 def _format_seconds(seconds: float) -> str:
-    seconds_int = int(round(seconds))
+    seconds_int = round(seconds)
     hours, rem = divmod(seconds_int, 3600)
     minutes, secs = divmod(rem, 60)
     if hours > 0:
@@ -458,7 +484,10 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
         try:
             await init_db(cfg.system.db_path)
 
-            target_repo_ids = [repo_id] if repo_id is not None else list(cfg.repos.keys())
+            target_repo_ids = (
+                [repo_id] if repo_id is not None
+                else list(cfg.repos.keys())
+            )
 
             table = Table(title="Prime Directive Metrics")
             table.add_column("Repo", style="cyan")
@@ -481,8 +510,13 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
                     for ev in events:
                         if ev.event_type == EventType.SWITCH_IN:
                             last_switch_ts = ev.timestamp
-                        elif ev.event_type == EventType.COMMIT and last_switch_ts is not None:
-                            delta = (ev.timestamp - last_switch_ts).total_seconds()
+                        elif (
+                            ev.event_type == EventType.COMMIT
+                            and last_switch_ts is not None
+                        ):
+                            delta = (
+                                ev.timestamp - last_switch_ts
+                            ).total_seconds()
                             if delta >= 0:
                                 deltas.append(delta)
                             last_switch_ts = None
@@ -643,7 +677,10 @@ def sitrep(
     deep_dive: bool = typer.Option(
         False,
         "--deep-dive",
-        help="Generate longitudinal summary from historical snapshots using HQ model",
+        help=(
+            "Generate longitudinal summary from historical snapshots "
+            "using HQ model"
+        ),
     ),
     limit: int = typer.Option(
         5,
@@ -663,7 +700,9 @@ def sitrep(
     setup_logging(cfg.system.log_path)
 
     if repo_id not in cfg.repos:
-        console.print(f"[bold red]Error:[/bold red] Repository '{repo_id}' not found.")
+        console.print(
+            f"[bold red]Error:[/bold red] Repository '{repo_id}' not found."
+        )
         raise typer.Exit(code=1)
 
     async def run_sitrep():
@@ -688,22 +727,49 @@ def sitrep(
                 if not deep_dive:
                     # Just show the latest snapshot
                     latest = snapshots[0]
-                    console.print(f"\n[bold reverse] SITREP for {repo_id} [/bold reverse]")
-                    console.print(f"[bold yellow]Timestamp:[/bold yellow] {latest.timestamp}")
+                    console.print(
+                        f"\n[bold reverse] SITREP for {repo_id} "
+                        "[/bold reverse]"
+                    )
+                    console.print(
+                        f"[bold yellow]Timestamp:[/bold yellow] "
+                        f"{latest.timestamp}"
+                    )
                     if latest.human_objective:
-                        console.print(f"[bold magenta]Objective:[/bold magenta] {latest.human_objective}")
+                        console.print(
+                            "[bold magenta]Objective:[/bold magenta] "
+                            f"{latest.human_objective}"
+                        )
                     if latest.human_blocker:
-                        console.print(f"[bold magenta]Blocker:[/bold magenta] {latest.human_blocker}")
+                        console.print(
+                            "[bold magenta]Blocker:[/bold magenta] "
+                            f"{latest.human_blocker}"
+                        )
                     if latest.human_next_step:
-                        console.print(f"[bold magenta]Next Step:[/bold magenta] {latest.human_next_step}")
+                        console.print(
+                            "[bold magenta]Next Step:[/bold magenta] "
+                            f"{latest.human_next_step}"
+                        )
                     if latest.human_note:
-                        console.print(f"[bold magenta]Note:[/bold magenta] {latest.human_note}")
-                    console.print(f"[bold cyan]AI Summary:[/bold cyan] {latest.ai_sitrep}")
+                        console.print(
+                            "[bold magenta]Note:[/bold magenta] "
+                            f"{latest.human_note}"
+                        )
+                    console.print(
+                        "[bold cyan]AI Summary:[/bold cyan] "
+                        f"{latest.ai_sitrep}"
+                    )
                     return
 
                 # Deep dive: compile historical narrative
-                console.print(f"[bold blue]Generating deep-dive analysis for {repo_id}...[/bold blue]")
-                console.print(f"[dim]Analyzing {len(snapshots)} historical snapshots...[/dim]")
+                console.print(
+                    "[bold blue]Generating deep-dive analysis for "
+                    f"{repo_id}...[/bold blue]"
+                )
+                console.print(
+                    f"[dim]Analyzing {len(snapshots)} historical snapshots..."
+                    "[/dim]"
+                )
 
                 # Build historical narrative
                 history_entries = []
@@ -731,7 +797,10 @@ def sitrep(
 
                 api_key = get_openai_api_key()
                 if not api_key:
-                    console.print("[bold red]Error:[/bold red] OPENAI_API_KEY not set (required for deep-dive)")
+                    console.print(
+                        "[bold red]Error:[/bold red] OPENAI_API_KEY not set "
+                        "(required for deep-dive)"
+                    )
                     return
 
                 system_prompt = (
@@ -767,10 +836,17 @@ Generate a longitudinal SITREP that helps the developer resume work effectively.
                         max_tokens=500,
                     )
 
-                    console.print(f"\n[bold reverse] DEEP-DIVE SITREP for {repo_id} [/bold reverse]")
-                    console.print(f"[dim]Based on {len(snapshots)} snapshots from {snapshots[-1].timestamp} to {snapshots[0].timestamp}[/dim]")
+                    console.print(
+                        f"\n[bold reverse] DEEP-DIVE SITREP for {repo_id} "
+                        "[/bold reverse]"
+                    )
+                    console.print(
+                        f"[dim]Based on {len(snapshots)} snapshots from "
+                        f"{snapshots[-1].timestamp} to {snapshots[0].timestamp}"
+                        "[/dim]"
+                    )
                     console.print(f"\n[bold cyan]{summary}[/bold cyan]")
-                except Exception as e:
+                except (httpx.HTTPError, ValueError, OSError) as e:
                     console.print(f"[bold red]Error generating deep-dive:[/bold red] {e}")
         finally:
             await dispose_engine()
@@ -793,16 +869,18 @@ def ai_usage():
         try:
             # Get monthly totals
             total_cost, call_count = await get_monthly_usage(cfg.system.db_path)
-            budget = getattr(cfg.system, 'ai_monthly_budget_usd', 10.0)
+            budget = getattr(cfg.system, "ai_monthly_budget_usd", 10.0)
             remaining = max(0, budget - total_cost)
             pct_used = (total_cost / budget * 100) if budget > 0 else 0
 
             console.print("\n[bold reverse] AI Usage Report [/bold reverse]")
-            console.print(f"[bold]Month-to-Date (OpenAI):[/bold]")
+            console.print("[bold]Month-to-Date (OpenAI):[/bold]")
             console.print(f"  Calls: {call_count}")
             console.print(f"  Cost:  ${total_cost:.4f}")
             console.print(f"  Budget: ${budget:.2f}")
-            console.print(f"  Remaining: ${remaining:.4f} ({100-pct_used:.1f}%)")
+            console.print(
+                f"  Remaining: ${remaining:.4f} ({100-pct_used:.1f}%)"
+            )
 
             if pct_used >= 90:
                 console.print(f"  [bold red]⚠️  {pct_used:.1f}% of budget used![/bold red]")
@@ -813,9 +891,14 @@ def ai_usage():
 
             # Show recent calls
             async for session in get_session(cfg.system.db_path):
-                from datetime import datetime, timezone
                 now = datetime.now(timezone.utc)
-                month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                month_start = now.replace(
+                    day=1,
+                    hour=0,
+                    minute=0,
+                    second=0,
+                    microsecond=0,
+                )
 
                 ts_col = cast(Any, AIUsageLog.timestamp)
                 stmt = (
