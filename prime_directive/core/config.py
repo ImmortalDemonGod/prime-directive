@@ -21,8 +21,10 @@ class SystemConfig:
     ollama_timeout_seconds: float = 5.0
     ollama_max_retries: int = 2
     ollama_backoff_seconds: float = 0.5
-    ai_monthly_budget_usd: float = 10.0  # Monthly budget for paid AI providers
-    ai_cost_per_1k_tokens: float = 0.002  # Estimated cost per 1K tokens (output)
+    ai_monthly_budget_usd: float = 10.0
+    # Monthly budget for paid AI providers
+    ai_cost_per_1k_tokens: float = 0.002
+    # Estimated cost per 1K tokens (output)
     db_path: str = "data/prime.db"
     log_path: str = "data/logs/pd.log"
     mock_mode: bool = False
