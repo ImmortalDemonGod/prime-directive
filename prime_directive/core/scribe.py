@@ -111,14 +111,22 @@ async def generate_sitrep(
         api_key = get_openai_api_key()
         if not api_key:
             return "Error generating SITREP: OPENAI_API_KEY not set"
-        
+
         # Budget check for paid provider
         if db_path:
-            within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+            within_budget, current, budget = await check_budget(
+                db_path,
+                monthly_budget_usd,
+            )
             if not within_budget:
-                logger.warning(f"Budget exceeded: ${current:.2f}/${budget:.2f}")
-                return f"Error generating SITREP: Monthly budget exceeded (${current:.2f}/${budget:.2f})"
-        
+                logger.warning(
+                    f"Budget exceeded: ${current:.2f}/${budget:.2f}"
+                )
+                return (
+                    "Error generating SITREP: Monthly budget exceeded "
+                    f"(${current:.2f}/${budget:.2f})"
+                )
+
         try:
             result = await generate_openai_chat(
                 api_url=openai_api_url,
@@ -143,7 +151,10 @@ async def generate_sitrep(
                     success=True,
                     repo_id=repo_id,
                 )
-                logger.info(f"OpenAI call logged: ~{int(output_tokens)} tokens, ${cost:.4f}")
+                logger.info(
+                    "OpenAI call logged: "
+                    f"~{int(output_tokens)} tokens, ${cost:.4f}"
+                )
             return result
         except (httpx.HTTPError, ValueError) as e:
             if db_path:
@@ -193,10 +204,19 @@ async def generate_sitrep(
 
     # Budget check for fallback
     if db_path:
-        within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+        within_budget, current, budget = await check_budget(
+            db_path,
+            monthly_budget_usd,
+        )
         if not within_budget:
-            logger.warning(f"Budget exceeded for fallback: ${current:.2f}/${budget:.2f}")
-            return f"Error generating SITREP: Monthly budget exceeded (${current:.2f}/${budget:.2f})"
+            logger.warning(
+                "Budget exceeded for fallback: "
+                f"${current:.2f}/${budget:.2f}"
+            )
+            return (
+                "Error generating SITREP: Monthly budget exceeded "
+                f"(${current:.2f}/${budget:.2f})"
+            )
 
     try:
         result = await generate_openai_chat(
@@ -222,7 +242,10 @@ async def generate_sitrep(
                 success=True,
                 repo_id=repo_id,
             )
-            logger.info(f"OpenAI fallback logged: ~{int(output_tokens)} tokens, ${cost:.4f}")
+            logger.info(
+                "OpenAI fallback logged: "
+                f"~{int(output_tokens)} tokens, ${cost:.4f}"
+            )
         return result
     except (httpx.HTTPError, ValueError) as e:
         if db_path:
