@@ -56,11 +56,19 @@ def test_handler_update():
 @patch("prime_directive.bin.pd_daemon.time.sleep")
 @patch("prime_directive.bin.pd_daemon.freeze_logic", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd_daemon.os.path.exists")
+@patch("prime_directive.bin.pd_daemon._should_skip_terminal_capture")
 def test_daemon_loop(
-    mock_exists, mock_freeze, mock_sleep, mock_observer, mock_load, mock_config
+    mock_should_skip,
+    mock_exists,
+    mock_freeze,
+    mock_sleep,
+    mock_observer,
+    mock_load,
+    mock_config,
 ):
     mock_load.return_value = mock_config
     mock_exists.return_value = True
+    mock_should_skip.return_value = True
 
     # mock_freeze is AsyncMock, so it returns an awaitable automatically
 
@@ -92,7 +100,11 @@ def test_daemon_loop(
         observer_instance.start.assert_called_once()
 
         # Verify freeze trigger
-        mock_freeze.assert_called_with("test-repo", mock_config)
+        mock_freeze.assert_called_with(
+            "test-repo",
+            mock_config,
+            skip_terminal_capture=True,
+        )
 
         # Verify handler state updated
         assert mock_handler.is_frozen is True
