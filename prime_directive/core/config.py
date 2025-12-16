@@ -9,6 +9,7 @@ class SystemConfig:
     editor_cmd: str = "windsurf"
     editor_args: list[str] = field(default_factory=lambda: ["-n"])
     ai_model: str = "qwen2.5-coder"
+    ai_model_hq: str = "gpt-4o"  # High-quality model for important freezes
     ai_provider: str = "ollama"
     ai_fallback_provider: str = "none"
     ai_fallback_model: str = "gpt-4o-mini"
