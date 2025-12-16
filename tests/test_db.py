@@ -9,6 +9,7 @@ from prime_directive.core.db import (
     ContextSnapshot,
     EventLog,
     EventType,
+    AIUsageLog,
     init_db,
     get_session,
     dispose_engine,
@@ -112,3 +113,32 @@ async def test_snapshot_fk_enforced(async_db_session):
     async_db_session.add(snapshot)
     with pytest.raises(IntegrityError):
         await async_db_session.commit()
+
+
+@pytest.mark.asyncio
+async def test_ai_usage_log_insert(async_db_session):
+    """Test AIUsageLog table for tracking AI provider usage."""
+    usage = AIUsageLog(
+        provider="openai",
+        model="gpt-4o-mini",
+        input_tokens=100,
+        output_tokens=50,
+        cost_estimate_usd=0.0001,
+        success=True,
+        repo_id="test-repo",
+    )
+    async_db_session.add(usage)
+    await async_db_session.commit()
+    await async_db_session.refresh(usage)
+
+    assert usage.id is not None
+    assert usage.provider == "openai"
+    assert usage.cost_estimate_usd == 0.0001
+
+    # Query back
+    result = await async_db_session.execute(
+        select(AIUsageLog).where(AIUsageLog.provider == "openai")
+    )
+    fetched = result.scalars().first()
+    assert fetched is not None
+    assert fetched.model == "gpt-4o-mini"
