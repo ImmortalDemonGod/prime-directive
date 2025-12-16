@@ -158,6 +158,44 @@ def test_doctor_command(
 
 
 @patch("prime_directive.bin.pd.load_config")
+@patch("shutil.which")
+@patch("requests.get")
+@patch("os.path.exists")
+def test_doctor_detects_multiple_installations(
+    mock_exists, mock_get, mock_which, mock_load, mock_config, tmp_path
+):
+    """Test that doctor warns about multiple pd installations that can cause config shadowing."""
+    mock_load.return_value = mock_config
+
+    def which_side_effect(cmd):
+        if cmd == "tmux":
+            return "/usr/bin/tmux"
+        if cmd == "code":
+            return "/usr/bin/code"
+        return None
+
+    mock_which.side_effect = which_side_effect
+
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"models": [{"name": "gpt-4:latest"}]}
+    mock_get.return_value = mock_response
+
+    mock_exists.return_value = True
+
+    # Patch Path.home() to use tmp_path and create a fake UV installation
+    uv_tools_dir = tmp_path / ".local" / "share" / "uv" / "tools" / "prime-directive"
+    uv_tools_dir.mkdir(parents=True)
+
+    with patch("prime_directive.bin.pd.Path.home", return_value=tmp_path):
+        result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "Installation" in result.stdout
+    assert "⚠️" in result.stdout or "Multiple installs" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
 def test_install_hooks_creates_post_commit(mock_load, tmp_path, mock_config):
     repo_path = tmp_path / "repo1"
     hooks_dir = repo_path / ".git" / "hooks"
