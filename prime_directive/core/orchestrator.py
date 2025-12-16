@@ -84,7 +84,8 @@ async def switch_logic(
             logger.info(f"MOCK MODE: launch_editor({target_path})")
         else:
             ensure_session_fn(target_repo_id, target_path, attach=False)
-            launch_editor_fn(target_path, cfg.system.editor_cmd)
+            editor_args = getattr(cfg.system, "editor_args", ["-n"])
+            launch_editor_fn(target_path, cfg.system.editor_cmd, editor_args)
 
         await init_db_fn(cfg.system.db_path)
         async for session in get_session_fn(cfg.system.db_path):
