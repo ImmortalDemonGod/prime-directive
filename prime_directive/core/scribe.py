@@ -14,6 +14,10 @@ async def generate_sitrep(
     git_state: str,
     terminal_logs: str,
     active_task: Optional[Dict[str, Any]] = None,
+    human_objective: Optional[str] = None,
+    human_blocker: Optional[str] = None,
+    human_next_step: Optional[str] = None,
+    human_note: Optional[str] = None,
     model: str = "qwen2.5-coder",
     provider: str = "ollama",
     fallback_provider: str = "none",
@@ -62,9 +66,20 @@ async def generate_sitrep(
             f"Details: {active_task.get('description')}"
         )
 
+    human_info = "None"
+    if human_objective or human_blocker or human_next_step or human_note:
+        human_info = (
+            f"Objective: {human_objective or 'None'}\n"
+            f"Blocker: {human_blocker or 'None'}\n"
+            f"Next Step: {human_next_step or 'None'}\n"
+            f"Notes: {human_note or 'None'}"
+        )
+
     prompt = f"""
     Context:
     - Repository: {repo_id}
+    - Human Context:
+    {human_info}
     - Active Task:
     {task_info}
     - Git State:
