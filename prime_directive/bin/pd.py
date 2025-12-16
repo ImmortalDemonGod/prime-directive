@@ -419,22 +419,28 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
             logger.error(msg)
             raise typer.Exit(code=1)
 
-        os.makedirs(hooks_dir, exist_ok=True)
+        try:
+            os.makedirs(hooks_dir, exist_ok=True)
 
-        script = (
-            "#!/bin/sh\n"
-            f"command pd _internal-log-commit {rid} "
-            ">/dev/null 2>&1 || true\n"
-        )
-        with open(hook_path, "w", encoding="utf-8") as f:
-            f.write(script)
+            script = (
+                "#!/bin/sh\n"
+                f"command pd _internal-log-commit {rid} "
+                ">/dev/null 2>&1 || true\n"
+            )
+            with open(hook_path, "w", encoding="utf-8") as f:
+                f.write(script)
 
-        os.chmod(hook_path, 0o755)
+            os.chmod(hook_path, 0o755)
 
-        console.print(
-            f"[green]Installed post-commit hook:[/green] {hook_path}"
-        )
-        logger.info(f"Installed post-commit hook for {rid}: {hook_path}")
+            console.print(
+                f"[green]Installed post-commit hook:[/green] {hook_path}"
+            )
+            logger.info(f"Installed post-commit hook for {rid}: {hook_path}")
+        except OSError as e:
+            msg = f"{rid}: failed to install post-commit hook: {e}"
+            console.print(f"[bold red]Error:[/bold red] {msg}")
+            logger.error(msg)
+            raise typer.Exit(code=1)
 
 
 @app.command("_internal-log-commit", hidden=True)
