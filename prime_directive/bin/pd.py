@@ -486,8 +486,7 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
             await init_db(cfg.system.db_path)
 
             target_repo_ids = (
-                [repo_id] if repo_id is not None
-                else list(cfg.repos.keys())
+                [repo_id] if repo_id is not None else list(cfg.repos.keys())
             )
 
             table = Table(title="Prime Directive Metrics")
@@ -833,7 +832,7 @@ Generate a longitudinal SITREP that helps the developer resume work
 effectively.
 """
 
-                hq_model = getattr(cfg.system, 'ai_model_hq', 'gpt-4o')
+                hq_model = getattr(cfg.system, "ai_model_hq", "gpt-4o")
                 try:
                     summary = await generate_openai_chat(
                         api_url=cfg.system.openai_api_url,
@@ -915,9 +914,7 @@ def ai_usage():
                 )
             else:
                 console.print(
-                    "  [green]✅ "
-                    f"{pct_used:.1f}% of budget used"
-                    "[/green]"
+                    "  [green]✅ " f"{pct_used:.1f}% of budget used" "[/green]"
                 )
 
             # Show recent calls
