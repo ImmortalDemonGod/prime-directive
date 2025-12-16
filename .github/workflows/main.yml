@@ -51,9 +51,7 @@ jobs:
         run: make test
       - name: "Upload coverage to Codecov"
         uses: codecov/codecov-action@v4
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        if: ${{ !cancelled() && env.CODECOV_TOKEN != '' }}
+        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
         continue-on-error: true
         with:
           fail_ci_if_error: false
