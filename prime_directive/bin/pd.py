@@ -1048,6 +1048,29 @@ def doctor():
         else:
             checks.append(("OpenAI Fallback", "⚠️", "OPENAI_API_KEY not set"))
 
+    # 3c. Check for multiple pd installations (can cause config shadowing)
+    if cfg.system.mock_mode:
+        checks.append(("Installation", "✅", "Mocked"))
+    else:
+        pd_locations = []
+        search_paths = [
+            Path.home() / ".local" / "bin" / "pd",
+            Path.home() / ".local" / "share" / "uv" / "tools" / "prime-directive",
+            Path.home() / ".local" / "share" / "pipx" / "venvs" / "prime-directive",
+        ]
+        for p in search_paths:
+            if p.exists():
+                pd_locations.append(str(p))
+        if pd_locations:
+            checks.append((
+                "Installation",
+                "⚠️",
+                f"Multiple installs detected: {', '.join(pd_locations)}. "
+                "May cause config shadowing. Remove with: rm -rf <path>",
+            ))
+        else:
+            checks.append(("Installation", "✅", "Single installation (editable)"))
+
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
     for repo in cfg.repos.values():
