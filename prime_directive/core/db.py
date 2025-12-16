@@ -39,6 +39,9 @@ class ContextSnapshot(SQLModel, table=True):  # type: ignore[call-arg]
     terminal_output_summary: str
     ai_sitrep: str
     human_note: Optional[str] = Field(default=None)
+    human_objective: Optional[str] = Field(default=None)
+    human_blocker: Optional[str] = Field(default=None)
+    human_next_step: Optional[str] = Field(default=None)
 
     repo: Optional[Repository] = Relationship(back_populates="snapshots")
 
