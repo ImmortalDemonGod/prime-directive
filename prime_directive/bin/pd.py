@@ -309,7 +309,7 @@ def freeze(
     if not no_interview:
         if objective is None:
             entered = typer.prompt(
-                "What is the primary objective of this session?",
+                "Context: What was your specific focus vs. the planned task?",
                 default="",
                 show_default=False,
             )
@@ -317,7 +317,7 @@ def freeze(
 
         if blocker is None:
             entered = typer.prompt(
-                "What didn't work or what is the key uncertainty?",
+                "Mental Cache: What is the key blocker, uncertainty, or 'gotcha'?",
                 default="",
                 show_default=False,
             )
@@ -325,7 +325,7 @@ def freeze(
 
         if next_step is None:
             entered = typer.prompt(
-                "What is the next concrete action?",
+                "The Hook: What is the first 10-second action to restart?",
                 default="",
                 show_default=False,
             )
@@ -333,7 +333,7 @@ def freeze(
 
         if note is None:
             entered = typer.prompt(
-                "Optional: Any additional notes or brain dump",
+                "Brain Dump: Any other context, warnings, or loose thoughts?",
                 default="",
                 show_default=False,
             )
