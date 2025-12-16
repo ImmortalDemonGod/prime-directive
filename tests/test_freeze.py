@@ -98,7 +98,20 @@ def test_freeze_command(
     mock_get_session.side_effect = async_gen
 
     result = runner.invoke(
-        app, ["freeze", "test-repo", "--note", "Testing freeze command"]
+        app,
+        [
+            "freeze",
+            "test-repo",
+            "--no-interview",
+            "--objective",
+            "Testing objective",
+            "--blocker",
+            "Testing blocker",
+            "--next-step",
+            "Testing next step",
+            "--note",
+            "Testing freeze command",
+        ],
     )
 
     assert result.exit_code == 0
@@ -114,6 +127,9 @@ def test_freeze_command(
     snapshot = mock_session.add.call_args_list[-1][0][0]
     assert snapshot.repo_id == "test-repo"
     assert snapshot.human_note == "Testing freeze command"
+    assert snapshot.human_objective == "Testing objective"
+    assert snapshot.human_blocker == "Testing blocker"
+    assert snapshot.human_next_step == "Testing next step"
 
     mock_init_db.assert_awaited_once()
 
@@ -122,7 +138,14 @@ def test_freeze_command(
 def test_freeze_command_invalid_repo(mock_load, mock_config):
     mock_load.return_value = mock_config
     result = runner.invoke(
-        app, ["freeze", "invalid-repo", "--note", "Testing invalid repo"]
+        app,
+        [
+            "freeze",
+            "invalid-repo",
+            "--no-interview",
+            "--note",
+            "Testing invalid repo",
+        ],
     )
     assert result.exit_code == 1
     assert "Repository 'invalid-repo' not found" in result.stdout
