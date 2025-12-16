@@ -439,8 +439,8 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
         except OSError as e:
             msg = f"{rid}: failed to install post-commit hook: {e}"
             console.print(f"[bold red]Error:[/bold red] {msg}")
-            logger.error(msg)
-            raise typer.Exit(code=1)
+            logger.exception(msg)
+            raise typer.Exit(code=1) from None
 
 
 @app.command("_internal-log-commit", hidden=True)
