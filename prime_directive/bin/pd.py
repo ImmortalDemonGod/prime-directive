@@ -87,6 +87,10 @@ async def freeze_logic(
     repo_id: str,
     config: DictConfig,
     human_note: Optional[str] = None,
+    human_objective: Optional[str] = None,
+    human_blocker: Optional[str] = None,
+    human_next_step: Optional[str] = None,
+    skip_terminal_capture: bool = False,
 ):
     """Core freeze logic separated for reuse (Async)."""
     if repo_id not in config.repos:
@@ -130,6 +134,9 @@ async def freeze_logic(
         logger.info("MOCK MODE: Skipping terminal capture")
         last_cmd = "mock_cmd"
         term_output = "MOCK: Terminal output"
+    elif skip_terminal_capture:
+        last_cmd = "unknown"
+        term_output = "Terminal capture skipped."
     else:
         last_cmd, term_output = await capture_terminal_state(repo_id)
 
@@ -151,6 +158,10 @@ async def freeze_logic(
             git_state=git_summary,
             terminal_logs=term_output,
             active_task=active_task,
+            human_objective=human_objective,
+            human_blocker=human_blocker,
+            human_next_step=human_next_step,
+            human_note=human_note,
             model=config.system.ai_model,
             provider=config.system.ai_provider,
             fallback_provider=config.system.ai_fallback_provider,
@@ -195,12 +206,31 @@ async def freeze_logic(
             terminal_output_summary=term_output,
             ai_sitrep=sitrep,
             human_note=human_note,
+            human_objective=human_objective,
+            human_blocker=human_blocker,
+            human_next_step=human_next_step,
         )
         session.add(snapshot)
         await session.commit()
         msg = f"Snapshot saved. ID: {snapshot.id}"
         console.print(f"[bold green]{msg}[/bold green]")
-        console.print(f"[bold magenta]YOUR NOTE:[/bold magenta] {human_note}")
+        if human_objective:
+            console.print(
+                "[bold magenta]YOUR OBJECTIVE:[/bold magenta] "
+                f"{human_objective}"
+            )
+        if human_blocker:
+            console.print(
+                "[bold magenta]YOUR BLOCKER:[/bold magenta] "
+                f"{human_blocker}"
+            )
+        if human_next_step:
+            console.print(
+                "[bold magenta]YOUR NEXT STEP:[/bold magenta] "
+                f"{human_next_step}"
+            )
+        if human_note:
+            console.print(f"[bold magenta]YOUR NOTE:[/bold magenta] {human_note}")
         console.print(f"[italic]{sitrep}[/italic]")
         logger.info(f"{msg}. SITREP: {sitrep}. Note: {human_note}")
 
@@ -208,14 +238,31 @@ async def freeze_logic(
 @app.command("freeze")
 def freeze(
     repo_id: str,
-    note: str = typer.Option(
-        ...,
+    objective: Optional[str] = typer.Option(
+        None,
+        "--objective",
+        help="Primary objective of this session",
+    ),
+    blocker: Optional[str] = typer.Option(
+        None,
+        "--blocker",
+        help="What didn't work / key uncertainty",
+    ),
+    next_step: Optional[str] = typer.Option(
+        None,
+        "--next-step",
+        help="Next concrete action",
+    ),
+    note: Optional[str] = typer.Option(
+        None,
         "--note",
         "-n",
-        help=(
-            "REQUIRED: What you were actually working on "
-            "(AI can't read your mind)"
-        ),
+        help="Optional: additional notes / brain dump",
+    ),
+    no_interview: bool = typer.Option(
+        False,
+        "--no-interview",
+        help="Disable interactive interview prompts",
     ),
 ):
     """
@@ -233,9 +280,49 @@ def freeze(
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
+    if not no_interview:
+        if objective is None:
+            entered = typer.prompt(
+                "What is the primary objective of this session?",
+                default="",
+                show_default=False,
+            )
+            objective = entered.strip() or None
+
+        if blocker is None:
+            entered = typer.prompt(
+                "What didn't work or what is the key uncertainty?",
+                default="",
+                show_default=False,
+            )
+            blocker = entered.strip() or None
+
+        if next_step is None:
+            entered = typer.prompt(
+                "What is the next concrete action?",
+                default="",
+                show_default=False,
+            )
+            next_step = entered.strip() or None
+
+        if note is None:
+            entered = typer.prompt(
+                "Optional: Any additional notes or brain dump",
+                default="",
+                show_default=False,
+            )
+            note = entered.strip() or None
+
     async def run_freeze():
         try:
-            await freeze_logic(repo_id, cfg, human_note=note)
+            await freeze_logic(
+                repo_id,
+                cfg,
+                human_note=note,
+                human_objective=objective,
+                human_blocker=blocker,
+                human_next_step=next_step,
+            )
         except ValueError:
             raise typer.Exit(code=1) from None
         finally:
@@ -279,7 +366,7 @@ def switch(repo_id: str):
 
 
 @app.command("install-hooks")
-def install_hooks(repo_id: Optional[str] = None):
+def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
