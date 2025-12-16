@@ -79,7 +79,9 @@ async def test_generate_sitrep_retries_then_success():
     ]
 
     with patch(
-        "httpx.AsyncClient.post", new_callable=AsyncMock, side_effect=side_effects
+        "httpx.AsyncClient.post",
+        new_callable=AsyncMock,
+        side_effect=side_effects,
     ) as mock_post:
         result = await generate_sitrep(
             repo_id="test-repo",
