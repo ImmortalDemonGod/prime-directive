@@ -8,6 +8,7 @@ import sys
 from typing import Any, Optional, cast
 
 from dotenv import load_dotenv
+import httpx
 from rich.console import Console
 from rich.table import Table
 from sqlalchemy import select
@@ -721,7 +722,9 @@ def sitrep(
                 snapshots = list(result.scalars().all())
 
                 if not snapshots:
-                    console.print(f"[yellow]No snapshots found for {repo_id}[/yellow]")
+                    console.print(
+                        f"[yellow]No snapshots found for {repo_id}[/yellow]"
+                    )
                     return
 
                 if not deep_dive:
@@ -804,12 +807,17 @@ def sitrep(
                     return
 
                 system_prompt = (
-                    "You are a senior engineering assistant analyzing a developer's work history. "
-                    "Given a series of timestamped context snapshots, generate a comprehensive "
-                    "longitudinal summary that: 1) Identifies the overarching goals, "
-                    "2) Highlights what approaches were tried and failed, "
+                    "You are a senior engineering assistant "
+                    "analyzing a developer's work history. "
+                    "Given a series of timestamped context "
+                    "snapshots, generate a comprehensive "
+                    "longitudinal summary that: "
+                    "1) Identifies the overarching goals, "
+                    "2) Highlights what approaches were tried "
+                    "and failed, "
                     "3) Notes key blockers and uncertainties, "
-                    "4) Recommends the immediate next action based on the trajectory. "
+                    "4) Recommends the immediate next action "
+                    "based on the trajectory. "
                     "Be specific and actionable. Max 200 words."
                 )
 
@@ -821,7 +829,8 @@ Time span: {snapshots[-1].timestamp} to {snapshots[0].timestamp}
 Historical Context (oldest to newest):
 {historical_narrative}
 
-Generate a longitudinal SITREP that helps the developer resume work effectively.
+Generate a longitudinal SITREP that helps the developer resume work
+effectively.
 """
 
                 hq_model = getattr(cfg.system, 'ai_model_hq', 'gpt-4o')
@@ -840,14 +849,22 @@ Generate a longitudinal SITREP that helps the developer resume work effectively.
                         f"\n[bold reverse] DEEP-DIVE SITREP for {repo_id} "
                         "[/bold reverse]"
                     )
+
+                    time_span = (
+                        f"{snapshots[-1].timestamp} to "
+                        f"{snapshots[0].timestamp}"
+                    )
                     console.print(
                         f"[dim]Based on {len(snapshots)} snapshots from "
-                        f"{snapshots[-1].timestamp} to {snapshots[0].timestamp}"
+                        f"{time_span}"
                         "[/dim]"
                     )
                     console.print(f"\n[bold cyan]{summary}[/bold cyan]")
                 except (httpx.HTTPError, ValueError, OSError) as e:
-                    console.print(f"[bold red]Error generating deep-dive:[/bold red] {e}")
+                    console.print(
+                        "[bold red]Error generating deep-dive:[/bold red] "
+                        f"{e}"
+                    )
         finally:
             await dispose_engine()
 
@@ -868,7 +885,9 @@ def ai_usage():
         await init_db(cfg.system.db_path)
         try:
             # Get monthly totals
-            total_cost, call_count = await get_monthly_usage(cfg.system.db_path)
+            total_cost, call_count = await get_monthly_usage(
+                cfg.system.db_path
+            )
             budget = getattr(cfg.system, "ai_monthly_budget_usd", 10.0)
             remaining = max(0, budget - total_cost)
             pct_used = (total_cost / budget * 100) if budget > 0 else 0
@@ -883,11 +902,23 @@ def ai_usage():
             )
 
             if pct_used >= 90:
-                console.print(f"  [bold red]⚠️  {pct_used:.1f}% of budget used![/bold red]")
+                console.print(
+                    "  [bold red]⚠️  "
+                    f"{pct_used:.1f}% of budget used!"
+                    "[/bold red]"
+                )
             elif pct_used >= 75:
-                console.print(f"  [bold yellow]⚠️  {pct_used:.1f}% of budget used[/bold yellow]")
+                console.print(
+                    "  [bold yellow]⚠️  "
+                    f"{pct_used:.1f}% of budget used"
+                    "[/bold yellow]"
+                )
             else:
-                console.print(f"  [green]✅ {pct_used:.1f}% of budget used[/green]")
+                console.print(
+                    "  [green]✅ "
+                    f"{pct_used:.1f}% of budget used"
+                    "[/green]"
+                )
 
             # Show recent calls
             async for session in get_session(cfg.system.db_path):
@@ -921,7 +952,11 @@ def ai_usage():
                     table.add_column("Status")
 
                     for log in recent:
-                        status = "[green]✓[/green]" if log.success else "[red]✗[/red]"
+                        status = (
+                            "[green]✓[/green]"
+                            if log.success
+                            else "[red]✗[/red]"
+                        )
                         table.add_row(
                             log.timestamp.strftime("%m-%d %H:%M"),
                             log.provider,
