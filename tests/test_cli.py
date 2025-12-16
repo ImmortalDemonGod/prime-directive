@@ -223,7 +223,9 @@ def test_metrics_reports_ttc(
 
     t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
     events = [
-        EventLog(repo_id="repo1", event_type=EventType.SWITCH_IN, timestamp=t0),
+        EventLog(
+            repo_id="repo1", event_type=EventType.SWITCH_IN, timestamp=t0
+        ),
         EventLog(
             repo_id="repo1",
             event_type=EventType.COMMIT,
