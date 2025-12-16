@@ -175,6 +175,9 @@ async def freeze_logic(
             timeout_seconds=config.system.ollama_timeout_seconds,
             max_retries=config.system.ollama_max_retries,
             backoff_seconds=config.system.ollama_backoff_seconds,
+            db_path=config.system.db_path,
+            monthly_budget_usd=getattr(config.system, 'ai_monthly_budget_usd', 10.0),
+            cost_per_1k_tokens=getattr(config.system, 'ai_cost_per_1k_tokens', 0.002),
         )
     logger.info(f"Generated SITREP for {repo_id}")
 
