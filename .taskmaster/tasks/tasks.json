@@ -1204,6 +1204,17 @@
         ],
         "priority": "low",
         "subtasks": []
+      },
+      {
+        "id": 37,
+        "title": "Implement V1.2 Freeze Protocol Prompts",
+        "description": "Rename SPEC doc and update CLI prompts in 'pd freeze' to match SPEC-V1.2-FREEZE-PROTOCOL.md.",
+        "details": "Renamed docs/doc.md to docs/SPEC-V1.2-FREEZE-PROTOCOL.md. Updated prime_directive/bin/pd.py to use the new optimized prompts: 'Context: What was your specific focus...', 'Mental Cache...', 'The Hook...', 'Brain Dump...'. This aligns the CLI with the V1.2 design specification.",
+        "testStrategy": "Verified code matches spec strings exactly.",
+        "status": "done",
+        "dependencies": [],
+        "priority": "medium",
+        "subtasks": []
       }
     ],
     "metadata": {
