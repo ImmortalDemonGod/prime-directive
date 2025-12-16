@@ -317,7 +317,8 @@ def freeze(
 
         if blocker is None:
             entered = typer.prompt(
-                "Mental Cache: What is the key blocker, uncertainty, or 'gotcha'?",
+                "Mental Cache: What is the key blocker, uncertainty, or "
+                "'gotcha'?",
                 default="",
                 show_default=False,
             )
