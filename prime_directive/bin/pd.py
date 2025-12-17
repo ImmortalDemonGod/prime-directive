@@ -169,6 +169,8 @@ async def freeze_logic(
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
 
     # 1. Capture Git State (Sync/Blocking)
+    # 2. Capture Terminal State (Sync/Blocking)
+    # These operations are independent and can be executed concurrently.
     git_st: GitStatus
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping actual git status check")
@@ -179,7 +181,11 @@ async def freeze_logic(
             "uncommitted_files": [],
             "diff_stat": "",
         }
-    else:
+
+        logger.info("MOCK MODE: Skipping terminal capture")
+        last_cmd = "mock_cmd"
+        term_output = "MOCK: Terminal output"
+    elif skip_terminal_capture:
         git_st = await get_status(repo_path)
         git_summary = (
             f"Branch: {git_st['branch']}\n"
@@ -188,19 +194,56 @@ async def freeze_logic(
             f"Diff: {git_st.get('diff_stat', '')}"
         )
 
-    logger.debug(f"Git state for {repo_id}: {git_st}")
-
-    # 2. Capture Terminal State (Sync/Blocking)
-    if config.system.mock_mode:
-        logger.info("MOCK MODE: Skipping terminal capture")
-        last_cmd = "mock_cmd"
-        term_output = "MOCK: Terminal output"
-    elif skip_terminal_capture:
         last_cmd = "unknown"
         term_output = "Terminal capture skipped."
     else:
-        last_cmd, term_output = await capture_terminal_state(repo_id)
+        git_task = asyncio.create_task(get_status(repo_path))
+        term_task = asyncio.create_task(capture_terminal_state(repo_id))
 
+        try:
+            git_result, term_result = await asyncio.gather(
+                git_task,
+                term_task,
+                return_exceptions=True,
+            )
+        except Exception as e:
+            logger.exception(
+                "Error running concurrent freeze capture steps",
+                extra={"repo_id": repo_id},
+            )
+            git_result = e
+            term_result = e
+
+        if isinstance(git_result, BaseException):
+            logger.warning(
+                f"Git state capture failed for {repo_id}: {git_result!s}"
+            )
+            git_st = {
+                "branch": "error",
+                "is_dirty": False,
+                "uncommitted_files": [],
+                "diff_stat": str(git_result),
+            }
+        else:
+            git_st = git_result
+
+        git_summary = (
+            f"Branch: {git_st['branch']}\n"
+            f"Dirty: {git_st['is_dirty']}\n"
+            f"Files: {git_st['uncommitted_files']}\n"
+            f"Diff: {git_st.get('diff_stat', '')}"
+        )
+
+        if isinstance(term_result, BaseException):
+            logger.warning(
+                f"Terminal capture failed for {repo_id}: {term_result!s}"
+            )
+            last_cmd = "unknown"
+            term_output = "Unexpected error during terminal capture."
+        else:
+            last_cmd, term_output = term_result
+
+    logger.debug(f"Git state for {repo_id}: {git_st}")
     logger.debug(f"Terminal state: cmd={last_cmd}")
 
     # 3. Capture Active Task (Sync)
