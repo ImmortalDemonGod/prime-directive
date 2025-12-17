@@ -520,7 +520,6 @@ alwaysApply: true
   - Update references to external docs
   - Maintain links between related rules
   - Document breaking changes
-
 Follow WINDSURF_RULES for proper rule formatting and structure of windsurf rule sections.
 
 # Added by Task Master - Development Workflow Rules
@@ -1574,5 +1573,29 @@ alwaysApply: true
   - Update references to external docs
   - Maintain links between related rules
   - Document breaking changes
+
+---
+description: Enforce tmux-first terminal command execution to preserve Prime Directive context capture
+globs: **/*
+filesToApplyRule: **/*
+alwaysApply: true
+---
+
+- **TERMINAL_DISCIPLINE: Always operate inside tmux for context tracking**
+
+  - Prime Directive’s terminal context capture is tmux-based; running stateful commands in raw IDE shells risks losing correct terminal history.
+  - If you are not already inside tmux, enter the repository’s `pd-<repo_id>` tmux session before running commands.
+
+- **Bootstrap snippet (non-tmux → tmux)**
+
+  ```bash
+  if [ -z "$TMUX" ]; then
+    pd switch "$(basename "$(pwd)")" || { [ $? -eq 88 ] && tmux attach -t "pd-$(basename "$(pwd)")"; }
+  fi
+  ```
+
+- **Do not**
+
+  - Do not run multi-step or stateful workflows in raw IDE shells when tmux context capture is required.
 
 Follow WINDSURF_RULES for proper rule formatting and structure of windsurf rule sections.
