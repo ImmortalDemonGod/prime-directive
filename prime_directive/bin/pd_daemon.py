@@ -1,4 +1,3 @@
-import time
 import os
 import typer
 import subprocess
@@ -178,9 +177,9 @@ def main(
         finally:
             await dispose_engine()
 
-    try:
+    async def daemon_loop() -> None:
         while True:
-            time.sleep(interval)
+            await asyncio.sleep(interval)
             now = datetime.now()
             for repo_id, handler in handlers.items():
                 # Check inactivity
@@ -194,7 +193,7 @@ def main(
                         "Freezing...[/blue]"
                     )
                     try:
-                        asyncio.run(run_freeze(repo_id, cfg))
+                        await run_freeze(repo_id, cfg)
                         handler.is_frozen = True
                         console.print(
                             f"[green]Repository {repo_id} is now "
@@ -205,6 +204,8 @@ def main(
                             f"[red]Error freezing {repo_id}: {e}[/red]"
                         )
 
+    try:
+        asyncio.run(daemon_loop())
     except KeyboardInterrupt:
         observer.stop()
     finally:
