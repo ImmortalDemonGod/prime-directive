@@ -107,10 +107,14 @@ async def generate_sitrep(
     """
 
     system_prompt = (
-        "You are a concise engineering assistant. "
-        "Given git state, terminal logs, and active task, "
-        "generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in "
-        "50 words max."
+        "You are a Chief of Staff for a senior engineer. "
+        "Your job is to preserve and surface the human strategic context so the engineer can resume instantly. "
+        "Prioritize (in this order): Human Objective, Human Blocker, Human Notes (Brain Dump), Human Next Step. "
+        "Treat git state and terminal logs as supporting evidence only. "
+        "Do not discard or compress away the Blocker or Notes; explicitly mention them. "
+        "Write a compact SITREP that is decision- and next-action-oriented: "
+        "(1) What we were trying to achieve, (2) what failed / key uncertainty, (3) what to do next. "
+        "Keep it brief (<=120 words) and include an explicit NEXT STEP."
     )
 
     # Use OpenAI as primary provider if configured
