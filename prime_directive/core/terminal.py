@@ -5,16 +5,19 @@ from typing import Optional, Tuple
 
 def capture_terminal_state(repo_id: Optional[str] = None) -> Tuple[str, str]:
     """
-    Captures the terminal state from tmux if running inside a tmux session.
-
-    Args:
-        repo_id (Optional[str]): If provided, targets the tmux session
-            'pd-{repo_id}'. Otherwise captures the current pane.
-
+    Capture the last ~50 lines from a tmux pane and heuristically identify the most recent shell command.
+    
+    Parameters:
+        repo_id (Optional[str]): If provided, target the tmux session named "pd-{repo_id}"; otherwise capture the current pane.
+    
     Returns:
-        tuple[str, str]: (last_command, output_summary)
-        - last_command: The last command executed (if available) or "unknown"
-        - output_summary: The last ~50 lines of terminal output
+        tuple[str, str]: A pair (last_command, output_summary)
+            - last_command: Detected last executed command from the captured output, or "unknown" if not detectable.
+            - output_summary: The captured pane content (trimmed). If capture fails, one of the fallback messages:
+                "No tmux session found or capture failed.",
+                "Terminal capture timed out.",
+                "tmux not installed.",
+                "Unexpected error during terminal capture."
     """
     try:
         # Check if we are inside tmux (basic check, could be more robust)

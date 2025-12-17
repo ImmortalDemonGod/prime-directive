@@ -7,6 +7,15 @@ from prime_directive.core.git_utils import get_status
 
 @pytest.fixture
 def temp_git_repo(tmp_path):
+    """
+    Create a temporary Git repository with an initial commit and return its path.
+    
+    Parameters:
+        tmp_path (pathlib.Path): pytest-provided temporary directory in which the repository will be created.
+    
+    Returns:
+        pathlib.Path: Path to the created Git repository containing a README.md committed as the initial commit.
+    """
     repo_path = tmp_path / "test_repo"
     repo_path.mkdir()
 

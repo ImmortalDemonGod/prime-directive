@@ -55,7 +55,14 @@ logger = logging.getLogger("prime_directive")
 
 
 def load_config() -> DictConfig:
-    """Load configuration using Hydra."""
+    """
+    Load and compose the application's configuration using Hydra.
+    
+    Attempts to initialize Hydra from the package's ../conf directory and compose the "config" configuration. On failure prints an error, logs it at critical level, and exits the process with status code 1.
+    
+    Returns:
+        DictConfig: The composed configuration object.
+    """
     # Ensure any previous Hydra instance is cleared
     GlobalHydra.instance().clear()
 
@@ -84,7 +91,21 @@ async def freeze_logic(
     config: DictConfig,
     human_note: Optional[str] = None,
 ):
-    """Core freeze logic separated for reuse (Async)."""
+    """
+    Create and persist a contextual snapshot for the given repository, including git state, terminal state, an AI-generated SITREP, and an optional human note.
+    
+    Parameters:
+        repo_id (str): Repository identifier defined in the provided configuration.
+        config (DictConfig): Hydra configuration containing `repos` and `system` settings required for capture, AI generation, and database access.
+        human_note (Optional[str]): Optional free-text note to attach to the snapshot.
+    
+    Raises:
+        ValueError: If `repo_id` is not present in `config.repos`.
+    
+    Side effects:
+        - May initialize the configured database and persist a ContextSnapshot and Repository record.
+        - May invoke git status inspection, terminal-state capture, and AI SITREP generation depending on configuration (mock-mode may bypass external calls).
+    """
     if repo_id not in config.repos:
         msg = f"Repository '{repo_id}' not found in configuration."
         console.print(f"[bold red]Error:[/bold red] {msg}")
@@ -215,21 +236,24 @@ def freeze(
     ),
 ):
     """
-    Snapshot the current state of a repository (Git, Terminal, Task) and
-    generate an AI SITREP.
-
-    The --note is MANDATORY. This is YOUR context that the AI will miss.
-    Without it, you lose the most important piece of information: what YOU
-    knew.
-
-    Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit
-    review"
+    Create a contextual snapshot of a repository and generate an AI SITREP.
+    
+    Captures repository state (git, terminal, active task), includes the provided human note as context, generates an AI situation report, and persists the snapshot to the database.
+    
+    Parameters:
+        note (str): REQUIRED. A human-provided note describing what you were actively working on; this context is stored with the snapshot and included in the generated SITREP.
     """
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
     async def run_freeze():
+        """
+        Execute the freeze workflow and ensure DB engine cleanup.
+        
+        Calls the configured freeze_logic for the target repository; if freeze_logic raises a ValueError, exits the CLI with code 1. Always disposes the database engine after running.
+        @raises typer.Exit: Exits with code 1 when a ValueError is raised by freeze_logic.
+        """
         try:
             await freeze_logic(repo_id, cfg, human_note=note)
         except ValueError:
@@ -273,7 +297,11 @@ def switch(repo_id: str):
 
 @app.command("list")
 def list_repos():
-    """List all managed repositories."""
+    """
+    Display a table of configured repositories sorted by descending priority.
+    
+    Renders a Rich table with columns: ID, Priority, Branch, and Path; repositories are ordered by priority (highest first).
+    """
     logger.info("Command: list")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
@@ -303,7 +331,11 @@ def list_repos():
 
 @app.command("status")
 def status_command():
-    """Show detailed status of all repositories."""
+    """
+    Render a status table summarizing each repository's priority, branch, git state, and last snapshot.
+    
+    Loads configuration, consults the database for the most recent ContextSnapshot per repository, determines git status (or uses mock data when mock_mode is enabled), and prints a Rich table with columns: Project, Priority, Branch, Git Status, and Last Snapshot.
+    """
     logger.info("Command: status")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
@@ -322,6 +354,11 @@ def status_command():
     )
 
     async def run_status():
+        """
+        Gather repository statuses and populate the provided table with project, priority, branch, git status, and last snapshot information.
+        
+        Ensures the database is initialized, iterates repository records within an asynchronous DB session, determines each repository's git status (uses mock mode when configured), fetches the most recent ContextSnapshot timestamp if present, formats priority and branch displays, and adds a row for each repository to the surrounding `table`. Always disposes the database engine when finished. 
+        """
         try:
             # Ensure DB exists/tables created
             await init_db(cfg.system.db_path)
@@ -404,7 +441,11 @@ def status_command():
 
 @app.command("doctor")
 def doctor():
-    """Diagnose system dependencies and configuration."""
+    """
+    Run a set of system and configuration checks and display the results.
+    
+    Performs checks for tmux installation, configured editor availability, the configured AI engine (Ollama) status, optional OpenAI API key fallback, and repository path existence; prints a summary table to the console and logs the check results. In mock mode, checks are reported as mocked.
+    """
     logger.info("Command: doctor")
     cfg = load_config()
     setup_logging(cfg.system.log_path)

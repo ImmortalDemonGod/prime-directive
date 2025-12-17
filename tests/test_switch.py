@@ -11,6 +11,15 @@ runner = CliRunner()
 
 @pytest.fixture
 def mock_config(tmp_path):
+    """
+    Create a test configuration OmegaConf object with default system settings and two repository entries.
+    
+    Parameters:
+        tmp_path (pathlib.Path): Temporary directory path provided by pytest; used to create a log file path.
+    
+    Returns:
+        config (OmegaConf.DictConfig): Configuration containing a "system" section (editor, AI, API, DB, logging, and mock_mode settings) and a "repos" section with entries for "current-repo" and "target-repo".
+    """
     log_file = tmp_path / "pd.log"
     return OmegaConf.create(
         {

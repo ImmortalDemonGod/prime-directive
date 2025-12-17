@@ -5,12 +5,14 @@ import shutil
 
 def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
     """
-    Ensures a tmux session exists for the given repo_id and attaches to it.
-    If the session doesn't exist, it creates one starting at repo_path.
-
-    Args:
-        repo_id (str): The ID of the repository (used for session name).
-        repo_path (str): The path to the repository.
+    Ensure a tmux session named "pd-{repo_id}" exists and switch or attach the client to it.
+    
+    Creates the session if it does not exist, starting in repo_path. If tmux is not available or tmux commands time out, the function prints an error message and returns without raising. When inside an existing tmux client, the function switches the client to the target session; when not inside tmux and attach is True, it attaches interactively to the session.
+    
+    Parameters:
+        repo_id (str): Identifier used to form the tmux session name as "pd-{repo_id}".
+        repo_path (str): Filesystem path used as the session's start directory.
+        attach (bool): If True and not already in tmux, attach to the created or existing session; if False, do not attach.
     """
     if not shutil.which("tmux"):
         print("Error: tmux is not installed.")
@@ -89,7 +91,9 @@ def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
 
 def detach_current():
     """
-    Detaches the current tmux client if inside a session.
+    Detach the current tmux client when running inside a tmux session.
+    
+    If the TMUX environment variable is not set, the function does nothing. If the detach command times out, an error message is printed.
     """
     if os.environ.get("TMUX"):
         try:

@@ -15,12 +15,29 @@ console = Console()
 
 class AutoFreezeHandler(FileSystemEventHandler):
     def __init__(self, repo_id: str, cfg):
+        """
+        Initialize the handler with a repository identifier and configuration, and set up its activity-tracking state.
+        
+        Parameters:
+        	repo_id (str): Unique identifier for the repository being monitored.
+        	cfg: Configuration object for the repository monitoring and freeze logic.
+        
+        Attributes:
+        	last_modified (datetime): Timestamp of the most recent filesystem activity; initialized to the current time.
+        	is_frozen (bool): Whether the repository is currently considered frozen; initialized to False.
+        """
         self.repo_id = repo_id
         self.cfg = cfg
         self.last_modified = datetime.now()
         self.is_frozen = False
 
     def on_any_event(self, event):
+        """
+        Handle a filesystem event by recording recent activity and clearing the frozen flag for the repository.
+        
+        Parameters:
+            event: The filesystem event object received from watchdog. Directory events are ignored; for other events this updates `last_modified` to the current time and sets `is_frozen` to False if it was True.
+        """
         if event.is_directory:
             return
         # Activity detected, reset state
@@ -45,8 +62,11 @@ def main(
     ),
 ):
     """
-    Background daemon to monitor repositories and auto-freeze context on
-    inactivity.
+    Run a background daemon that monitors configured repositories and automatically freezes their context after a period of inactivity.
+    
+    Parameters:
+        interval (int): Seconds between inactivity checks.
+        inactivity_limit (int): Inactivity threshold in seconds after which a repository will be frozen.
     """
     msg = "[bold green]Starting Prime Directive Daemon...[/bold green]"
     console.print(msg)
@@ -68,6 +88,13 @@ def main(
     observer.start()
 
     async def run_freeze(repo_id, cfg):
+        """
+        Execute the freeze logic for a repository and ensure the database engine is disposed afterwards.
+        
+        Parameters:
+            repo_id: Identifier of the repository to freeze.
+            cfg: Configuration object used by the freeze logic.
+        """
         try:
             await freeze_logic(repo_id, cfg)
         finally:

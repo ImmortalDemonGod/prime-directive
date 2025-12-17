@@ -8,6 +8,15 @@ from datetime import datetime, timedelta
 
 @pytest.fixture
 def mock_config(tmp_path):
+    """
+    Create a default OmegaConf configuration for tests with a single repository entry.
+    
+    Parameters:
+        tmp_path (pathlib.Path): Temporary directory path provided by pytest; used to locate the log file.
+    
+    Returns:
+        OmegaConf: Configuration containing a `system` section (editor command, AI model and Ollama settings, database and log paths, mock mode) and a `repos` section with a single repository named "test-repo".
+    """
     log_file = tmp_path / "pd.log"
     return OmegaConf.create(
         {
