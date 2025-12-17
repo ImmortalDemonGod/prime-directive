@@ -42,6 +42,11 @@ def test_load_registry_defaults():
 
 def test_repo_config_validation():
     # Test that RepoConfig validation works
+    """
+    Asserts that constructing a RepoConfig without required fields raises a validation error.
+    
+    Attempts to create a RepoConfig missing the required 'path' attribute and expects an exception from validation.
+    """
     with pytest.raises(Exception):
         # Missing required field 'path' (pydantic validation)
         RepoConfig(id="fail", priority=1)

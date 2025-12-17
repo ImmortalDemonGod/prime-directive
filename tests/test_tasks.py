@@ -6,6 +6,15 @@ from prime_directive.core.tasks import get_active_task
 
 @pytest.fixture
 def mock_repo(tmp_path):
+    """
+    Create a temporary mock repository with a .taskmaster/tasks directory for tests.
+    
+    Parameters:
+        tmp_path (pathlib.Path): Base temporary directory provided by pytest.
+    
+    Returns:
+        pathlib.Path: Path to the created mock repository root (contains the `.taskmaster/tasks` subdirectory).
+    """
     repo_dir = tmp_path / "mock_repo"
     repo_dir.mkdir()
     taskmaster_dir = repo_dir / ".taskmaster" / "tasks"

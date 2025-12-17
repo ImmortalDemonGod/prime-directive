@@ -1,4 +1,7 @@
 def main():
+    """
+    Prints "Hello from prime-directive!" to standard output.
+    """
     print("Hello from prime-directive!")
 
 

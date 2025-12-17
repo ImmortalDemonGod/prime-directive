@@ -5,6 +5,15 @@ from prime_directive.core.scribe import generate_sitrep
 
 
 def test_generate_sitrep_success():
+    """
+    Verify generate_sitrep returns the SITREP string from a successful HTTP response and sends the expected request payload.
+    
+    Patches requests.post to return a mocked response containing a SITREP, calls generate_sitrep with sample repo, git state, terminal logs, and an active task, and asserts that:
+    - the result matches the SITREP string from the response,
+    - a single POST request was made,
+    - the JSON payload selected the "qwen2.5-coder" model,
+    - the active task title appears in the generated prompt.
+    """
     mock_response = Mock()
     mock_response.json.return_value = {
         "response": "SITREP: All systems go. Next: Deploy."

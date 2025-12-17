@@ -4,12 +4,11 @@ import shutil
 
 def launch_editor(repo_path: str, editor_cmd: str = "windsurf"):
     """
-    Launches the specified editor for the given repository path.
-
-    Args:
-        repo_path (str): The path to the repository to open.
-        editor_cmd (str): The command to launch the editor (default:
-            "windsurf").
+    Open the repository at repo_path in a new editor instance/window.
+    
+    Parameters:
+        repo_path (str): Filesystem path of the repository to open.
+        editor_cmd (str): Editor command to execute (default "windsurf").
     """
     # Verify editor command exists
     if not shutil.which(editor_cmd):

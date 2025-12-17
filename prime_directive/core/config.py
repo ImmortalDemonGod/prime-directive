@@ -39,5 +39,10 @@ class PrimeConfig:
 
 
 def register_configs():
+    """
+    Register the PrimeConfig schema in the Hydra ConfigStore under the name "base_config".
+    
+    This makes the PrimeConfig dataclass available to Hydra for configuration composition and loading.
+    """
     cs = ConfigStore.instance()
     cs.store(name="base_config", node=PrimeConfig)

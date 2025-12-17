@@ -2,13 +2,15 @@
 
 # Ensure pd is in PATH or aliased
 # Assuming pd is installed via pip/uv and in path, otherwise alias it
-# alias pd="uv run pd" # Uncomment if not installed globally
+# pd forwards its arguments to the real `pd` command found in PATH.
 
 pd() {
     command pd "$@"
 }
 
-# Hooks into directory changes to detect Prime Directive repositories
+# pd_chpwd hooks into directory changes to detect Prime Directive repositories.
+# This placeholder performs no action by default (succeeds unconditionally).
+# To enable active detection, invoke `pd status --check-current` here (may impact performance).
 pd_chpwd() {
     # This is a placeholder for context detection.
     # To enable auto-detection, we would check if $PWD matches a registered repo.
@@ -22,7 +24,7 @@ pd_chpwd() {
 autoload -Uz add-zsh-hook
 add-zsh-hook chpwd pd_chpwd
 
-# Completion for pd command (basic)
+# _pd_completion provides basic tab completion for the `pd` command, suggesting the primary subcommands: list, status, doctor, freeze, and switch.
 _pd_completion() {
     local -a commands
     commands=('list' 'status' 'doctor' 'freeze' 'switch')

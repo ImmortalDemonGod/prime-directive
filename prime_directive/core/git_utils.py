@@ -9,15 +9,17 @@ GitStatus = Dict[str, Union[str, bool, List[str]]]
 
 def get_status(repo_path: str) -> GitStatus:
     """
-    Capture git status for a repository.
-
+    Collect Git repository state for the given path and return a structured status dictionary.
+    
+    Parameters:
+        repo_path (str): Filesystem path to the Git repository directory.
+    
     Returns:
-        dict: {
-            'branch': str,
-            'is_dirty': bool,
-            'uncommitted_files': list[str],
-            'diff_stat': str
-        }
+        GitStatus: Dictionary with the following keys:
+            - branch (str): Current branch name, or "unknown"/"timeout"/"error" for failure cases.
+            - is_dirty (bool): True if there are uncommitted changes, False otherwise.
+            - uncommitted_files (List[str]): File paths reported by `git status --porcelain`.
+            - diff_stat (str): Output of `git diff --stat`, or an error/timeout message.
     """
     if not os.path.exists(os.path.join(repo_path, ".git")):
         return {

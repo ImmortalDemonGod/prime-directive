@@ -9,6 +9,17 @@ runner = CliRunner()
 
 @pytest.fixture
 def mock_config(tmp_path):
+    """
+    Create an OmegaConf configuration object suitable for tests.
+    
+    The returned config contains a `system` section with editor, AI provider/model settings, API endpoints, timeouts, database and logging paths, and a `repos` mapping with a single repository entry `test-repo` (id, path, priority, active_branch).
+    
+    Parameters:
+        tmp_path (pathlib.Path): Pytest temporary directory used to build file paths (e.g., log_path).
+    
+    Returns:
+        OmegaConf: An OmegaConf.DictConfig with the test configuration.
+    """
     log_file = tmp_path / "pd.log"
     return OmegaConf.create(
         {
@@ -93,6 +104,15 @@ def test_freeze_command(
 
     # async generator mock
     async def async_gen(_db_path=None):
+        """
+        Provide an async generator that yields the test's mock database session.
+        
+        Parameters:
+            _db_path (str | None): Ignored; present for API/signature compatibility.
+        
+        Returns:
+            Yields the mock session object used by tests.
+        """
         yield mock_session
 
     mock_get_session.side_effect = async_gen

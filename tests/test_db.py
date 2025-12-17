@@ -14,6 +14,14 @@ from prime_directive.core.db import (
 
 @pytest_asyncio.fixture
 async def async_db_session(tmp_path):
+    """
+    Provide an async SQLModel/SQLAlchemy session connected to a temporary test database.
+    
+    Initializes a SQLite database file under the provided tmp_path, yields an asynchronous session for use in tests, and disposes the associated engine after the session is finished.
+    
+    Returns:
+        async_session: An asynchronous database session bound to the temporary test database.
+    """
     db_path = tmp_path / "test.db"
     await init_db(str(db_path))
 
@@ -46,6 +54,11 @@ async def test_repository_crud(async_db_session):
 
 @pytest.mark.asyncio
 async def test_snapshot_creation(async_db_session):
+    """
+    Verify that a ContextSnapshot can be created, persisted, and retrieved for a Repository.
+    
+    Creates a Repository and a linked ContextSnapshot, commits and refreshes the snapshot, and asserts that the snapshot received a generated id, can be queried by repo_id, has the expected git_status_summary, and that its timestamp is a datetime instance.
+    """
     repo = Repository(
         id="test-repo",
         path="/tmp/test",

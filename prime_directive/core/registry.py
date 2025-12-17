@@ -25,7 +25,22 @@ class Registry(BaseModel):
 def load_registry(
     config_path: str = "prime_directive/system/registry.yaml",
 ) -> Registry:
-    """Load registry from YAML file."""
+    """
+    Load and parse the registry configuration from a YAML file.
+    
+    Searches config_path first, then falls back to "system/registry.yaml" in the current working directory.
+    If no configuration file is found, returns a default Registry instance. When a file is found, the YAML
+    is parsed and converted into a Registry model; repository entries are normalized so a `repos` list is
+    converted to a mapping keyed by each repo's `id`, and repo mappings that lack an `id` field receive
+    their mapping key as `id`.
+    
+    Parameters:
+        config_path (str): Path to the registry YAML file. Defaults to "prime_directive/system/registry.yaml".
+    
+    Returns:
+        registry (Registry): Registry constructed from the parsed and normalized configuration, or a default
+        Registry when no file is present.
+    """
     path = Path(config_path)
     if not path.exists():
         # Fallback to looking in system/ relative to cwd if not found

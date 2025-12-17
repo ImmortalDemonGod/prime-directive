@@ -9,9 +9,11 @@ from prime_directive.core.db import ContextSnapshot
 
 
 def _is_path_prefix(prefix: str, path: str) -> bool:
-    """Return True if `prefix` is a directory-prefix of `path`.
-
-    This is path boundary safe.
+    """
+    Determine whether `prefix` is a directory-path prefix of `path`, respecting path boundaries.
+    
+    Returns:
+        bool: `True` if `path` equals `prefix` or is located inside `prefix` (i.e., begins with `prefix` followed by a path separator), `False` otherwise.
     """
     prefix_norm = os.path.normpath(os.path.abspath(prefix))
     path_norm = os.path.normpath(os.path.abspath(path))
@@ -23,7 +25,16 @@ def _is_path_prefix(prefix: str, path: str) -> bool:
 
 
 def detect_current_repo_id(cwd: str, repos: Any) -> Optional[str]:
-    """Detect current repo by longest matching repo path prefix."""
+    """
+    Detect which repository (by repo_id) contains the given working directory by selecting the repo whose configured path is the longest path-prefix of cwd.
+    
+    Parameters:
+        cwd (str): Current working directory path to test.
+        repos (Any): Mapping of repo_id to repository configuration objects or dicts; each config must expose a `path` attribute or key.
+    
+    Returns:
+        Optional[str]: The repo_id whose path is the longest matching prefix of `cwd`, or `None` if no repository matches.
+    """
     best_repo_id: Optional[str] = None
     best_len = -1
 
@@ -55,6 +66,24 @@ async def switch_logic(
     console: Any,
     logger: logging.Logger,
 ) -> None:
+    """
+    Coordinate switching the working context to the specified repository and print a situational report.
+    
+    Detects the repository containing `cwd` and, if different from `target_repo_id`, attempts to freeze the current repository via `freeze_fn`. Ensures a session and optionally launches the editor for the target repository (mock behavior when `cfg.system.mock_mode` is true), initializes the database, retrieves the latest ContextSnapshot for the target repository, and prints a SITREP with any human note, AI summary, and timestamp. Always disposes engine resources by calling `dispose_engine_fn`.
+    
+    Parameters:
+        target_repo_id (str): Identifier of the repository to switch to.
+        cfg (Any): Configuration object containing `repos` mapping and `system` settings (`mock_mode`, `editor_cmd`, `db_path`).
+        cwd (str): Current working directory used to detect the active repository.
+        freeze_fn (Callable[[str, Any], Any]): Callable invoked with (repo_id, cfg) to freeze the given repository; exceptions from this call are caught and reported to `console`.
+        ensure_session_fn (Callable[..., Any]): Callable to ensure or create a session for a repo; called as ensure_session_fn(target_repo_id, target_path, attach=False) in non-mock mode and called again after switch by the runner when appropriate.
+        launch_editor_fn (Callable[[str, str], Any]): Callable to launch the editor; called with (path, editor_cmd) in non-mock mode.
+        init_db_fn (Callable[[str], Any]): Callable invoked with the database path to initialize the DB layer before querying snapshots.
+        get_session_fn (Callable[[str], Any]): Callable that yields database sessions for the given DB path; used to execute a query for the most recent ContextSnapshot for `target_repo_id`.
+        dispose_engine_fn (Callable[..., Any]): Callable invoked (awaited) unconditionally at the end to dispose DB/engine resources.
+        console (Any): Console-like object used to print user-facing messages and SITREP output.
+        logger (logging.Logger): Logger used to record informational events and debug messages.
+    """
     try:
         current_repo_id = detect_current_repo_id(cwd, cfg.repos)
 
@@ -135,6 +164,15 @@ def run_switch(
     logger: logging.Logger,
 ) -> None:
 
+    """
+    Synchronously run the repository switch workflow and, when appropriate, ensure a session is attached for the target repository.
+    
+    Runs the asynchronous switch_logic workflow for the specified target repository using the provided configuration and helper functions. After the workflow completes, if the configuration is not in mock mode and the process is not running inside a TMUX session, calls ensure_session_fn with the target repository id and the repository's configured path to establish/attach a session.
+    
+    Parameters:
+        target_repo_id (str): Identifier of the repository to switch to.
+        cfg (Any): Configuration object containing a `repos` mapping and `system` settings (including `mock_mode` and repo paths).
+    """
     asyncio.run(
         switch_logic(
             target_repo_id,

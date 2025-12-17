@@ -10,6 +10,14 @@ runner = CliRunner()
 @pytest.fixture
 def mock_config(tmp_path):
     # Use OmegaConf to create a DictConfig that supports dot access
+    """
+    Create an OmegaConf DictConfig containing test configuration for system settings and repositories.
+    
+    The returned config includes a `system` section with editor, AI provider/model settings, API endpoints, timeouts, database and log paths, and a `repos` mapping with two repositories (`repo1`, `repo2`) each including `id`, `path`, `priority`, and `active_branch`.
+    
+    Returns:
+        DictConfig: An OmegaConf DictConfig built from the predefined configuration dictionary suitable for use in tests.
+    """
     log_file = tmp_path / "pd.log"
     conf_dict = {
         "system": {
@@ -71,6 +79,17 @@ def test_status_command(
     mock_load,
     mock_config,
 ):
+    """
+    Runs the CLI "status" command with mocked configuration, repository status, and database session, then asserts expected output and cleanup.
+    
+    Mocks:
+    - load_config to supply a predefined configuration with two repositories.
+    - get_status to report a clean "main" branch for repo1.
+    - An async DB session that returns a snapshot timestamp of "2025-01-01 12:00".
+    - init_db and dispose_engine to verify lifecycle handling.
+    
+    Asserts that the command exits successfully, prints the status header, includes repo1, shows "Clean", includes the formatted timestamp, and that init_db and dispose_engine were called as expected.
+    """
     mock_load.return_value = mock_config
 
     # Mock get_status return values
@@ -96,6 +115,15 @@ def test_status_command(
 
     # Define async generator for get_session
     async def async_gen(_db_path=None):
+        """
+        Provide an async generator that yields the mocked database session used by tests.
+        
+        Parameters:
+            _db_path (str | None): Optional database path accepted for compatibility; ignored.
+        
+        Returns:
+            mock_session: The mocked session object yielded to callers.
+        """
         yield mock_session
 
     # side_effect needs to be the function itself if it's a generator?
@@ -128,6 +156,15 @@ def test_doctor_command(
 
     # Mock shutil.which
     def which_side_effect(cmd):
+        """
+        Map specific command names to mocked executable paths for tests.
+        
+        Parameters:
+            cmd (str): The command name to check.
+        
+        Returns:
+            str | None: The filesystem path for recognized commands ("tmux" -> "/usr/bin/tmux", "code" -> "/usr/bin/code"), or `None` if the command is not mocked.
+        """
         if cmd == "tmux":
             return "/usr/bin/tmux"
         if cmd == "code":

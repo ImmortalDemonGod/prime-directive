@@ -5,15 +5,15 @@ from typing import Optional, Dict, Any
 
 def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     """
-    Retrieves the active task from the Task Master tasks.json file in the given
-    repository.
-
-    Args:
+    Finds the highest-priority, most-recent task with status "in-progress" from the repository's Task Master tasks.json.
+    
+    Searches .taskmaster/tasks/tasks.json for tasks whose "status" is "in-progress", ranks them by priority (high > medium > low; unknown priorities treated as lowest) and by numeric task id (higher id considered more recent). Returns None if the file is missing, unreadable, unparseable, or if no in-progress tasks are found.
+    
+    Parameters:
         repo_path (str): Path to the repository root.
-
+    
     Returns:
-        Optional[Dict[str, Any]]: The active task dictionary or None if no task
-        is active or file not found.
+        Optional[Dict[str, Any]]: The selected task dictionary, or None if no active task is available.
     """
     tasks_path = os.path.join(
         repo_path,
@@ -62,6 +62,17 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     # Task ID can be int or str. Let's try to convert to int for sorting if
     # possible.
     def sort_key(item):
+        """
+        Compute a sortable key for an (priority, task) pair used to order tasks.
+        
+        Parameters:
+            item (tuple): A two-element tuple where the first element is the numeric priority value
+                and the second is a task dictionary that may contain an "id" field.
+        
+        Returns:
+            tuple: A pair (priority_value, task_id_int) where `task_id_int` is the task's "id"
+            converted to an int when possible, or 0 if conversion fails or the id is missing.
+        """
         p_val, t = item
         t_id = t.get("id", 0)
         try:

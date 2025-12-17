@@ -16,6 +16,12 @@ from sqlalchemy.ext.asyncio import (
 
 
 def _utcnow() -> datetime:
+    """
+    Get the current UTC-aware datetime.
+    
+    Returns:
+        datetime: Current datetime with tzinfo set to UTC.
+    """
     return datetime.now(timezone.utc)
 
 
@@ -54,6 +60,17 @@ _async_engines: Dict[str, AsyncEngine] = {}
 
 def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     # Expand ~ to home directory
+    """
+    Get or create a cached SQLAlchemy AsyncEngine configured for the specified SQLite database path.
+    
+    Expands '~' in the given path, creates the parent directory if the path is not ":memory:", configures the engine to use the aiosqlite driver, registers a connection hook to enable SQLite foreign key enforcement (PRAGMA foreign_keys=ON), and caches the created engine per-path for reuse.
+    
+    Parameters:
+        db_path (str): Filesystem path to the SQLite database or ":memory:" for an in-memory database. Defaults to "~/.prime-directive/data/prime.db".
+    
+    Returns:
+        AsyncEngine: An AsyncEngine instance connected to the specified SQLite database.
+    """
     db_path = os.path.expanduser(db_path)
 
     engine = _async_engines.get(db_path)
@@ -81,6 +98,14 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
 
         @event.listens_for(engine.sync_engine, "connect")
         def _set_sqlite_pragma(dbapi_connection, _connection_record):
+            """
+            Enable SQLite foreign key enforcement on a DB-API connection.
+            
+            Sets the connection-level PRAGMA `foreign_keys=ON` using the connection's cursor. Intended to be used as a SQLAlchemy `connect` event listener; the second argument is ignored.
+            
+            Parameters:
+                dbapi_connection: A raw DB-API connection object whose PRAGMA will be set.
+            """
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.close()
@@ -90,6 +115,12 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
 
 
 async def init_db(db_path: str = "data/prime.db"):
+    """
+    Create on-disk SQLite database tables for all SQLModel models at the given path.
+    
+    Parameters:
+        db_path (str): Filesystem path to the SQLite database file; "~" is expanded. Defaults to "data/prime.db".
+    """
     engine = get_engine(db_path)
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
@@ -98,6 +129,15 @@ async def init_db(db_path: str = "data/prime.db"):
 async def get_session(
     db_path: str = "data/prime.db",
 ) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Yield an asynchronous SQLAlchemy session bound to the engine for the specified database path.
+    
+    Parameters:
+        db_path (str): Filesystem path to the SQLite database file; tilde (`~`) is expanded to the user's home directory.
+    
+    Returns:
+        AsyncSession: An asynchronous SQLAlchemy session bound to the engine for the given database path.
+    """
     engine = get_engine(db_path)
     async_session = async_sessionmaker(engine, expire_on_commit=False)
     async with async_session() as session:
@@ -105,7 +145,14 @@ async def get_session(
 
 
 async def dispose_engine(db_path: Optional[str] = None):
-    """Dispose cached async engine(s) to ensure clean exit."""
+    """
+    Dispose cached asynchronous engine(s) for a specific database path or for all cached engines.
+    
+    If `db_path` is provided, removes and disposes the engine associated with that path. If `db_path` is `None`, disposes all cached engines. Disposal is performed asynchronously and access to the engine cache is synchronized.
+    
+    Parameters:
+        db_path (Optional[str]): Path of the database engine to dispose. If `None`, dispose all cached engines.
+    """
     global _async_engines
     if db_path is not None:
         with _engine_lock:

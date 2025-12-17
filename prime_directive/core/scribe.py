@@ -27,30 +27,31 @@ def generate_sitrep(
     backoff_seconds: float = 0.0,
 ) -> str:
     """
-    Generates a SITREP summary using Ollama.
-
-    Args:
-        repo_id (str): The ID of the repository.
-        git_state (str): Summary of git status.
-        terminal_logs (str): Recent terminal output.
-        active_task (Optional[dict]): The current active task dictionary.
-        model (str): The Ollama model to use.
-        fallback_provider (str): The fallback provider to use if Ollama fails.
-        fallback_model (str): The fallback model to use if Ollama fails.
-        require_confirmation (bool): Whether to require confirmation for OpenAI
-            fallback.
-        openai_api_url (str): The OpenAI API endpoint.
-        openai_timeout_seconds (float): Timeout in seconds for the OpenAI
-            request.
-        openai_max_tokens (int): Maximum number of tokens for the OpenAI
-            request.
-        api_url (str): The Ollama API endpoint.
-        timeout_seconds (float): Timeout in seconds for the Ollama request.
-        max_retries (int): Maximum number of retries for the Ollama request.
-        backoff_seconds (float): Backoff time in seconds between retries.
-
+    Generate a concise SITREP (situation report) from repository context.
+    
+    Parameters:
+        repo_id (str): Repository identifier used in the prompt.
+        git_state (str): Summary of the repository's git status.
+        terminal_logs (str): Recent terminal output to include in the prompt.
+        active_task (Optional[dict]): Current task information with optional keys
+            'id', 'title', and 'description'. If omitted, task info is treated as None.
+        provider (str): Primary provider to use; expected values include "ollama" or "openai".
+        fallback_provider (str): Fallback provider to use if the primary provider fails;
+            use "openai" to enable OpenAI fallback or "none" to disable fallback.
+        require_confirmation (bool): If True, an OpenAI fallback is not attempted automatically
+            and will return an error indicating confirmation is required.
+        model (str): Primary model name to request from the selected provider.
+        fallback_model (str): Model name to request when falling back to OpenAI.
+        api_url (str): Ollama API endpoint.
+        openai_api_url (str): OpenAI API endpoint.
+        timeout_seconds (float): Timeout (seconds) for Ollama requests.
+        openai_timeout_seconds (float): Timeout (seconds) for OpenAI requests.
+        max_retries (int): Number of retries for Ollama requests.
+        backoff_seconds (float): Backoff (seconds) between Ollama retries.
+        openai_max_tokens (int): Max tokens to request from OpenAI.
+    
     Returns:
-        str: The generated SITREP string.
+        str: The generated SITREP text on success, or an error message describing why generation failed.
     """
 
     task_info = "None"
