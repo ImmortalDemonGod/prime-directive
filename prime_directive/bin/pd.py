@@ -84,7 +84,14 @@ def _resolve_repo_id(repo_id: str, cfg: DictConfig) -> str:
 
 
 def load_config() -> DictConfig:
-    """Load configuration using Hydra."""
+    """
+    Load and compose the application's Hydra configuration.
+    
+    Composes and returns the structured `DictConfig` for the application. If configuration loading fails, prints an error, logs it, and exits the process with status code 1.
+    
+    Returns:
+        DictConfig: The composed Hydra configuration for the application.
+    """
     # Ensure any previous Hydra instance is cleared
     GlobalHydra.instance().clear()
 
@@ -121,7 +128,24 @@ async def freeze_logic(
     skip_terminal_capture: bool = False,
     use_hq_model: bool = False,
 ):
-    """Core freeze logic separated for reuse (Async)."""
+    """
+    Freeze the current repository context, generate an AI SITREP, and persist a ContextSnapshot to the database.
+    
+    Captures repository git state, terminal state (unless skipped), and active task; generates an AI SITREP using configured AI provider/model (optionally using the HQ model), and saves a ContextSnapshot (creating the Repository record if missing). Prints summary output to the console.
+    
+    Parameters:
+    	repo_id (str): Identifier of the repository to freeze as defined in `config.repos`.
+    	config (DictConfig): Composed Hydra configuration object with system and repo settings.
+    	human_note (Optional[str]): Optional free-form note to attach to the snapshot.
+    	human_objective (Optional[str]): Optional human-provided objective to include in the SITREP and snapshot.
+    	human_blocker (Optional[str]): Optional human-provided blocker to include in the SITREP and snapshot.
+    	human_next_step (Optional[str]): Optional human-provided next step to include in the SITREP and snapshot.
+    	skip_terminal_capture (bool): If True, do not attempt to capture terminal state and store placeholder values.
+    	use_hq_model (bool): If True, prefer the configured high-quality model/provider for SITREP generation.
+    
+    Raises:
+    	ValueError: If `repo_id` is not present in `config.repos`.
+    """
     candidate = _normalize_repo_id(repo_id)
     if candidate not in config.repos:
         matches = difflib.get_close_matches(
@@ -327,15 +351,16 @@ def freeze(
     ),
 ):
     """
-    Snapshot the current state of a repository (Git, Terminal, Task) and
-    generate an AI SITREP.
-
-    The --note is MANDATORY. This is YOUR context that the AI will miss.
-    Without it, you lose the most important piece of information: what YOU
-    knew.
-
-    Example: pd freeze my-repo --note "Fixing PR merge issues from CodeRabbit
-    review"
+    Create a repository snapshot (Git, terminal, and active task) and generate an AI SITREP; prompts the user for optional human context unless disabled.
+    
+    Parameters:
+        repo_id (str): Identifier of the repository to snapshot.
+        objective (Optional[str]): Primary focus for this session; included in the snapshot/SITREP.
+        blocker (Optional[str]): Key blocker, uncertainty, or gotcha to record.
+        next_step (Optional[str]): First concrete action to restart work, recorded as the next step.
+        note (Optional[str]): Additional notes or brain dump to include in the snapshot and AI summary.
+        no_interview (bool): If True, skip interactive prompts and use provided values as-is.
+        hq (bool): If True, request the higher-quality (higher-cost) AI model for SITREP generation.
     """
     logger.info(f"Command: freeze {repo_id}")
     cfg = load_config()
@@ -378,6 +403,11 @@ def freeze(
             note = entered.strip() or None
 
     async def run_freeze():
+        """
+        Run the freeze logic for the selected repository and ensure DB engine disposal.
+        
+        Calls `freeze_logic` with the surrounding command options (note, objective, blocker, next_step, HQ flag). If `freeze_logic` raises a `ValueError`, exits the Typer command with code 1. Always disposes the database engine by awaiting `dispose_engine()` in a finally block.
+        """
         try:
             await freeze_logic(
                 repo_id,
@@ -399,8 +429,10 @@ def freeze(
 @app.command("switch")
 def switch(repo_id: str):
     """
-    Switch context to another repository (Freeze current -> Warp -> Thaw
-    target).
+    Switch the active workspace to another repository by freezing the current repo, performing the switch, and preparing the target repo.
+    
+    Raises:
+    	typer.Exit: With code 1 if `repo_id` is not present in configuration; with `_EXIT_CODE_SHELL_ATTACH` if the switch requires attaching a new shell.
     """
     logger.info(f"Command: switch {repo_id}")
     cfg = load_config()
@@ -428,6 +460,17 @@ def switch(repo_id: str):
 
 @app.command("install-hooks")
 def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
+    """
+    Install a Git post-commit hook that logs commits for a single configured repository or for all configured repositories.
+    
+    Creates a "post-commit" script under each target repository's .git/hooks directory that invokes the internal `pd _internal-log-commit <repo_id>` command, and makes the script executable.
+    
+    Parameters:
+        repo_id (Optional[str]): If provided, install the hook only for the repository with this config ID; if `None`, install hooks for all repositories defined in the configuration.
+    
+    Raises:
+        typer.Exit: Exits with code 1 if the specified repo_id is not found in the configuration, if the target path is not a Git repository (missing `.git`), or if filesystem operations fail while creating or writing the hook.
+    """
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
@@ -476,10 +519,23 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
 
 @app.command("_internal-log-commit", hidden=True)
 def internal_log_commit(repo_id: str):
+    """
+    Record a commit event for the given repository in the application's event log.
+    
+    This creates and persists an EventLog entry with EventType.COMMIT associated with the provided repository identifier using the configured database, and ensures database resources are cleaned up.
+    
+    Parameters:
+        repo_id (str): Identifier of the repository to associate with the commit event.
+    """
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
     async def run_internal():
+        """
+        Record a commit event for the current repository in the application's database.
+        
+        Initializes the database connection, inserts an EventLog with EventType.COMMIT for the enclosing `repo_id`, commits the change, and ensures the database engine is disposed on exit.
+        """
         try:
             await init_db(cfg.system.db_path)
             async for session in get_session(cfg.system.db_path):
@@ -497,6 +553,20 @@ def internal_log_commit(repo_id: str):
 
 
 def _format_seconds(seconds: float) -> str:
+    """
+    Format a duration in seconds into a compact human-readable string.
+    
+    Converts the given number of seconds to hours, minutes, and seconds and returns:
+    - "HhMMmSSs" when one hour or more,
+    - "MmSSs" when at least one minute but less than an hour,
+    - "Ss" when less than one minute.
+    
+    Parameters:
+        seconds (float): Duration in seconds.
+    
+    Returns:
+        str: Formatted duration string, e.g. "1h02m03s", "12m34s", or "45s".
+    """
     seconds_int = round(seconds)
     hours, rem = divmod(seconds_int, 3600)
     minutes, secs = divmod(rem, 60)
@@ -509,6 +579,13 @@ def _format_seconds(seconds: float) -> str:
 
 @app.command("metrics")
 def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
+    """
+    Display time-to-commit metrics for one or all configured repositories.
+    
+    Calculates intervals between a SWITCH_IN event and the next COMMIT event to derive average and most recent time-to-commit (TTC) and the number of samples for each repository, then prints a summary table to the console. When a `repo_id` is provided, metrics are limited to that repository.
+    Parameters:
+        repo_id (Optional[str]): Repository identifier to limit the report to a single repository; when omitted, metrics for all configured repositories are shown.
+    """
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
@@ -516,6 +593,11 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
         repo_id = _resolve_repo_id(repo_id, cfg)
 
     async def run_metrics():
+        """
+        Compute and display time-to-commit (TTC) metrics for one or all repositories.
+        
+        Initializes the database, collects EventLog entries for the specified repo_id (or all repos if none provided), computes intervals from each SWITCH_IN event to the next COMMIT event, and prints a table showing the average TTC, the most recent TTC, and the sample count for each repository. Ensures the database engine is disposed on completion.
+        """
         try:
             await init_db(cfg.system.db_path)
 
@@ -576,7 +658,11 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
 
 @app.command("list")
 def list_repos():
-    """List all managed repositories."""
+    """
+    Display a table of all managed repositories.
+    
+    Prints a Rich table showing each repository's ID, priority, active branch (or "N/A"), and filesystem path. Repositories are sorted by priority in descending order.
+    """
     logger.info("Command: list")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
@@ -625,6 +711,11 @@ def status_command():
     )
 
     async def run_status():
+        """
+        Collects repository statuses and populates the display table with git state and last snapshot timestamps.
+        
+        This coroutine initializes the database, iterates configured repositories, obtains each repository's git status and most recent ContextSnapshot timestamp, and adds a row to the shared table containing repository id, priority, branch, git status, and last snapshot time. The database engine is always disposed when finished.
+        """
         try:
             # Ensure DB exists/tables created
             await init_db(cfg.system.db_path)
@@ -724,10 +815,17 @@ def sitrep(
     ),
 ):
     """
-    Display or generate a SITREP for a repository.
-
-    With --deep-dive: Retrieves historical snapshots and generates a
-    comprehensive longitudinal summary using the high-quality AI model.
+    Show a situational report (SITREP) for a repository.
+    
+    If deep_dive is enabled, compile recent historical snapshots and produce a longitudinal
+    SITREP using the configured high-quality AI model; deep-dive requires a valid OpenAI API key.
+    When not deep-diving, display the latest snapshot's timestamp, optional human-provided
+    fields (objective, blocker, next step, note), and the AI summary.
+    
+    Parameters:
+        repo_id (str): Identifier of the repository to inspect.
+        deep_dive (bool): When True, generate a longitudinal summary from historical snapshots.
+        limit (int): Number of most-recent snapshots to include in the deep-dive analysis.
     """
     logger.info(f"Command: sitrep {repo_id} (deep_dive={deep_dive})")
     cfg = load_config()
@@ -736,6 +834,11 @@ def sitrep(
     repo_id = _resolve_repo_id(repo_id, cfg)
 
     async def run_sitrep():
+        """
+        Show recent context snapshots for the configured repository and, if requested, produce an HQ deep-dive SITREP.
+        
+        Initializes the database, retrieves up to `limit` ContextSnapshot records for `repo_id`, and prints either a brief SITREP of the latest snapshot (timestamp, human objective/blocker/next step/note, and AI summary) or a longitudinal deep-dive. For deep dives, the function compiles a historical narrative from the snapshots and calls the OpenAI-based chat generator (requires OPENAI_API_KEY) to produce a concise longitudinal summary; any errors from the AI call are printed. The database engine is always disposed on exit.
+        """
         await init_db(cfg.system.db_path)
         try:
             async for session in get_session(cfg.system.db_path):
@@ -902,7 +1005,11 @@ effectively.
 
 @app.command("ai-usage")
 def ai_usage():
-    """Display AI usage statistics and budget status for the current month."""
+    """
+    Print a month-to-date AI usage and budget report to the console.
+    
+    Includes the total estimated cost and call count for the current month, the configured monthly budget and remaining balance with a color-coded usage warning, and a table of up to 10 recent AI call logs showing time, provider, model, tokens, cost, and success status.
+    """
     logger.info("Command: ai-usage")
     cfg = load_config()
     setup_logging(cfg.system.log_path)
@@ -911,6 +1018,13 @@ def ai_usage():
     from prime_directive.core.db import AIUsageLog
 
     async def run_usage():
+        """
+        Display a month-to-date AI usage report and recent API calls.
+        
+        Queries stored AI usage metrics, prints totals (calls, cost, budget, remaining and usage percentage)
+        and a table of recent API calls to the console, and ensures the database engine is initialized
+        and disposed.
+        """
         await init_db(cfg.system.db_path)
         try:
             # Get monthly totals

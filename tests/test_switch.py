@@ -138,6 +138,15 @@ async def test_switch_logic_logs_switch_in_event(tmp_path):
     session.execute = AsyncMock(return_value=mock_result)
 
     async def get_session_fn(_db_path: str):
+        """
+        Provide an asynchronous context-like generator that yields a database session for use in tests.
+        
+        Parameters:
+            _db_path (str): Ignored; present for signature compatibility with production initializers.
+        
+        Yields:
+            session: A database session object usable for add/commit operations in test scenarios.
+        """
         yield session
 
     await switch_logic(

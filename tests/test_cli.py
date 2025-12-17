@@ -255,6 +255,15 @@ def test_install_hooks_permission_denied_exits_1(
     real_open = builtins.open
 
     def open_side_effect(path, *args, **kwargs):
+        """
+        Simulate opening a file but raise PermissionError when the target path ends with "post-commit".
+        
+        Parameters:
+            path: The file path to open; may be a str or path-like object. If the string form of `path` ends with "post-commit", this function raises PermissionError.
+        
+        Returns:
+            The file object returned by the underlying `real_open` call for the given path and mode.
+        """
         if str(path).endswith("post-commit"):
             raise PermissionError
         return real_open(path, *args, **kwargs)
@@ -284,6 +293,15 @@ def test_internal_log_commit_writes_event(
     session.commit = AsyncMock()
 
     async def async_gen(_db_path=None):
+        """
+        Provide an asynchronous generator that yields the current database session.
+        
+        Parameters:
+            _db_path (str | None): Optional database path placeholder (unused by this generator).
+        
+        Returns:
+            session: An active asynchronous database session to be used as an async context manager or awaited consumer.
+        """
         yield session
 
     mock_get_session.side_effect = async_gen
@@ -308,6 +326,11 @@ def test_metrics_reports_ttc(
     mock_load,
     mock_config,
 ):
+    """
+    Verify the CLI 'metrics' command reports time-to-change metrics for a repository when SWITCH_IN and COMMIT events are present.
+    
+    Invokes the CLI with a mocked database session that returns two EventLog entries one minute apart and asserts the output contains the metrics header and the repository identifier.
+    """
     mock_load.return_value = mock_config
 
     t0 = datetime(2025, 1, 1, tzinfo=timezone.utc)
@@ -328,6 +351,15 @@ def test_metrics_reports_ttc(
     session.execute = AsyncMock(return_value=result_obj)
 
     async def async_gen(_db_path=None):
+        """
+        Provide an asynchronous generator that yields the current database session.
+        
+        Parameters:
+            _db_path (str | None): Optional database path placeholder (unused by this generator).
+        
+        Returns:
+            session: An active asynchronous database session to be used as an async context manager or awaited consumer.
+        """
         yield session
 
     mock_get_session.side_effect = async_gen
