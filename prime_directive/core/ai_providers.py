@@ -1,7 +1,7 @@
 import asyncio
 import os
 from datetime import datetime, timezone
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TypedDict
 
 import httpx
 from sqlalchemy import select, func
@@ -211,6 +211,34 @@ async def generate_openai_chat(
         ValueError: If the response JSON is missing choices, message, or content.
         httpx.HTTPError: If the HTTP request failed or returned a non-success status.
     """
+    content, _usage = await generate_openai_chat_with_usage(
+        api_url=api_url,
+        api_key=api_key,
+        model=model,
+        system=system,
+        prompt=prompt,
+        timeout_seconds=timeout_seconds,
+        max_tokens=max_tokens,
+    )
+    return content
+
+
+class OpenAIUsage(TypedDict, total=False):
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+async def generate_openai_chat_with_usage(
+    *,
+    api_url: str,
+    api_key: str,
+    model: str,
+    system: str,
+    prompt: str,
+    timeout_seconds: float,
+    max_tokens: int,
+) -> Tuple[str, Optional[OpenAIUsage]]:
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -242,7 +270,25 @@ async def generate_openai_chat(
     if not isinstance(content, str) or not content.strip():
         raise ValueError("No content in AI response")
 
-    return content.strip()
+    usage_raw = data.get("usage")
+    usage: Optional[OpenAIUsage] = None
+    if isinstance(usage_raw, dict):
+        prompt_tokens = usage_raw.get("prompt_tokens")
+        completion_tokens = usage_raw.get("completion_tokens")
+        total_tokens = usage_raw.get("total_tokens")
+
+        parsed: OpenAIUsage = {}
+        if isinstance(prompt_tokens, int):
+            parsed["prompt_tokens"] = prompt_tokens
+        if isinstance(completion_tokens, int):
+            parsed["completion_tokens"] = completion_tokens
+        if isinstance(total_tokens, int):
+            parsed["total_tokens"] = total_tokens
+
+        if parsed:
+            usage = parsed
+
+    return content.strip(), usage
 
 
 def get_openai_api_key(env_var: str = "OPENAI_API_KEY") -> Optional[str]:
