@@ -18,7 +18,7 @@ import typer
 # Hydra imports
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 # Core imports
 from prime_directive.core.config import register_configs
@@ -106,7 +106,31 @@ def load_config() -> DictConfig:
     try:
         with initialize_config_dir(version_base=None, config_dir=conf_path):
             cfg = compose(config_name="config")
-            return cfg
+
+        user_cfg_path = Path.home() / ".prime-directive" / "config.yaml"
+        if user_cfg_path.exists():
+            user_cfg = OmegaConf.load(str(user_cfg_path))
+            cfg = cast(DictConfig, OmegaConf.merge(cfg, user_cfg))
+
+        try:
+            cfg.system.db_path = os.path.expanduser(
+                os.path.expandvars(str(cfg.system.db_path))
+            )
+            cfg.system.log_path = os.path.expanduser(
+                os.path.expandvars(str(cfg.system.log_path))
+            )
+        except Exception:
+            pass
+
+        try:
+            for _rid, repo in cfg.repos.items():
+                repo.path = os.path.expanduser(
+                    os.path.expandvars(str(repo.path))
+                )
+        except Exception:
+            pass
+
+        return cfg
     except Exception as e:
         msg = f"Error loading config: {e}"
         console.print(f"[bold red]{msg}[/bold red]")
@@ -385,7 +409,7 @@ def freeze(
     no_interview: bool = typer.Option(
         False,
         "--no-interview",
-        help="Disable interactive interview prompts",
+        help="Disable interactive interview prompts and use provided flags",
     ),
     hq: bool = typer.Option(
         False,
@@ -394,14 +418,16 @@ def freeze(
     ),
 ):
     """
-    Create a repository snapshot (Git, terminal, and active task) and generate an AI SITREP; prompts the user for optional human context unless disabled.
-    
+    Create a repository snapshot (Git, terminal, and active task) and generate an AI SITREP.
+
+    By default, this command runs an interactive interview to capture human context (objective, blocker, next step, and notes). Use `--no-interview` to skip prompts and supply values via flags.
+
     Parameters:
         repo_id (str): Identifier of the repository to snapshot.
         objective (Optional[str]): Primary focus for this session; included in the snapshot/SITREP.
         blocker (Optional[str]): Key blocker, uncertainty, or gotcha to record.
         next_step (Optional[str]): First concrete action to restart work, recorded as the next step.
-        note (Optional[str]): Additional notes or brain dump to include in the snapshot and AI summary.
+        note (Optional[str]): Optional: additional notes / brain dump.
         no_interview (bool): If True, skip interactive prompts and use provided values as-is.
         hq (bool): If True, request the higher-quality (higher-cost) AI model for SITREP generation.
     """
