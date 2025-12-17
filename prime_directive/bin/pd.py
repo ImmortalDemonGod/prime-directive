@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import sys
+import difflib
 from typing import Any, Optional, cast
 
 from dotenv import load_dotenv
@@ -59,6 +60,29 @@ logger = logging.getLogger("prime_directive")
 _EXIT_CODE_SHELL_ATTACH = 88
 
 
+def _normalize_repo_id(repo_id: str) -> str:
+    return repo_id.strip().rstrip("/\\")
+
+
+def _resolve_repo_id(repo_id: str, cfg: DictConfig) -> str:
+    candidate = _normalize_repo_id(repo_id)
+    if candidate in cfg.repos:
+        return candidate
+
+    matches = difflib.get_close_matches(
+        candidate,
+        list(cfg.repos.keys()),
+        n=1,
+        cutoff=0.6,
+    )
+    msg = f"Repository '{repo_id}' not found in configuration."
+    if matches:
+        msg = f"{msg} Did you mean '{matches[0]}'?"
+    console.print(f"[bold red]Error:[/bold red] {msg}")
+    logger.error(msg)
+    raise typer.Exit(code=1)
+
+
 def load_config() -> DictConfig:
     """Load configuration using Hydra."""
     # Ensure any previous Hydra instance is cleared
@@ -98,14 +122,22 @@ async def freeze_logic(
     use_hq_model: bool = False,
 ):
     """Core freeze logic separated for reuse (Async)."""
-    if repo_id not in config.repos:
+    candidate = _normalize_repo_id(repo_id)
+    if candidate not in config.repos:
+        matches = difflib.get_close_matches(
+            candidate,
+            list(config.repos.keys()),
+            n=1,
+            cutoff=0.6,
+        )
         msg = f"Repository '{repo_id}' not found in configuration."
+        if matches:
+            msg = f"{msg} Did you mean '{matches[0]}'?"
         console.print(f"[bold red]Error:[/bold red] {msg}")
         logger.error(msg)
-        # We can't raise Typer.Exit in async easily if we want to clean up,
-        # but for now we'll just return or raise an exception.
         raise ValueError(msg)
 
+    repo_id = candidate
     repo_config = config.repos[repo_id]
     repo_path = repo_config.path
 
@@ -309,6 +341,8 @@ def freeze(
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
+    repo_id = _resolve_repo_id(repo_id, cfg)
+
     if not no_interview:
         if objective is None:
             entered = typer.prompt(
@@ -372,11 +406,7 @@ def switch(repo_id: str):
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
-    if repo_id not in cfg.repos:
-        msg = f"Repository '{repo_id}' not found in configuration."
-        console.print(f"[bold red]Error:[/bold red] {msg}")
-        logger.error(msg)
-        raise typer.Exit(code=1)
+    repo_id = _resolve_repo_id(repo_id, cfg)
 
     needs_shell_attach = run_switch(
         repo_id,
@@ -401,11 +431,8 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
-    if repo_id is not None and repo_id not in cfg.repos:
-        msg = f"Repository '{repo_id}' not found in configuration."
-        console.print(f"[bold red]Error:[/bold red] {msg}")
-        logger.error(msg)
-        raise typer.Exit(code=1)
+    if repo_id is not None:
+        repo_id = _resolve_repo_id(repo_id, cfg)
 
     target_repo_ids = (
         [repo_id] if repo_id is not None else list(cfg.repos.keys())
@@ -485,11 +512,8 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
-    if repo_id is not None and repo_id not in cfg.repos:
-        msg = f"Repository '{repo_id}' not found in configuration."
-        console.print(f"[bold red]Error:[/bold red] {msg}")
-        logger.error(msg)
-        raise typer.Exit(code=1)
+    if repo_id is not None:
+        repo_id = _resolve_repo_id(repo_id, cfg)
 
     async def run_metrics():
         try:
@@ -709,11 +733,7 @@ def sitrep(
     cfg = load_config()
     setup_logging(cfg.system.log_path)
 
-    if repo_id not in cfg.repos:
-        console.print(
-            f"[bold red]Error:[/bold red] Repository '{repo_id}' not found."
-        )
-        raise typer.Exit(code=1)
+    repo_id = _resolve_repo_id(repo_id, cfg)
 
     async def run_sitrep():
         await init_db(cfg.system.db_path)
