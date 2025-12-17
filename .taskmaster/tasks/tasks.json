@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": 1,
+        "id": "1",
         "title": "Initialize Project Repository and Dependencies",
         "description": "Set up the prime-directive repository structure and install all required dependencies using uv for Python 3.11+",
         "details": "Create repository structure exactly as specified: bin/, system/, core/, data/. Use `uv init prime-directive` then `uv add typer[all]>=0.12.0 sqlmodel>=0.0.22 watchdog>=5.0.2 rich>=13.9.0 requests>=2.32.0 pyyaml>=6.0.2`. Create pyproject.toml with [project.scripts]: pd=prime_directive.bin.pd:cli, pd-daemon=prime_directive.bin.pd_daemon:main. Initialize git and create .gitignore for data/ and __pycache__.",
@@ -13,7 +13,7 @@
         "subtasks": []
       },
       {
-        "id": 2,
+        "id": "2",
         "title": "Implement Registry Configuration Parser",
         "description": "Create system/registry.yaml parser that loads repository mappings with extended schema including editor_cmd",
         "details": "In core/registry.py: Load system/registry.yaml with schema {system: {editor_cmd: str='windsurf', ai_model: str='qwen2.5-coder', db_path: str}, repos: [{id: str, path: str, priority: int}]}. Use pydantic v2.9+ BaseModel for validation. Default editor_cmd='windsurf' (verified as VSCode fork with identical CLI: windsurf <path> works per 2025 comparisons[1][2]). Validate all repo paths exist.",
@@ -26,7 +26,7 @@
         "subtasks": []
       },
       {
-        "id": 3,
+        "id": "3",
         "title": "Setup SQLite Database Schema",
         "description": "Implement core/db.py with exact SQLModel schema for Repository and ContextSnapshot tables",
         "details": "Use SQLModel 0.0.22+: class Repository(SQLModel, table=True) with id:str=Field(primary_key=True), path:str, priority:int, active_branch:str, last_snapshot_id:Optional[int]=Field(default=None). class ContextSnapshot(SQLModel, table=True) with id:int=Field(primary_key=True, index=True), repo_id:str, timestamp:datetime, git_status_summary:str, terminal_last_command:str, terminal_output_summary:str, ai_sitrep:str. Use SQLite URL: f'sqlite+aiosqlite:///{config.db_path}' with aiosqlite 0.21+. Create engine with create_engine(..., connect_args={'check_same_thread': False}).",
@@ -40,7 +40,7 @@
         "subtasks": []
       },
       {
-        "id": 4,
+        "id": "4",
         "title": "Implement Git State Detection",
         "description": "Create git_utils to capture branch, dirty status, and diff summary for any repository",
         "details": "In core/git_utils.py: def get_status(repo_path: str) -> dict: Use subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD']) for branch, ['git', 'status', '--porcelain'] for dirty files, ['git', 'diff', '--stat'] for summary. Return {'branch': str, 'is_dirty': bool, 'uncommitted_files': list[str], 'diff_stat': str}. Handle non-git repos gracefully.",
@@ -53,7 +53,7 @@
         "subtasks": []
       },
       {
-        "id": 5,
+        "id": "5",
         "title": "Implement Task Master Adapter",
         "description": "Create core/tasks.py to parse .taskmaster/tasks.json and extract active/in-progress tasks",
         "details": "def get_active_task(repo_path: str) -> Optional[dict]: Check for .taskmaster/tasks.json, load JSON, filter tasks where status=='in-progress', return highest priority or most recent. Schema matches user_json_schema exactly. Handle missing file gracefully (return None).",
@@ -66,7 +66,7 @@
         "subtasks": []
       },
       {
-        "id": 6,
+        "id": "6",
         "title": "Build AI Scribe Engine with Ollama Integration",
         "description": "Implement core/scribe.py for generating SITREP summaries using Ollama Qwen2.5-Coder",
         "details": "Use requests 2.32+ to POST to http://localhost:11434/api/generate. System prompt: 'You are a concise engineering assistant. Given git state, terminal logs, and active task, generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in 50 words max.' Include active task from tasks.py, git_status_summary, terminal logs. Model: qwen2.5-coder (per spec). Timeout 5s. def generate_sitrep(repo_id: str, git_state: str, terminal_logs: str, active_task: Optional[dict]) -> str.",
@@ -81,7 +81,7 @@
         "subtasks": []
       },
       {
-        "id": 7,
+        "id": "7",
         "title": "Implement Terminal State Capture",
         "description": "Capture last 50 lines of active terminal and last command for freeze operation",
         "details": "In core/terminal.py: def capture_terminal_state() -> tuple[str, str]: Use subprocess.run(['tmux', 'capture-pane', '-p', '-S', '-50']) for last 50 lines, ['tmux', 'show-buffer'] or history parsing for last command. Fallback to 'history | tail -n 1' if not in tmux. Return (last_command: str, output_summary: str).",
@@ -94,7 +94,7 @@
         "subtasks": []
       },
       {
-        "id": 8,
+        "id": "8",
         "title": "Implement Tmux Session Management",
         "description": "Create core/tmux.py for idempotent session create/attach with pd-<repo_id> naming",
         "details": "def ensure_session(repo_id: str, repo_path: str): session_name=f'pd-{repo_id}'. Check tmux ls | grep session_name, if exists: tmux attach -t session_name. Else: tmux new-session -d -s session_name 'cd {repo_path} && uv shell'. def detach_current(): tmux detach-client. Use subprocess.run(['tmux', ...], capture_output=True).",
@@ -107,7 +107,7 @@
         "subtasks": []
       },
       {
-        "id": 9,
+        "id": "9",
         "title": "Implement Windsurf Editor Control",
         "description": "Launch Windsurf editor with correct flags using configurable editor_cmd",
         "details": "In core/windsurf.py: def launch_editor(repo_path: str, editor_cmd: str): subprocess.Popen([editor_cmd, '-n', repo_path]) # -n = new window/instance (VSCode/Windsurf compatible per[1][3]). Windsurf confirmed as VSCode fork with identical CLI flags[1][2][6]. Reuse existing windows via Windsurf Hot Exit.",
@@ -120,7 +120,7 @@
         "subtasks": []
       },
       {
-        "id": 10,
+        "id": "10",
         "title": "Implement Core CLI Commands (list, status, doctor)",
         "description": "Build bin/pd CLI with Typer: pd list, pd status (rich table), pd doctor (health checks)",
         "details": "Typer app: @app.command() def list(): rich table of repos from registry. def status(): Enhanced table with git_state=git_utils.get_status(), last_snapshot from DB, emoji status (🟢🔴🟡). def doctor(): Check shutil.which('tmux'), which(editor_cmd), requests.get('http://localhost:11434/api/tags') contains 'qwen2.5-coder', all registry paths exist.",
@@ -136,7 +136,7 @@
         "subtasks": []
       },
       {
-        "id": 11,
+        "id": "11",
         "title": "Implement Freeze Operation (Snapshot Current State)",
         "description": "Create pd freeze: capture git/terminal/task state, generate AI SITREP, save to DB",
         "details": "In bin/pd: @app.command() def freeze(repo_id: str): current_path=get_cwd_repo(), git_state=git_utils.get_status(), terminal=terminal.capture(), task=tasks.get_active_task(), sitrep=scribe.generate_sitrep(...), db.save_snapshot(repo_id, git_state..., sitrep). Timestamp=datetime.utcnow().",
@@ -153,7 +153,7 @@
         "subtasks": []
       },
       {
-        "id": 12,
+        "id": "12",
         "title": "Implement Switch/Warp Protocol (Full Context Switch)",
         "description": "Core pd switch <repo>: freeze current -> thaw target with SITREP display",
         "details": "def switch(repo_id: str): if current_repo(): freeze(current_repo()). target=tmux.ensure_session(repo_id, path), windsurf.launch_editor(path, editor_cmd). Print rich SITREP banner: last_snapshot=DB.get_latest(repo_id), f'>>> LAST ACTION: {snapshot.ai_sitrep}\\n>>> GIT: {git_status}\\n>>> NEXT: {next_step}'.",
@@ -169,7 +169,7 @@
         "subtasks": []
       },
       {
-        "id": 13,
+        "id": "13",
         "title": "Implement Shell Integration (zsh wrapper)",
         "description": "Create system/shell_integration.zsh with cd/tmux hijacking for seamless pd switch",
         "details": "In ~/.zshrc: source path/to/shell_integration.zsh. function cd() { if [[ $1 == pd-* ]]; then pd switch ${1#pd-}; else builtin cd $@; fi }. Alias pd=~/path/to/bin/pd. Auto-attach tmux on pd switch.",
@@ -182,7 +182,7 @@
         "subtasks": []
       },
       {
-        "id": 14,
+        "id": "14",
         "title": "Implement Background Daemon Service",
         "description": "Create bin/pd-daemon for Watchdog monitoring and auto-freeze on inactivity",
         "details": "Use watchdog 5.0+: monitor registry repo paths, on file changes or inactivity (>30min) trigger freeze(). Run as `pd-daemon` service with systemd or nohup. Log to data/logs/.",
@@ -195,10 +195,10 @@
         "subtasks": []
       },
       {
-        "id": 15,
+        "id": "15",
         "title": "Comprehensive Integration Testing and Amnesia Test",
         "description": "Run full verification suite including Amnesia Test and Crash Test",
-        "details": "Execute all manual tests 1.1-3.3. Amnesia Test: Work on repo1 30min, switch away 24h, pd switch repo1, commit code <5min. Crash Test: kill terminal, pd switch, verify exact state restored.",
+        "details": "Execute all manual tests 1.1-3.3. Amnesia Test: Work on repo1 30min, switch away 24h, pd switch repo1, commit code <5min. Crash Test: kill terminal, pd switch, verify exact state restored.\n<info added on 2025-12-17T03:45:43.577Z>\nFixed DB default path consistency in db.py and config.py to ensure ~/.prime-directive/data/prime.db is used by default. Ran targeted unit tests for Git/DB with 12 tests passing. Remaining work includes manual Crash Test, 24-hour Amnesia Test, and documentation/review.\n</info added on 2025-12-17T03:45:43.577Z>",
         "testStrategy": "Pass all 6 Green Lights + Amnesia/Crash tests. Tune scribe prompt if SITREP insufficient.",
         "priority": "high",
         "dependencies": [
@@ -279,7 +279,7 @@
         ]
       },
       {
-        "id": 16,
+        "id": "16",
         "title": "P0: Fix tmux attach blocking + remove shell injection risk",
         "description": "Prevent pd switch workflow from hanging and eliminate shell-injection risk in tmux session creation.",
         "details": "Audit-derived fixes in core/tmux.py: (1) Avoid blocking the Python process mid-switch via tmux attach-session; prefer exec-style attach (os.execvp) or ensure attach only happens at the very end if intended. (2) Remove shell injection risk from bash -c string interpolation; prefer tmux new-session -c <repo_path> and start shell without concatenated commands, or escape paths safely. Ensure behavior is correct both inside tmux (switch-client) and outside tmux (attach/exec).",
@@ -365,7 +365,7 @@
         ]
       },
       {
-        "id": 17,
+        "id": "17",
         "title": "P0: Make Ollama SITREP generation resilient (retry/backoff + configurable timeout)",
         "description": "Improve scribe robustness so freeze/switch degrade gracefully when Ollama is down or slow.",
         "details": "Implement in core/scribe.py: configurable timeout via Hydra (e.g., system.ollama_timeout_seconds). Add retry with exponential backoff for transient errors. Change error strategy so callers can distinguish failure from a real SITREP (typed exception or structured result), and in pd.py ensure snapshots still save with fallback SITREP if Ollama fails.",
@@ -462,7 +462,7 @@
         ]
       },
       {
-        "id": 18,
+        "id": "18",
         "title": "P1: DB integrity + performance improvements (FKs, indexes, relationships)",
         "description": "Add schema constraints and query optimizations to prevent orphaned snapshots and improve latest-snapshot queries.",
         "details": "Update core/db.py: add FK constraint from ContextSnapshot.repo_id -> Repository.id and define relationships if helpful. Add index to optimize (repo_id, timestamp) latest-snapshot retrieval. Ensure engine lifecycle is safe if multiple db_path values are used (dispose old engine or key engines by path).",
@@ -562,7 +562,7 @@
         ]
       },
       {
-        "id": 19,
+        "id": "19",
         "title": "P1: Introduce Orchestrator for atomic switch semantics + nested repo detection",
         "description": "Centralize freeze/switch/thaw into an orchestration layer with clearer failure semantics.",
         "details": "Create core/orchestrator.py (or similar) that coordinates freeze -> session/editor -> sitrep display with consistent error handling. Improve current repo detection to handle nested repo paths by selecting the longest matching repo path. Add transaction-like semantics: if session/editor operations fail, avoid leaving user in a half-switched state; ensure DB engine cleanup is consistent.",
@@ -662,7 +662,7 @@
         ]
       },
       {
-        "id": 20,
+        "id": "20",
         "title": "P1: Unify configuration system (Hydra vs registry.yaml) to remove duplication",
         "description": "Resolve architectural duplication from multiple configuration sources and ensure daemon/CLI use the same config pipeline.",
         "details": "Audit calls out multiple config systems (Hydra structured config, registry YAML parsing). Decide on a single source of truth and refactor remaining modules (including daemon) to load config consistently. Remove redundant config code/files only if safe and update docs/tests accordingly.",
@@ -761,7 +761,7 @@
         ]
       },
       {
-        "id": 21,
+        "id": "21",
         "title": "P2: Add integration/chaos tests for end-to-end workflow (Monday Morning Warp)",
         "description": "Add higher-level tests to validate freeze/switch/thaw end-to-end and resilience under dependency failures.",
         "details": "Add integration tests for pd freeze + pd switch in mock mode; chaos test when Ollama is down to confirm graceful degradation; extend git parsing tests to cover renames/copies/conflicts; optional property-based tests for parsing robustness.",
@@ -862,7 +862,7 @@
         ]
       },
       {
-        "id": 22,
+        "id": "22",
         "title": "Tier 1: Smart dependency detection + actionable guidance (no auto-install of system deps)",
         "description": "Add dependency detection utilities and enhance pd doctor to provide copy-paste install/start/pull guidance for Ollama and optional OpenAI fallback.",
         "details": "Implement core/dependencies.py with platform-aware install guidance (macOS/Linux/other) and checks for: Ollama installed, Ollama API running, model pulled (qwen2.5-coder), and OpenAI API key present. Enhance pd doctor output to clearly show install/start commands and model pull commands. Explicitly do NOT auto-install system binaries; only provide guidance.",
@@ -875,7 +875,7 @@
         "subtasks": []
       },
       {
-        "id": 23,
+        "id": "23",
         "title": "Tier 2: AI provider manager with OpenAI fallback + cost/consent guardrails",
         "description": "Introduce AI provider abstraction (Ollama primary, OpenAI fallback) with explicit user consent and budget controls.",
         "details": "Create core/ai_providers.py defining provider interfaces for Ollama and OpenAI. Add Hydra config fields for primary/fallback providers/models, monthly budget, and require-confirmation flag. Implement selection logic: try Ollama first; if unavailable, fall back to OpenAI only if configured and within budget/consent settings. Ensure provider choice is clearly logged.\n<info added on 2025-12-15T04:00:37.349Z>\nFixed all 41 nitpick and 20 actionable comments from PR_ISSUES_DEC14_2025.md CodeRabbit review. Key fixes include narrowing blind Exception catches, fixing unused variables, adding f-string conversion flags, addressing datetime.utcnow deprecation, adding task validation in tasks.py, resolving Hydra config path issue, incorporating python-dotenv for .env loading, and switching from Ollama to OpenAI as the primary provider. All 53 tests pass.\n</info added on 2025-12-15T04:00:37.349Z>",
@@ -889,7 +889,7 @@
         "subtasks": []
       },
       {
-        "id": 24,
+        "id": "24",
         "title": "Tier 2: Usage tracking + budget enforcement for paid AI fallback",
         "description": "Track OpenAI fallback usage in SQLite and enforce monthly budget limits to prevent bill shock.",
         "details": "Implement a lightweight usage tracker (SQLite table in existing db or separate file) to record provider, timestamp, rough token counts/cost estimates, and outcome. Add budget checks used by the provider manager. Add a CLI command (e.g., pd ai-usage) or enhance doctor/status to show month-to-date cost.",
@@ -978,7 +978,7 @@
         ]
       },
       {
-        "id": 25,
+        "id": "25",
         "title": "Tier 3 (Optional): Auto-install Python-only dependencies (allowlist, venv-only)",
         "description": "Optionally auto-install missing Python packages (e.g., openai, tenacity) inside the active venv using a strict allowlist; never install system binaries.",
         "details": "Implement core/auto_installer.py that checks for allowlisted packages and installs them with pip inside the current interpreter environment. Add Hydra config flag auto_install_python_deps and keep auto_install_system_deps forced false. Integrate into OpenAI provider initialization if enabled.",
@@ -987,11 +987,12 @@
         "dependencies": [
           "23"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2025-12-17T05:02:52.293Z"
       },
       {
-        "id": 26,
+        "id": "26",
         "title": "Fix Shell Integration and Process Hierarchy",
         "description": "Resolve the fragile process hierarchy issue caused by the pd switch command, ensuring tmux sessions are not orphaned if Python exits unexpectedly.",
         "details": "The current implementation of the pd switch command results in a fragile process hierarchy where Python remains the parent of the tmux client. This can lead to orphaned tmux sessions if Python exits unexpectedly. To address this, modify pd.py to exit with a specific status code or write a token file upon successful execution. Update shell_integration.zsh to trap this status code or token file, and execute tmux switch-client at the shell level, effectively removing Python from the process chain. This change will ensure that tmux sessions are managed independently of the Python process, improving the robustness of the session management.\n<info added on 2025-12-15T23:45:15.476Z>\nImplemented shell-level tmux attach/switch to fix process hierarchy:\n- core/orchestrator.run_switch now returns a boolean (needs_shell_attach) instead of attaching to tmux.\n- bin/pd.py exits with code 88 on 'pd switch' when shell attach is required.\n- system/shell_integration.zsh traps exit code 88 and performs tmux attach-session / switch-client in the shell.\n- Updated tests/test_switch.py to cover both normal switch (exit 0) and shell-attach handshake (exit 88). pytest tests/test_switch.py passes.\n</info added on 2025-12-15T23:45:15.476Z>",
@@ -1005,7 +1006,7 @@
         "subtasks": []
       },
       {
-        "id": 27,
+        "id": "27",
         "title": "Clean Up Technical Debt: Code Removal, WAL Mode, Refactoring, and Alembic Setup",
         "description": "Refactor windsurf.py to accept configurable editor_args from Hydra config instead of using the hardcoded -n flag. This change will improve compatibility with editors other than VSCode, such as vim.",
         "status": "done",
@@ -1018,7 +1019,7 @@
         "subtasks": []
       },
       {
-        "id": 28,
+        "id": "28",
         "title": "Fix Async I/O Architecture",
         "description": "Replace blocking I/O calls with asynchronous alternatives to improve performance and prevent freezes.",
         "details": "1. Replace `requests.post` in `ai_providers.py` with `httpx.AsyncClient.post` to make HTTP requests asynchronously. Ensure that the function calling it is also async and handle the response appropriately.\n2. Replace `time.sleep` in `ai_providers.py` with `asyncio.sleep` or use the `tenacity` library for retries with backoff, ensuring that the function is async.\n3. In `git_utils.py` and `terminal.py`, replace `subprocess.run` with `asyncio.create_subprocess_exec` to execute shell commands asynchronously. Ensure that the output is captured correctly using `await process.communicate()`.\n4. Make `generate_sitrep` in `scribe.py` an async function to support the changes and ensure it integrates seamlessly with the rest of the system.\n5. Update any calling code to handle the new async functions, including adding `await` where necessary.",
@@ -1097,7 +1098,7 @@
         ]
       },
       {
-        "id": 29,
+        "id": "29",
         "title": "Fix Daemon Context Awareness for IDE Environments",
         "description": "Improve the daemon's context awareness by checking for tmux sessions and IDE environments, and provide alternative context capture methods.",
         "details": "1. Modify `pd_daemon.py` to check if a tmux session exists and has active clients before attempting to capture terminal output. Use `subprocess.run(['tmux', 'has-session', '-t', session_name])` to verify session existence and `tmux list-clients` to check for active clients.\n2. If no tmux session is found or no active clients are present, skip terminal capture and log a warning instead of returning ghost data.\n3. Detect IDE environments by checking the `TERM_PROGRAM` and `VSCODE` environment variables. If detected, adjust the daemon's behavior to avoid tmux assumptions.\n4. Implement alternative context capture methods for IDE environments, such as capturing the last command from the integrated terminal or using IDE-specific APIs if available.\n<info added on 2025-12-16T00:04:13.933Z>\nImplemented daemon context awareness improvements:\n- Added IDE environment detection (TERM_PROGRAM/VSCODE) to avoid tmux assumptions.\n- Added tmux session existence and active client checks (tmux has-session + list-clients) before attempting terminal capture.\n- When terminal capture is not reliable, daemon calls freeze_logic(..., skip_terminal_capture=True) to prevent storing ghost terminal output.\n- Added skip_terminal_capture support to freeze_logic, which stores placeholder terminal context.\n- Updated tests/test_daemon.py accordingly.\nVerification: pytest -q (60 passed).\n</info added on 2025-12-16T00:04:13.933Z>",
@@ -1112,7 +1113,7 @@
         "subtasks": []
       },
       {
-        "id": 30,
+        "id": "30",
         "title": "Implement Interactive Freeze Protocol",
         "description": "Refactor the pd freeze command to initiate an interactive interview process instead of using a single --note flag.",
         "details": "Refactor the existing pd freeze command to default to an interactive multi-question interview. This interview will replace the current --note flag and will consist of the following questions: 1) What is the primary objective of this session? 2) What didn't work or what is the key uncertainty? 3) What is the next concrete action? 4) Optional: Any additional notes or brain dump. Update the ContextSnapshot schema in core/db.py to include new structured fields: human_objective, human_blocker, human_next_step. Ensure that the responses to these questions are stored in the database in a structured format to improve the quality of AI-generated SITREPs. Consider user experience and ensure the interview is user-friendly and intuitive.\n<info added on 2025-12-16T00:00:58.236Z>\nImplemented Interactive Freeze Protocol:\n- Extended ContextSnapshot schema with structured fields: human_objective, human_blocker, human_next_step.\n- Refactored pd freeze to run an interactive 4-question interview by default; added --no-interview to disable prompts and allow fully non-interactive usage via flags.\n- Updated freeze_logic to store structured answers in DB and pass them to scribe prompt for higher-quality SITREPs.\n- Updated scribe prompt to include Human Context when available.\n- Updated tests/test_freeze.py for new CLI flags and structured fields; full suite passes.\nVerification: pytest -q (60 passed).\n</info added on 2025-12-16T00:00:58.236Z>",
@@ -1127,7 +1128,7 @@
         "subtasks": []
       },
       {
-        "id": 31,
+        "id": "31",
         "title": "Implement Time to First Commit KPI Tracking",
         "description": "Add EventLog table to core/db.py and implement logging and reporting for Time to First Commit (TTC) metric.",
         "details": "1. Modify core/db.py to include a new table 'EventLog' with the following fields: id (primary key), timestamp (datetime), repo_id (string), event_type (enum with values SWITCH_IN, COMMIT).\n2. Instrument the 'pd switch' command to log a SWITCH_IN event to the EventLog table whenever a repository switch occurs.\n3. Create a new command 'pd install-hooks' that sets up a post-commit git hook in the repository. This hook should call a new internal command 'pd _internal-log-commit' to log a COMMIT event to the EventLog table.\n4. Implement a new command 'pd metrics' that calculates and reports the average and recent Time to First Commit (TTC) times by analyzing the EventLog entries. This command should output the TTC in a human-readable format and support filtering by repository.\n5. Ensure that the new EventLog table and logging mechanisms are integrated with existing database management and migration systems.\n<info added on 2025-12-15T23:55:35.523Z>\n- Implemented TTC KPI tracking:\n  - Added EventLog + EventType (SWITCH_IN, COMMIT) to core/db.py.\n  - Instrumented core/orchestrator.switch_logic to log SWITCH_IN on each pd switch.\n  - Implemented pd install-hooks [repo_id] to install a git post-commit hook that calls 'pd _internal-log-commit <repo_id>'.\n  - Implemented hidden command pd _internal-log-commit to log COMMIT events.\n  - Implemented pd metrics [--repo <repo_id>] to compute TTC deltas (SWITCH_IN -> next COMMIT) and report avg/recent TTC.\n  - Added/updated tests: EventLog insert in tests/test_db.py; SWITCH_IN logging in tests/test_switch.py; CLI tests for install-hooks/internal-log-commit/metrics in tests/test_cli.py.\n  - Verified: pytest tests/test_db.py tests/test_switch.py tests/test_cli.py (16 passed).\n</info added on 2025-12-15T23:55:35.523Z>",
@@ -1141,7 +1142,7 @@
         "subtasks": []
       },
       {
-        "id": 32,
+        "id": "32",
         "title": "Enhance pd status with Last Touched Timestamp",
         "description": "Add filesystem scanning logic to pd status to find the most recent file modification time for each repository, respecting .gitignore, and add a Last Touched column to the status table.",
         "details": "1. Modify the pd status command to include a new column 'Last Touched' which displays the most recent file modification time (mtime) for each repository.\n2. Implement a filesystem scanning function that traverses the repository directories, respecting .gitignore files, to determine the latest mtime.\n3. Use Python's os and pathlib modules to efficiently scan directories and retrieve file mtimes.\n4. Integrate this logic into the existing status command, ensuring that the Last Touched column is updated dynamically based on the latest file activity.\n5. Update the status table rendering logic to include the new column, ensuring it is displayed clearly alongside existing columns.",
@@ -1155,7 +1156,7 @@
         "subtasks": []
       },
       {
-        "id": 33,
+        "id": "33",
         "title": "Implement Longitudinal SITREP with Deep-Dive Command",
         "description": "Develop a new command 'pd sitrep --deep-dive <repo_id>' to generate a longitudinal summary from historical ContextSnapshot records.",
         "details": "Create a new command in the CLI tool, 'pd sitrep --deep-dive <repo_id>', which retrieves the last 3-5 ContextSnapshot records from the database. These records should include structured human notes (objective, blocker, next_step) and previous AI summaries. Compile these into a historical narrative and send it to the ai_model_hq for processing. The AI model should generate a detailed longitudinal summary that outlines the problems being addressed, failed approaches, and recommended next steps. This feature is designed to address the cold start problem after long absences by providing a comprehensive overview of past activities and insights. Ensure integration with the interactive freeze protocol and tiered AI model support for seamless operation.",
@@ -1170,7 +1171,7 @@
         "subtasks": []
       },
       {
-        "id": 34,
+        "id": "34",
         "title": "Implement Tiered AI Model Support",
         "description": "Add support for tiered AI models with a high-quality model configuration and command-line flag.",
         "details": "1. Update the configuration file `conf/config.yaml` to include a new field `ai_model_hq` which will specify the high-quality AI model to be used, such as 'claude-3-5-sonnet' or 'gpt-4o'.\n2. Modify the `pd freeze` command to accept a new `--hq` flag. When this flag is used, the command should utilize the high-quality model specified in the configuration for important context captures.\n3. Update the model selection logic in `core/scribe.py` to check for the `--hq` flag and switch to the high-quality model if the flag is present.\n4. Ensure that the system intelligently balances cost versus quality by defaulting to a standard model unless the `--hq` flag is explicitly set.\n5. Consider the implications of model switching on performance and cost, and document any trade-offs in the code comments.",
@@ -1243,7 +1244,7 @@
         ]
       },
       {
-        "id": 35,
+        "id": "35",
         "title": "Enable WAL Mode for SQLite Database",
         "description": "Modify core/db.py to set SQLite journal mode to WAL (Write-Ahead Logging) instead of DELETE.",
         "details": "To enable WAL mode for the SQLite database, modify the database connection setup in core/db.py. Add the SQL command `PRAGMA journal_mode=WAL;` immediately after establishing a connection to the SQLite database. This change will help prevent database locking issues when the daemon and CLI access the database concurrently. Ensure that the connection is properly closed after operations to maintain database integrity. Review the SQLite documentation on WAL mode to understand its benefits and limitations, such as increased disk space usage and potential performance impacts.",
@@ -1256,12 +1257,12 @@
         "subtasks": []
       },
       {
-        "id": 36,
+        "id": "36",
         "title": "Remove Dead Configuration Code",
         "description": "Delete the unused core/registry.py, system/registry.yaml, and tests/test_registry.py files to finalize the configuration unification.",
-        "details": "To complete the configuration unification, remove the following files: core/registry.py, system/registry.yaml, and tests/test_registry.py. These files are remnants of the old configuration system and are no longer needed since Hydra is now the active configuration system. Before deleting these files, conduct a thorough search across the codebase to ensure no other parts of the system depend on them. Use tools like 'grep' or IDE search functionalities to confirm that there are no references to these files. Once confirmed, safely delete the files and commit the changes.\n<info added on 2025-12-17T01:51:56.430Z>\nThe audit revealed that the task was incorrectly marked as 'done' because the files still exist on the filesystem. The required deletions include: \n\n1. prime_directive/core/registry.py (old Pydantic config)\n2. prime_directive/system/registry.yaml (old config file)\n3. main.py (unused boilerplate)\n4. prime_directive/base.py (unused)\n5. prime_directive/cli.py (unused)\n\nThis oversight creates a 'Split-Brain' configuration risk, where users might edit registry.yaml expecting results while the code uses conf/config.yaml. Ensure these files are deleted to prevent configuration inconsistencies.\n</info added on 2025-12-17T01:51:56.430Z>",
+        "details": "To complete the configuration unification, remove the following files: core/registry.py, system/registry.yaml, and tests/test_registry.py. These files are remnants of the old configuration system and are no longer needed since Hydra is now the active configuration system. Before deleting these files, conduct a thorough search across the codebase to ensure no other parts of the system depend on them. Use tools like 'grep' or IDE search functionalities to confirm that there are no references to these files. Once confirmed, safely delete the files and commit the changes.\n<info added on 2025-12-17T01:51:56.430Z>\nThe audit revealed that the task was incorrectly marked as 'done' because the files still exist on the filesystem. The required deletions include: \n\n1. prime_directive/core/registry.py (old Pydantic config)\n2. prime_directive/system/registry.yaml (old config file)\n3. main.py (unused boilerplate)\n4. prime_directive/base.py (unused)\n5. prime_directive/cli.py (unused)\n\nThis oversight creates a 'Split-Brain' configuration risk, where users might edit registry.yaml expecting results while the code uses conf/config.yaml. Ensure these files are deleted to prevent configuration inconsistencies.\n</info added on 2025-12-17T01:51:56.430Z>\n<info added on 2025-12-17T03:16:28.726Z>\nProgress update: Deleted main.py, prime_directive/base.py, and prime_directive/cli.py. Updated tests/test_base.py and prime_directive/__main__.py. Pytest now passes. Remaining issue: make test currently fails due to pre-existing flake8 violations in core/orchestrator.py, core/scribe.py, core/terminal.py, and core/windsurf.py. Next step: fix flake8 violations per file with atomic commits until make test is green.\n</info added on 2025-12-17T03:16:28.726Z>",
         "testStrategy": "1. Use a code search tool to verify that there are no references to core/registry.py, system/registry.yaml, and tests/test_registry.py in the codebase. 2. After deletion, run the full test suite to ensure no tests fail due to missing files. 3. Manually inspect the configuration setup to confirm that Hydra is functioning as expected without the deleted files.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "20"
         ],
@@ -1273,8 +1274,10 @@
             "description": "Search the codebase for any references to the files to be deleted.",
             "dependencies": [],
             "details": "Use tools like 'grep' or IDE search functionalities to ensure no parts of the system depend on the files: core/registry.py, system/registry.yaml, main.py, prime_directive/base.py, and prime_directive/cli.py.",
-            "status": "pending",
-            "testStrategy": "Verify no references are found in the codebase."
+            "status": "done",
+            "testStrategy": "Verify no references are found in the codebase.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:34.959Z"
           },
           {
             "id": 2,
@@ -1284,8 +1287,10 @@
               1
             ],
             "details": "Carefully examine the search results to ensure that no parts of the codebase reference the files to be deleted. Document any findings.",
-            "status": "pending",
-            "testStrategy": "Ensure no false negatives in search results."
+            "status": "done",
+            "testStrategy": "Ensure no false negatives in search results.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.014Z"
           },
           {
             "id": 3,
@@ -1295,8 +1300,10 @@
               2
             ],
             "details": "Remove the following files: core/registry.py, system/registry.yaml, main.py, prime_directive/base.py, and prime_directive/cli.py. Ensure they are backed up if necessary.",
-            "status": "pending",
-            "testStrategy": "Confirm files are removed from the filesystem."
+            "status": "done",
+            "testStrategy": "Confirm files are removed from the filesystem.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.025Z"
           },
           {
             "id": 4,
@@ -1306,8 +1313,10 @@
               3
             ],
             "details": "Create a commit with a message explaining the removal of unused configuration files. Push the changes to the repository.",
-            "status": "pending",
-            "testStrategy": "Verify commit is successful and changes are reflected in the repository."
+            "status": "done",
+            "testStrategy": "Verify commit is successful and changes are reflected in the repository.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.033Z"
           },
           {
             "id": 5,
@@ -1317,14 +1326,16 @@
               4
             ],
             "details": "Run all existing tests to confirm that the deletion of files has not introduced any errors or failures in the system.",
-            "status": "pending",
-            "testStrategy": "All tests should pass without errors."
+            "status": "done",
+            "testStrategy": "All tests should pass without errors.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.041Z"
           }
         ],
-        "updatedAt": "2025-12-17T01:51:39.318Z"
+        "updatedAt": "2025-12-17T05:01:35.041Z"
       },
       {
-        "id": 37,
+        "id": "37",
         "title": "Implement V1.2 Freeze Protocol Prompts",
         "description": "Rename SPEC doc and update CLI prompts in 'pd freeze' to match SPEC-V1.2-FREEZE-PROTOCOL.md.",
         "details": "Renamed docs/doc.md to docs/SPEC-V1.2-FREEZE-PROTOCOL.md. Updated prime_directive/bin/pd.py to use the new optimized prompts: 'Context: What was your specific focus...', 'Mental Cache...', 'The Hook...', 'Brain Dump...'. This aligns the CLI with the V1.2 design specification.",
@@ -1335,7 +1346,7 @@
         "subtasks": []
       },
       {
-        "id": 38,
+        "id": "38",
         "title": "Deploy Documentation to GitHub Pages",
         "description": "Set up MkDocs deployment to GitHub Pages via GitHub Actions workflow.",
         "details": "Created .github/workflows/docs.yml to build and deploy MkDocs site. Configured repository to use GitHub Actions as Pages source. Site URL: https://ImmortalDemonGod.github.io/prime-directive/.",
@@ -1346,7 +1357,7 @@
         "subtasks": []
       },
       {
-        "id": 39,
+        "id": "39",
         "title": "Restore CI Workflows",
         "description": "Repair CI workflows (main.yml, release.yml) by replacing invalid action versions with stable ones.",
         "details": "Replaced non-existent 'actions/checkout@v6' and 'actions/setup-python@v6' with '@v4' and '@v5' respectively in main.yml and release.yml. Verified YAML validity.",
@@ -1357,7 +1368,7 @@
         "subtasks": []
       },
       {
-        "id": 40,
+        "id": "40",
         "title": "Improve CLI UX for Repo IDs",
         "description": "Enhance pd CLI to auto-fix trailing slashes in repo IDs and suggest corrections for typos.",
         "details": "Modified prime_directive/bin/pd.py to normalize repo IDs (strip trailing slashes) and use difflib for 'Did you mean?' suggestions. Updated tests/test_freeze.py to verify new behavior.",
@@ -1368,12 +1379,12 @@
         "subtasks": []
       },
       {
-        "id": 41,
+        "id": "41",
         "title": "Fix Context Compression Failure in SITREP Generation",
         "description": "Update core/scribe.py system prompt to prioritize human strategic insights over generic tactical summaries.",
         "details": "Modify the system prompt in core/scribe.py to shift focus from a '50 words max' tactical summary to a 'Chief of Staff' style prompt. This new prompt should emphasize strategic insights and ensure that the Brain Dump and Blocker fields are preserved and highlighted. Review the existing prompt logic and adjust it to prioritize human insights and strategic context. Ensure that the changes align with the overall goal of improving the quality and relevance of the SITREP outputs.",
         "testStrategy": "1. Review the updated prompt in core/scribe.py to ensure it reflects the 'Chief of Staff' style.\n2. Generate SITREP reports using the updated prompt and verify that strategic insights are prioritized over tactical summaries.\n3. Check that the Brain Dump and Blocker fields are preserved in the output.\n4. Conduct user testing with stakeholders to gather feedback on the new prompt's effectiveness in conveying strategic insights.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "34",
           "33"
@@ -1382,7 +1393,7 @@
         "subtasks": []
       },
       {
-        "id": 42,
+        "id": "42",
         "title": "Fix 'Tag not found' Error in Task Master MCP",
         "description": "Resolve the 'Tag not found' error by upgrading Task Master AI and Node runtime.",
         "details": "1. Use Node Version Manager (nvm) to switch to Node v20.19.6 and set it as the default version: `nvm use 20.19.6 && nvm alias default 20.19.6`.\n2. Upgrade Task Master AI to the latest version (0.38.0) globally: `npm install task-master-ai@latest -g`.\n3. Verify the Task Master AI installation by running `task-master list` to ensure it lists tasks correctly.\n4. Test MCP calls (`mcp0_get_tasks` and `mcp0_get_task`) to confirm they execute without errors.\n5. Attempt to create a task via CLI to ensure `mcp0_add_task` functions correctly.\n6. If the MCP server still reports version 0.17.0, restart the Windsurf process to reload the MCP server binary.\n<info added on 2025-12-17T01:40:36.124Z>\nStatus update: This task is not fully resolved. Completed steps include: (1) Node upgraded to v20.19.6 using nvm; (2) Task Master AI upgraded to v0.38.0 with CLI verification; (3) Successful task addition via CLI (e.g., task 41). Outstanding issue: Windsurf MCP server still operates on Task Master AI v0.17.0, as indicated by MCP responses, and `mcp0_add_task` fails. Resolution likely requires restarting Windsurf/reloading the MCP server and ensuring the MCP server uses the updated Node and Task Master AI installation. Do not mark as complete until `mcp0_add_task` succeeds.\n</info added on 2025-12-17T01:40:36.124Z>",
@@ -1398,12 +1409,12 @@
         "updatedAt": "2025-12-17T01:40:16.656Z"
       },
       {
-        "id": 43,
+        "id": "43",
         "title": "Add TERMINAL_DISCIPLINE Rule to .windsurfrules for Tmux Context Tracking",
         "description": "Implement a rule in .windsurfrules to ensure Windsurf Agent uses tmux for context tracking, preventing command execution in raw IDE shells.",
         "details": "1. **Modify .windsurfrules**: Add a new rule named TERMINAL_DISCIPLINE that checks if the current environment is a tmux session before executing terminal commands. Use the following shell snippet: `if [ -z \"$TMUX\" ]; then pd switch $(basename $(pwd)) || { [ $? -eq 88 ] && tmux attach -t pd-$(basename $(pwd)); }; fi`. This ensures that commands are executed within a tmux session, allowing proper context tracking by the Windsurf Agent.\n\n2. **Update Documentation**: Document this new rule in the project’s README or relevant documentation files, explaining its purpose and usage.\n\n3. **Integration with Existing Systems**: Ensure compatibility with existing tmux session management and context tracking mechanisms, particularly those implemented in tasks related to tmux and terminal state capture.",
         "testStrategy": "1. **Unit Test**: Create unit tests to simulate environments with and without tmux sessions. Verify that the rule correctly identifies the environment and executes the appropriate commands.\n\n2. **Integration Test**: Run integration tests to ensure that the Windsurf Agent operates correctly with the new rule in place, maintaining context tracking and SITREP generation.\n\n3. **Manual Verification**: Manually test the rule by executing commands in both tmux and non-tmux environments, ensuring that the rule enforces tmux usage as intended.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "8",
           "16",
@@ -1413,20 +1424,21 @@
         "subtasks": []
       },
       {
-        "id": 44,
+        "id": "44",
         "title": "Create AIV-SOP.md Documentation",
         "description": "Develop a formal Standard Operating Procedure for the AIV model, detailing verification processes for human verifiers.",
         "details": "Create a new document named AIV-SOP.md in the documentation directory. This document will outline the Standard Operating Procedure for the Architect-Implementer-Verifier (AIV) model. Include detailed sections on what verification entails for human verifiers, focusing on three main checks: \n\n1. **Clean Tree Check**: Describe the process of static verification for refactors and deletions. Emphasize the importance of manually inspecting the file tree, not just relying on `git status`, to ensure no unintended changes.\n\n2. **Runtime Check**: Explain dynamic verification by running commands with specific flags as mentioned in the specification. Provide examples of typical commands and expected outputs.\n\n3. **State Check**: Detail the procedure for data verification, especially for database schema changes. Include steps for inspecting the database to confirm that changes align with the intended design.\n\nAddress the 'winging it' problem by emphasizing the necessity of these checks to prevent the Verifier role from accepting AI claims without proper validation.",
         "testStrategy": "1. Review the AIV-SOP.md document for completeness and clarity.\n2. Ensure each verification step is clearly defined and includes examples where applicable.\n3. Conduct a peer review session with team members to validate the accuracy and practicality of the procedures outlined.\n4. Verify that the document is accessible and correctly formatted in the documentation section of the repository.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
           "38"
         ],
         "priority": "high",
-        "subtasks": []
+        "subtasks": [],
+        "updatedAt": "2025-12-17T04:59:20.561Z"
       },
       {
-        "id": 45,
+        "id": "45",
         "title": "Implement LLM Interview Mode for pd Freeze",
         "description": "Develop an LLM-based interview mode for pd freeze to ask context-specific questions during the freeze process.",
         "details": "This task involves creating a new feature within the pd freeze command that utilizes a Language Learning Model (LLM) to analyze the current state and ask the user context-specific questions. The implementation should ensure that the LLM operates asynchronously to prevent CLI hang-ups. This requires completing the Async I/O Refactor first. The LLM should be integrated to analyze the snapshot data and generate questions that help the user reflect on their current session. Consider using existing AI provider abstractions for LLM integration and ensure that the questions are stored in the database alongside other freeze data.",
@@ -1442,15 +1454,15 @@
         "updatedAt": "2025-12-17T01:48:26.647Z"
       },
       {
-        "id": 46,
+        "id": "46",
         "title": "Unify Packaging: Eliminate Dependency Triangle",
         "description": "Consolidate dependency management by removing setup.py and requirements.txt, and updating pyproject.toml as the single source of truth.",
         "details": "1. Delete the setup.py file from the repository to prevent legacy tools from using outdated dependency definitions.\n2. Remove the requirements.txt file to eliminate redundancy in dependency management.\n3. Consolidate all dependencies into the pyproject.toml file, ensuring it includes all necessary packages and versions.\n4. Update the Makefile to use 'uv pip install -e .' exclusively for installing dependencies, ensuring consistency with the pyproject.toml configuration.\n5. Review CODE-AUDIT-V1.0 Sections 5.3 and 6.1 for any additional considerations or requirements related to dependency management.",
         "testStrategy": "1. Verify that setup.py and requirements.txt are removed from the repository.\n2. Check that pyproject.toml contains all necessary dependencies and correct versions.\n3. Run 'uv pip install -e .' and ensure all dependencies are installed correctly without errors.\n4. Execute a full build and test cycle to confirm that the application functions as expected with the updated dependency management.\n5. Review the Makefile changes to ensure they correctly reflect the new installation command.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          1,
-          22
+          "1",
+          "22"
         ],
         "priority": "high",
         "subtasks": [
@@ -1460,8 +1472,10 @@
             "description": "Delete the setup.py file to prevent legacy tools from using outdated dependency definitions.",
             "dependencies": [],
             "details": "Navigate to the root directory of the repository and delete the setup.py file. Ensure no scripts or tools rely on it.",
-            "status": "pending",
-            "testStrategy": "Verify setup.py is removed and no errors occur in build scripts."
+            "status": "done",
+            "testStrategy": "Verify setup.py is removed and no errors occur in build scripts.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:00:55.749Z"
           },
           {
             "id": 2,
@@ -1471,8 +1485,10 @@
               1
             ],
             "details": "Locate and delete the requirements.txt file from the repository. Confirm that all dependencies are covered in pyproject.toml.",
-            "status": "pending",
-            "testStrategy": "Ensure requirements.txt is removed and dependencies are correctly listed in pyproject.toml."
+            "status": "done",
+            "testStrategy": "Ensure requirements.txt is removed and dependencies are correctly listed in pyproject.toml.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:00:55.780Z"
           },
           {
             "id": 3,
@@ -1483,8 +1499,10 @@
               2
             ],
             "details": "Edit the pyproject.toml file to list all dependencies previously in setup.py and requirements.txt. Ensure version accuracy.",
-            "status": "pending",
-            "testStrategy": "Check pyproject.toml for completeness and accuracy of dependencies."
+            "status": "done",
+            "testStrategy": "Check pyproject.toml for completeness and accuracy of dependencies.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:00:55.793Z"
           },
           {
             "id": 4,
@@ -1494,21 +1512,24 @@
               3
             ],
             "details": "Edit the Makefile to replace any existing dependency installation commands with 'uv pip install -e .'. Ensure it aligns with pyproject.toml.",
-            "status": "pending",
-            "testStrategy": "Run 'uv pip install -e .' and verify all dependencies install without errors."
+            "status": "done",
+            "testStrategy": "Run 'uv pip install -e .' and verify all dependencies install without errors.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:00:55.800Z"
           }
-        ]
+        ],
+        "updatedAt": "2025-12-17T05:00:55.800Z"
       },
       {
-        "id": 47,
+        "id": "47",
         "title": "Parallelize Freeze Logic Using asyncio.gather",
         "description": "Refactor the freeze logic to parallelize independent asynchronous operations using asyncio.gather to reduce latency.",
         "details": "In the `bin/pd.py` file, refactor the `freeze_logic` function to execute independent asynchronous operations concurrently. Replace the sequential awaits with `asyncio.gather` to run the Git status capture and terminal state capture in parallel. Specifically, create tasks for `get_status(repo_path)` and `capture_terminal_state(repo_id)`, then use `await asyncio.gather(git_task, term_task)` to execute them concurrently. This change is expected to reduce the total freeze time by 40-60% as the latency will be determined by the longest operation rather than the sum of all operations. Ensure that any exceptions are handled appropriately to maintain robustness.",
         "testStrategy": "1. Implement unit tests to verify that `freeze_logic` correctly uses `asyncio.gather` to parallelize operations.\n2. Measure the execution time of the freeze operation before and after the refactor to confirm a reduction in latency.\n3. Conduct integration tests to ensure that the freeze operation still captures the correct Git and terminal states and that these are saved correctly in the database.\n4. Perform a code review to ensure that the refactor aligns with the guidelines in CODE-AUDIT-V1.0 Sections 2.2, 5.2, and 6.3.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          11,
-          7
+          "11",
+          "7"
         ],
         "priority": "high",
         "subtasks": [
@@ -1518,8 +1539,9 @@
             "description": "Review the existing freeze logic implementation in bin/pd.py.",
             "dependencies": [],
             "details": "Examine the current implementation of the freeze_logic function to understand how asynchronous operations are currently handled. Identify the parts of the code that need refactoring to use asyncio.gather.",
-            "status": "pending",
-            "testStrategy": "Verify understanding by documenting current flow and identifying asynchronous operations."
+            "status": "done",
+            "testStrategy": "Verify understanding by documenting current flow and identifying asynchronous operations.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1529,8 +1551,9 @@
               1
             ],
             "details": "Refactor the freeze_logic function to replace sequential awaits with asyncio.gather. Create tasks for get_status(repo_path) and capture_terminal_state(repo_id), then use await asyncio.gather(git_task, term_task) to execute them concurrently.",
-            "status": "pending",
-            "testStrategy": "Implement unit tests to ensure asyncio.gather is used correctly and operations run concurrently."
+            "status": "done",
+            "testStrategy": "Implement unit tests to ensure asyncio.gather is used correctly and operations run concurrently.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1540,8 +1563,9 @@
               2
             ],
             "details": "Add try-except blocks around the asyncio.gather call to handle any exceptions that may occur during the execution of the asynchronous tasks. Ensure that the function remains robust and can handle errors gracefully.",
-            "status": "pending",
-            "testStrategy": "Test with scenarios that trigger exceptions to verify that they are handled appropriately."
+            "status": "done",
+            "testStrategy": "Test with scenarios that trigger exceptions to verify that they are handled appropriately.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1552,22 +1576,23 @@
               3
             ],
             "details": "Conduct performance tests to measure the execution time of the freeze operation before and after the refactor. Validate that the refactored function reduces latency as expected. Perform integration tests to ensure overall functionality remains intact.",
-            "status": "pending",
-            "testStrategy": "Compare execution times before and after refactor. Conduct integration tests to confirm correct operation."
+            "status": "done",
+            "testStrategy": "Compare execution times before and after refactor. Conduct integration tests to confirm correct operation.",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 48,
+        "id": "48",
         "title": "Harden Shell Wrapper: Check for tmux Binary",
         "description": "Update shell_integration.zsh to check for the tmux binary before attempting to attach a session, providing a clean error message if tmux is missing.",
         "details": "Modify the shell_integration.zsh script to include a pre-check for the tmux binary using a command like `command -v tmux` or `which tmux`. If the tmux binary is not found, output a user-friendly error message and exit gracefully. This prevents the script from failing with 'command not found' errors when tmux is not installed. Ensure that the error handling logic is robust and does not interfere with other parts of the script.",
         "testStrategy": "1. Temporarily remove or rename the tmux binary on a test system.\n2. Run the shell_integration.zsh script and verify that it outputs a clear error message indicating that tmux is not installed.\n3. Restore the tmux binary and rerun the script to ensure normal operation resumes.\n4. Check that the script exits gracefully without affecting other functionalities when tmux is missing.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          10,
-          16,
-          26
+          "10",
+          "16",
+          "26"
         ],
         "priority": "medium",
         "subtasks": [
@@ -1577,8 +1602,9 @@
             "description": "Modify shell_integration.zsh to check for the tmux binary before attaching a session.",
             "dependencies": [],
             "details": "Use `command -v tmux` to check if tmux is installed. If not, output an error message and exit.",
-            "status": "pending",
-            "testStrategy": "Temporarily remove tmux and run the script to ensure the error message is displayed."
+            "status": "done",
+            "testStrategy": "Temporarily remove tmux and run the script to ensure the error message is displayed.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1588,8 +1614,9 @@
               1
             ],
             "details": "Add logic to handle the absence of tmux without affecting other script parts. Use `echo` for error messages.",
-            "status": "pending",
-            "testStrategy": "Run the script without tmux and verify the error message is clear and the script exits gracefully."
+            "status": "done",
+            "testStrategy": "Run the script without tmux and verify the error message is clear and the script exits gracefully.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1600,21 +1627,22 @@
               2
             ],
             "details": "Ensure the tmux check does not interfere with other functionalities of shell_integration.zsh.",
-            "status": "pending",
-            "testStrategy": "Run the script with and without tmux installed to verify normal operation and error handling."
+            "status": "done",
+            "testStrategy": "Run the script with and without tmux installed to verify normal operation and error handling.",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 49,
+        "id": "49",
         "title": "Refactor Daemon Loop to Use asyncio.sleep",
         "description": "Modify the daemon loop in pd_daemon.py to use 'await asyncio.sleep(interval)' instead of 'time.sleep(interval)' to prevent blocking the event loop.",
         "details": "In the pd_daemon.py file, locate the main loop where 'time.sleep(interval)' is currently used. Replace this with 'await asyncio.sleep(interval)' to ensure the event loop remains responsive. This change will allow the daemon to process other signals and shut down gracefully while the freeze_logic is running asynchronously. Refer to CODE-AUDIT-V1.0 Sections 5.4 and 6.5 for additional context and guidelines on maintaining a healthy event loop.",
         "testStrategy": "1. Modify the daemon loop to use 'await asyncio.sleep(interval)'.\n2. Run the daemon and initiate the freeze_logic asynchronously.\n3. Verify that the daemon can process other signals and shut down gracefully during the freeze operation.\n4. Conduct stress tests to ensure the event loop remains responsive under load.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          11,
-          47
+          "11",
+          "47"
         ],
         "priority": "medium",
         "subtasks": [
@@ -1624,8 +1652,9 @@
             "description": "Locate the main loop in pd_daemon.py and replace time.sleep with await asyncio.sleep.",
             "dependencies": [],
             "details": "Open pd_daemon.py and find the main loop where time.sleep(interval) is used. Replace it with await asyncio.sleep(interval) to prevent blocking the event loop.",
-            "status": "pending",
-            "testStrategy": "Run the daemon and ensure it remains responsive during the sleep interval."
+            "status": "done",
+            "testStrategy": "Run the daemon and ensure it remains responsive during the sleep interval.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1635,8 +1664,9 @@
               1
             ],
             "details": "Ensure the daemon can process other signals and shut down gracefully while using asyncio.sleep. This involves updating signal handling to be compatible with asynchronous operations.",
-            "status": "pending",
-            "testStrategy": "Test signal handling by sending various signals to the daemon and observing its behavior."
+            "status": "done",
+            "testStrategy": "Test signal handling by sending various signals to the daemon and observing its behavior.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1647,21 +1677,22 @@
               2
             ],
             "details": "Conduct stress tests by simulating high load and ensuring the event loop remains responsive. Verify that the daemon can handle multiple asynchronous tasks without blocking.",
-            "status": "pending",
-            "testStrategy": "Run stress tests with multiple asynchronous tasks and verify responsiveness and stability of the event loop."
+            "status": "done",
+            "testStrategy": "Run stress tests with multiple asynchronous tasks and verify responsiveness and stability of the event loop.",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 50,
+        "id": "50",
         "title": "Implement Accurate Token Counting with tiktoken",
         "description": "Replace the heuristic token counting in core/scribe.py with the tiktoken library for precise API billing alignment.",
         "details": "1. Remove the current heuristic calculation 'output_tokens = len(result.split()) * 1.3' from core/scribe.py.\n2. Integrate the tiktoken library to accurately count tokens. Install the library if not already included in the project dependencies.\n3. Modify the relevant functions to use tiktoken for token counting. Ensure that the library is correctly initialized and utilized to count tokens in the input and output text.\n4. Where possible, retrieve exact token usage from API response headers or body, specifically using 'usage.prompt_tokens' and 'usage.completion_tokens' fields returned by OpenAI APIs.\n5. Update any related documentation to reflect the changes in token counting methodology.",
         "testStrategy": "1. Write unit tests to verify that token counting using tiktoken matches expected values for a variety of input and output scenarios.\n2. Simulate API responses with 'usage.prompt_tokens' and 'usage.completion_tokens' fields and ensure that these values are correctly extracted and used.\n3. Compare the token counts from tiktoken with the heuristic method to confirm improved accuracy.\n4. Conduct integration tests to ensure that the changes do not affect other parts of the system relying on token counts.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          6,
-          17
+          "6",
+          "17"
         ],
         "priority": "medium",
         "subtasks": [
@@ -1671,8 +1702,9 @@
             "description": "Remove the heuristic token calculation from core/scribe.py.",
             "dependencies": [],
             "details": "Locate and remove the line 'output_tokens = len(result.split()) * 1.3' in core/scribe.py.",
-            "status": "pending",
-            "testStrategy": "Ensure no errors occur after removal."
+            "status": "done",
+            "testStrategy": "Ensure no errors occur after removal.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1682,8 +1714,9 @@
               1
             ],
             "details": "Add tiktoken to the project dependencies and import it in core/scribe.py.",
-            "status": "pending",
-            "testStrategy": "Verify installation by importing tiktoken without errors."
+            "status": "done",
+            "testStrategy": "Verify installation by importing tiktoken without errors.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1693,8 +1726,9 @@
               2
             ],
             "details": "Replace existing token counting logic with tiktoken's methods in core/scribe.py.",
-            "status": "pending",
-            "testStrategy": "Write unit tests to compare tiktoken counts with expected values."
+            "status": "done",
+            "testStrategy": "Write unit tests to compare tiktoken counts with expected values.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1704,21 +1738,22 @@
               3
             ],
             "details": "Modify code to extract 'usage.prompt_tokens' and 'usage.completion_tokens' from API responses.",
-            "status": "pending",
-            "testStrategy": "Simulate API responses and verify token usage extraction."
+            "status": "done",
+            "testStrategy": "Simulate API responses and verify token usage extraction.",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 51,
+        "id": "51",
         "title": "Update Installation Guide with Shell Integration Step",
         "description": "Enhance the README.md to include a mandatory shell integration step for proper terminal session switching.",
         "details": "1. **Add Shell Integration Step**: Update the README.md to include a new step instructing users to add `source /path/to/prime_directive/system/shell_integration.zsh` to their `.zshrc` file. This ensures that the shell integration is sourced correctly, allowing the `pd switch` command to function as intended.\n\n2. **Explain Exit Code 88 Protocol**: Include a section explaining the significance of Exit Code 88. This protocol is used to signal the shell to trap and execute necessary commands for terminal session switching, aiding in debugging and understanding the process flow.\n\n3. **Document Split-Process Architecture**: Provide a detailed explanation of the split-process architecture, where the client `pd` triggers an Exit 88, and the shell traps this to run tmux commands. Reference DOC-AUDIT-V1.0 Sections 3.1 and 5.1 for further details.",
         "testStrategy": "1. **Documentation Review**: Ensure the README.md includes the new shell integration step and explanations clearly and accurately.\n2. **Functional Test**: Follow the updated installation guide on a fresh environment to verify that the `pd switch` command works correctly with the shell integration.\n3. **Debugging Verification**: Simulate a failure scenario and confirm that the Exit Code 88 explanation aids in troubleshooting.\n4. **Peer Review**: Conduct a peer review session to validate the clarity and completeness of the documentation updates.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          26,
-          48
+          "26",
+          "48"
         ],
         "priority": "high",
         "subtasks": [
@@ -1728,8 +1763,9 @@
             "description": "Update the README.md to include a shell integration step for .zshrc.",
             "dependencies": [],
             "details": "Add instructions to include `source /path/to/prime_directive/system/shell_integration.zsh` in the `.zshrc` file.",
-            "status": "pending",
-            "testStrategy": "Verify the README.md includes the shell integration step and test in a fresh environment."
+            "status": "done",
+            "testStrategy": "Verify the README.md includes the shell integration step and test in a fresh environment.",
+            "parentId": "undefined"
           },
           {
             "id": 2,
@@ -1739,8 +1775,9 @@
               1
             ],
             "details": "Document the significance of Exit Code 88 for terminal session switching and debugging.",
-            "status": "pending",
-            "testStrategy": "Ensure the explanation is clear and accurate in the README.md."
+            "status": "done",
+            "testStrategy": "Ensure the explanation is clear and accurate in the README.md.",
+            "parentId": "undefined"
           },
           {
             "id": 3,
@@ -1750,8 +1787,9 @@
               2
             ],
             "details": "Explain how the client `pd` triggers Exit 88 and the shell traps it to run tmux commands. Reference DOC-AUDIT-V1.0 Sections 3.1 and 5.1.",
-            "status": "pending",
-            "testStrategy": "Check that the architecture is documented clearly with references."
+            "status": "done",
+            "testStrategy": "Check that the architecture is documented clearly with references.",
+            "parentId": "undefined"
           },
           {
             "id": 4,
@@ -1761,20 +1799,21 @@
               3
             ],
             "details": "Conduct a thorough review of the README.md and follow the installation steps to ensure functionality.",
-            "status": "pending",
-            "testStrategy": "Perform a functional test by following the guide on a fresh environment to verify the `pd switch` command works."
+            "status": "done",
+            "testStrategy": "Perform a functional test by following the guide on a fresh environment to verify the `pd switch` command works.",
+            "parentId": "undefined"
           }
         ]
       },
       {
-        "id": 52,
+        "id": "52",
         "title": "Sanitize Configuration: Remove Hardcoded User Paths",
         "description": "Remove hardcoded user-specific paths from config.yaml and replace them with generic placeholders.",
         "details": "1. Open the default config file at conf/config.yaml and identify all instances of hardcoded paths like '/Users/tomriddle1/prime-directive'.\n2. Replace these paths with generic placeholders using '~' for home directory expansion or environment variables such as $HOME or $USER.\n3. Update the documentation to instruct users to copy the default config to ~/.prime-directive/config.yaml.\n4. Modify pd.py to ensure it loads configuration from the user's home directory, specifically ~/.prime-directive/config.yaml.\n5. Reference DOC-AUDIT-V1.0 Section 3.1 and 5.2-5.3 for additional context and requirements.",
         "testStrategy": "1. Verify that conf/config.yaml no longer contains any hardcoded user paths.\n2. Test that the application correctly expands '~' and environment variables to the user's home directory.\n3. Ensure that pd.py successfully loads the configuration from ~/.prime-directive/config.yaml.\n4. Review the updated documentation to confirm it accurately guides users on setting up their configuration.\n5. Run the application as a different user to ensure no runtime crashes occur due to path issues.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          36
+          "36"
         ],
         "priority": "high",
         "subtasks": [
@@ -1784,8 +1823,10 @@
             "description": "Open conf/config.yaml and identify all hardcoded user-specific paths.",
             "dependencies": [],
             "details": "Search for paths like '/Users/tomriddle1/prime-directive' in conf/config.yaml.",
-            "status": "pending",
-            "testStrategy": "Verify all hardcoded paths are identified."
+            "status": "done",
+            "testStrategy": "Verify all hardcoded paths are identified.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.045Z"
           },
           {
             "id": 2,
@@ -1795,8 +1836,10 @@
               1
             ],
             "details": "Use '~' for home directory or $HOME/$USER for environment variables.",
-            "status": "pending",
-            "testStrategy": "Ensure no hardcoded paths remain and placeholders are correctly used."
+            "status": "done",
+            "testStrategy": "Ensure no hardcoded paths remain and placeholders are correctly used.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.052Z"
           },
           {
             "id": 3,
@@ -1806,8 +1849,10 @@
               2
             ],
             "details": "Modify documentation to include steps for copying the config file to the user's home directory.",
-            "status": "pending",
-            "testStrategy": "Review documentation for accuracy and clarity."
+            "status": "done",
+            "testStrategy": "Review documentation for accuracy and clarity.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.055Z"
           },
           {
             "id": 4,
@@ -1817,22 +1862,25 @@
               2
             ],
             "details": "Update pd.py to read configuration from the user's home directory.",
-            "status": "pending",
-            "testStrategy": "Test that pd.py correctly loads the configuration from the specified path."
+            "status": "done",
+            "testStrategy": "Test that pd.py correctly loads the configuration from the specified path.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.058Z"
           }
-        ]
+        ],
+        "updatedAt": "2025-12-17T05:01:35.058Z"
       },
       {
-        "id": 53,
+        "id": "53",
         "title": "Comprehensive Documentation Update: Quick Start and Command Reference",
         "description": "Revise the Quick Start guide and Command Reference to reflect current CLI workflows and document all features.",
         "details": "1. **Quick Start Guide Update**: Rewrite the Quick Start guide to accurately describe the Interactive Interview Protocol, detailing the 4-step wizard process (Context, Mental Cache, Hook, Brain Dump). Include instructions for using the '--note' flag and '--no-interview' option.\n\n2. **Command Reference Expansion**: Add detailed documentation for all CLI commands, including 'pd sitrep --deep-dive', 'pd metrics', 'pd ai-usage', 'pd install-hooks', and 'pd freeze --hq'. Ensure each command's functionality, options, and examples are clearly explained.\n\n3. **CLI Help Text Update**: Update the internal docstrings in 'bin/pd.py' to reflect the current command options and workflows, correcting any outdated information, especially regarding the '--note' flag.\n\n4. **Source Reference**: Use DOC-AUDIT-V1.0 Section 3.2-3.3 and 5.4-5.5 as the primary source for identifying undocumented features and ensuring accuracy.",
         "testStrategy": "1. **Documentation Review**: Conduct a thorough review of the updated Quick Start guide and Command Reference to ensure accuracy and completeness.\n\n2. **Functional Verification**: Execute each documented command in a test environment to verify that the documentation aligns with actual functionality.\n\n3. **Peer Review**: Have a team member review the documentation for clarity and comprehensiveness.\n\n4. **Docstring Validation**: Run the CLI with '--help' to ensure all help text is updated and accurate.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          10,
-          33,
-          11
+          "10",
+          "33",
+          "11"
         ],
         "priority": "high",
         "subtasks": [
@@ -1842,8 +1890,10 @@
             "description": "Rewrite the Quick Start guide to describe the Interactive Interview Protocol.",
             "dependencies": [],
             "details": "Detail the 4-step wizard process: Context, Mental Cache, Hook, Brain Dump. Include '--note' flag and '--no-interview' option.",
-            "status": "pending",
-            "testStrategy": "Review for accuracy and completeness."
+            "status": "done",
+            "testStrategy": "Review for accuracy and completeness.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.062Z"
           },
           {
             "id": 2,
@@ -1853,8 +1903,10 @@
               1
             ],
             "details": "Document 'pd sitrep --deep-dive', 'pd metrics', 'pd ai-usage', 'pd install-hooks', 'pd freeze --hq'. Include functionality, options, and examples.",
-            "status": "pending",
-            "testStrategy": "Verify command documentation matches actual functionality."
+            "status": "done",
+            "testStrategy": "Verify command documentation matches actual functionality.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.068Z"
           },
           {
             "id": 3,
@@ -1864,8 +1916,10 @@
               2
             ],
             "details": "Ensure docstrings reflect current command options and workflows, correcting outdated information, especially for '--note' flag.\n<info added on 2025-12-17T02:02:59.244Z>\nReview CodeRabbit generated docstrings to ensure they reflect the new Optional arguments and the Interactive Interview protocol instead of the old mandatory --note flag.\n</info added on 2025-12-17T02:02:59.244Z>",
-            "status": "pending",
-            "testStrategy": "Check docstrings against current CLI options."
+            "status": "done",
+            "testStrategy": "Check docstrings against current CLI options.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.075Z"
           },
           {
             "id": 4,
@@ -1875,8 +1929,10 @@
               3
             ],
             "details": "Refer to sections 3.2-3.3 and 5.4-5.5 to ensure all features are documented accurately.",
-            "status": "pending",
-            "testStrategy": "Cross-reference documentation with source audit."
+            "status": "done",
+            "testStrategy": "Cross-reference documentation with source audit.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.080Z"
           },
           {
             "id": 5,
@@ -1886,20 +1942,23 @@
               4
             ],
             "details": "Ensure all sections are cohesive and reflect the latest CLI workflows and features.",
-            "status": "pending",
-            "testStrategy": "Conduct a comprehensive review and peer validation."
+            "status": "done",
+            "testStrategy": "Conduct a comprehensive review and peer validation.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.083Z"
           }
-        ]
+        ],
+        "updatedAt": "2025-12-17T05:01:35.083Z"
       },
       {
-        "id": 54,
+        "id": "54",
         "title": "Update Containerfile to Match Python Version Requirement",
         "description": "Modify the Containerfile to use Python 3.11-slim to align with the project's Python version requirement specified in pyproject.toml.",
         "details": "1. Open the Containerfile and locate the line specifying the base image version, currently 'FROM python:3.7-slim'.\n2. Update this line to 'FROM python:3.11-slim' to match the 'requires-python = >=3.11' requirement in pyproject.toml.\n3. Review the rest of the Containerfile to ensure compatibility with the current project structure, including any dependencies or scripts that may be affected by the Python version change.\n4. Verify that all dependencies listed in pyproject.toml are compatible with Python 3.11 and update any that are not.\n5. Document any changes made to the Containerfile and any additional considerations for future updates.",
         "testStrategy": "1. Build the Docker image using the updated Containerfile and ensure there are no build errors related to the Python version.\n2. Run the container and execute a basic script to verify that Python 3.11 is correctly installed and functioning.\n3. Check that all project dependencies are correctly installed and operational within the container.\n4. Conduct a review of the Containerfile to ensure all changes are documented and align with project requirements.",
-        "status": "pending",
+        "status": "done",
         "dependencies": [
-          53
+          "53"
         ],
         "priority": "medium",
         "subtasks": [
@@ -1909,8 +1968,10 @@
             "description": "Change the base image in the Containerfile to Python 3.11-slim.",
             "dependencies": [],
             "details": "Open the Containerfile and locate the line specifying the base image version, currently 'FROM python:3.7-slim'. Update this line to 'FROM python:3.11-slim' to match the 'requires-python = >=3.11' requirement in pyproject.toml.",
-            "status": "pending",
-            "testStrategy": "Build the Docker image and ensure there are no build errors related to the Python version."
+            "status": "done",
+            "testStrategy": "Build the Docker image and ensure there are no build errors related to the Python version.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.088Z"
           },
           {
             "id": 2,
@@ -1920,8 +1981,10 @@
               1
             ],
             "details": "Review the Containerfile to ensure compatibility with the current project structure, including any dependencies or scripts that may be affected by the Python version change.",
-            "status": "pending",
-            "testStrategy": "Run the container and execute a basic script to verify that Python 3.11 is correctly installed and functioning."
+            "status": "done",
+            "testStrategy": "Run the container and execute a basic script to verify that Python 3.11 is correctly installed and functioning.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.091Z"
           },
           {
             "id": 3,
@@ -1931,23 +1994,23 @@
               2
             ],
             "details": "Verify that all dependencies listed in pyproject.toml are compatible with Python 3.11 and update any that are not. Document any changes made to the Containerfile and any additional considerations for future updates.",
-            "status": "pending",
-            "testStrategy": "Check that all project dependencies are correctly installed and functioning with Python 3.11."
+            "status": "done",
+            "testStrategy": "Check that all project dependencies are correctly installed and functioning with Python 3.11.",
+            "parentId": "undefined",
+            "updatedAt": "2025-12-17T05:01:35.094Z"
           }
-        ]
+        ],
+        "updatedAt": "2025-12-17T05:01:35.094Z"
       }
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2025-12-17T01:51:39.325Z",
-      "taskCount": 45,
-      "completedCount": 37,
+      "lastModified": "2025-12-17T05:02:52.295Z",
+      "taskCount": 54,
+      "completedCount": 51,
       "tags": [
         "master"
-      ],
-      "created": "2025-12-17T01:51:53.414Z",
-      "description": "Tasks for master context",
-      "updated": "2025-12-17T01:58:36.312Z"
+      ]
     }
   }
 }
