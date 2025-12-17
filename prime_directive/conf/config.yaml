@@ -20,18 +20,19 @@ system:
   db_path: ~/.prime-directive/data/prime.db
   log_path: ~/.prime-directive/logs/pd.log
   mock_mode: false
+  auto_install_python_deps: false  # Auto-install allowlisted Python deps if missing
 
 repos:
   # The system managing itself
   prime-directive:
     id: prime-directive
-    path: /Users/tomriddle1/prime-directive
+    path: ${oc.env:HOME}/prime-directive
     priority: 10
     active_branch: main
   # GitHub profile README repo
   github-profile:
     id: github-profile
-    path: /Users/tomriddle1/ImmortalDemonGod-1
+    path: ${oc.env:HOME}/ImmortalDemonGod-1
     priority: 5
     active_branch: main
   # Add your other repos here:
