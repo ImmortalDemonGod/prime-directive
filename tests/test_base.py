@@ -1,5 +1,6 @@
-from prime_directive.base import NAME
+import typer
+from prime_directive.bin.pd import cli
 
 
-def test_base():
-    assert NAME == "prime_directive"
+def test_cli_is_typer_app():
+    assert isinstance(cli, typer.Typer)
