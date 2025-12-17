@@ -15,6 +15,16 @@ alwaysApply: true
 
 ---
 
+
+## TERMINAL_DISCIPLINE
+description: Enforce tmux usage for context tracking
+globs: *
+alwaysApply: true
+
+- **Always Attach First:** Before running ANY terminal commands, the Agent MUST check if it is inside the correct tmux session.
+  - Run: `if [ -z "$TMUX" ]; then pd switch $(basename $(pwd)); fi`
+  - Reason: `prime-directive` cannot track context or generate SITREPs if commands are run in the raw IDE shell.
+  
 - **Global CLI Commands**
 
   - Task Master now provides a global CLI through the `task-master` command
