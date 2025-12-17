@@ -23,7 +23,7 @@ $ pd switch rna-predict
 
 **The Amnesia Test**: Can you commit valid code within 5 minutes of `pd switch`? If yes, the system is working.
 
-> ⚠️ The `--note` flag is **mandatory** because AI can't read your mind. Your human insight is the most important piece of context.
+> ⚠️ Prime Directive can't read your mind. Your human insight is the most important piece of context. By default `pd freeze` runs an interactive interview (objective, blocker, next step, notes); use `--no-interview` to provide values via flags.
 
 ## Features
 
@@ -72,9 +72,36 @@ mkdir -p ~/.prime-directive
 echo 'OPENAI_API_KEY="sk-your-key-here"' > ~/.prime-directive/.env
 
 # Add to your shell (required for API keys)
-echo 'export OPENAI_API_KEY="$(grep OPENAI_API_KEY ~/.prime-directive/.env | cut -d= -f2 | tr -d \")"' >> ~/.zshrc
+echo 'source ~/.prime-directive/.env' >> ~/.zshrc
+source ~/.zshrc
+
+```
+
+#### Shell integration (required for `pd switch`)
+
+Add the Prime Directive shell wrapper to your shell config so `pd switch` can safely manage tmux sessions:
+
+```bash
+# If you installed from a local checkout in editable mode, use the repo path:
+echo 'source /path/to/prime-directive/prime_directive/system/shell_integration.zsh' >> ~/.zshrc
+
+# Reload
 source ~/.zshrc
 ```
+
+#### Exit Code 88 protocol
+
+`pd switch` uses **exit code `88`** as a handshake signal to the shell:
+
+- **Meaning**: the Python process intentionally exited after computing the target repo/session, and the shell wrapper should perform the tmux attach/switch.
+- **Why**: tmux clients should not be parented by the Python process; this avoids fragile process hierarchies and orphaned sessions.
+
+#### Split-process architecture
+
+- **Client (Python)**: runs `pd switch <repo_id>`, freezes/thaws, and exits with `88` when a tmux attach/switch must happen at the shell level.
+- **Shell (zsh)**: the `pd()` wrapper in `shell_integration.zsh` traps `88` and runs `tmux attach-session` (outside tmux) or `tmux switch-client` (inside tmux).
+
+See DOC-AUDIT-V1.0 Sections 3.1 and 5.1 for rationale and operational details.
 
 ## Quick Start
 
@@ -85,8 +112,15 @@ pd doctor
 # List tracked repositories
 pd list
 
-# Freeze current context (--note is REQUIRED)
-pd freeze my-project --note "What you were actually working on"
+# Freeze current context (interactive interview by default)
+pd freeze my-project
+
+# Non-interactive freeze (flags)
+pd freeze my-project --no-interview \
+  --objective "What you were trying to do" \
+  --blocker "What failed / key uncertainty" \
+  --next-step "First 10-second action" \
+  --note "Any extra notes"
 
 # Switch to another repository (displays your note + AI summary)
 pd switch other-project
@@ -95,6 +129,10 @@ pd switch other-project
 pd status my-project
 ```
 
+## Terminal Discipline (tmux-first)
+
+Prime Directive’s terminal context capture is tmux-based. For reliable context tracking (especially when switching repos), prefer running stateful workflows inside the repository’s `pd-<repo_id>` tmux session. The `.windsurfrules` file includes a `TERMINAL_DISCIPLINE` rule with a bootstrap snippet that ensures you’re inside tmux before executing terminal commands.
+
 ## CLI Commands
 
 | Command | Description |
@@ -102,12 +140,32 @@ pd status my-project
 | `pd doctor` | Check system dependencies and configuration |
 | `pd list` | List all tracked repositories with status |
 | `pd status` | Show detailed status of all repositories |
-| `pd freeze <repo> --note "..."` | Capture context with your human note (required) |
+| `pd freeze <repo>` | Capture context (interactive interview by default) |
+| `pd freeze <repo> --no-interview [--objective ... --blocker ... --next-step ... --note ...]` | Non-interactive freeze using flags |
+| `pd freeze <repo> --hq` | Freeze using the configured high-quality model |
 | `pd switch <repo>` | Switch to a repository and display saved context |
+| `pd sitrep <repo>` | Show latest snapshot SITREP |
+| `pd sitrep <repo> --deep-dive` | Generate a longitudinal summary from recent snapshots (requires OpenAI) |
+| `pd sitrep <repo> --limit <n>` | Control how many historical snapshots are included |
+| `pd metrics [--repo <repo>]` | Show time-to-commit metrics |
+| `pd ai-usage` | Show month-to-date AI usage and recent calls |
+| `pd install-hooks [repo]` | Install git post-commit hook(s) to log commit events |
+| `pd-daemon` | Run inactivity watcher that auto-freezes repos |
 
 ## Configuration
 
-Prime Directive uses [Hydra](https://hydra.cc/) for configuration. Edit `prime_directive/conf/config.yaml`:
+Prime Directive uses [Hydra](https://hydra.cc/) for configuration.
+
+To customize your setup, copy the default config to your home directory and edit it:
+
+```bash
+mkdir -p ~/.prime-directive
+cp /path/to/prime-directive/prime_directive/conf/config.yaml ~/.prime-directive/config.yaml
+```
+
+When `~/.prime-directive/config.yaml` exists, `pd` will load it as an override on top of the built-in defaults.
+
+Example:
 
 ```yaml
 system:

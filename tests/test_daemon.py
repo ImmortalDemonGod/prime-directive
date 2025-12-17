@@ -53,7 +53,7 @@ def test_handler_update():
 
 @patch("prime_directive.bin.pd_daemon.load_config")
 @patch("prime_directive.bin.pd_daemon.Observer")
-@patch("prime_directive.bin.pd_daemon.time.sleep")
+@patch("prime_directive.bin.pd_daemon.asyncio.sleep", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd_daemon.freeze_logic", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd_daemon.os.path.exists")
 @patch("prime_directive.bin.pd_daemon._should_skip_terminal_capture")
@@ -90,10 +90,7 @@ def test_daemon_loop(
         mock_handler.is_frozen = False
         MockHandlerClass.return_value = mock_handler
 
-        try:
-            main(interval=1, inactivity_limit=1800)  # 30 mins limit
-        except KeyboardInterrupt:
-            pass
+        main(interval=1, inactivity_limit=1800)  # 30 mins limit
 
         # Verify monitoring started
         observer_instance.schedule.assert_called_once()

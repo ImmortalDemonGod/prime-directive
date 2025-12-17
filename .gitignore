@@ -154,3 +154,6 @@ node_modules/
 
 tests/fixtures/repos/test-repo-alpha/
 tests/fixtures/repos/test-repo-beta/
+
+# Added by Task Master AI
+.DS_Store

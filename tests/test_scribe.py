@@ -34,6 +34,7 @@ async def test_generate_sitrep_success():
         _, kwargs = mock_post.call_args
         assert kwargs["json"]["model"] == "qwen2.5-coder"
         assert "Test Task" in kwargs["json"]["prompt"]
+        assert "Chief of Staff" in kwargs["json"]["system"]
 
 
 async def test_generate_sitrep_timeout():
@@ -126,9 +127,12 @@ async def test_generate_sitrep_fallback_openai_success():
             return_value="sk-test",
         ),
         patch(
-            "prime_directive.core.scribe.generate_openai_chat",
+            "prime_directive.core.scribe.generate_openai_chat_with_usage",
             new_callable=AsyncMock,
-            return_value="SITREP: Fallback ok.",
+            return_value=(
+                "SITREP: Fallback ok.",
+                {"prompt_tokens": 10, "completion_tokens": 5},
+            ),
         ) as mock_openai,
     ):
         result = await generate_sitrep(
@@ -141,3 +145,5 @@ async def test_generate_sitrep_fallback_openai_success():
         )
         assert result == "SITREP: Fallback ok."
         mock_openai.assert_called_once()
+        _args, kwargs = mock_openai.call_args
+        assert "Chief of Staff" in kwargs["system"]

@@ -6,6 +6,7 @@ import httpx
 from prime_directive.core.ai_providers import (
     generate_ollama,
     generate_openai_chat,
+    generate_openai_chat_with_usage,
     get_openai_api_key,
     log_ai_usage,
     check_budget,
@@ -13,6 +14,20 @@ from prime_directive.core.ai_providers import (
 )
 
 logger = logging.getLogger("prime_directive")
+
+
+def _count_tokens(text: str, model: str) -> int:
+    try:
+        import tiktoken
+
+        try:
+            enc = tiktoken.encoding_for_model(model)
+        except Exception:
+            enc = tiktoken.get_encoding("cl100k_base")
+
+        return len(enc.encode(text))
+    except Exception:
+        return 0
 
 
 async def generate_sitrep(
@@ -107,10 +122,14 @@ async def generate_sitrep(
     """
 
     system_prompt = (
-        "You are a concise engineering assistant. "
-        "Given git state, terminal logs, and active task, "
-        "generate a 2-3 sentence SITREP with IMMEDIATE NEXT STEP in "
-        "50 words max."
+        "You are a Chief of Staff for a senior engineer. "
+        "Your job is to preserve and surface the human strategic context so the engineer can resume instantly. "
+        "Prioritize (in this order): Human Objective, Human Blocker, Human Notes (Brain Dump), Human Next Step. "
+        "Treat git state and terminal logs as supporting evidence only. "
+        "Do not discard or compress away the Blocker or Notes; explicitly mention them. "
+        "Write a compact SITREP that is decision- and next-action-oriented: "
+        "(1) What we were trying to achieve, (2) what failed / key uncertainty, (3) what to do next. "
+        "Keep it brief (<=120 words) and include an explicit NEXT STEP."
     )
 
     # Use OpenAI as primary provider if configured
@@ -135,7 +154,7 @@ async def generate_sitrep(
                 )
 
         try:
-            result = await generate_openai_chat(
+            result, usage = await generate_openai_chat_with_usage(
                 api_url=openai_api_url,
                 api_key=api_key,
                 model=model,
@@ -144,23 +163,32 @@ async def generate_sitrep(
                 timeout_seconds=openai_timeout_seconds,
                 max_tokens=openai_max_tokens,
             )
-            # Log usage (estimate tokens from response length)
+            # Log usage
             if db_path:
-                output_tokens = len(result.split()) * 1.3  # rough estimate
-                cost = estimate_cost(int(output_tokens), cost_per_1k_tokens)
+                if usage is not None:
+                    input_tokens = usage.get("prompt_tokens", 0)
+                    output_tokens = usage.get("completion_tokens", 0)
+                else:
+                    input_tokens = _count_tokens(
+                        f"{system_prompt}\n{prompt}",
+                        model,
+                    )
+                    output_tokens = _count_tokens(result, model)
+
+                cost = estimate_cost(output_tokens, cost_per_1k_tokens)
                 await log_ai_usage(
                     db_path=db_path,
                     provider="openai",
                     model=model,
-                    input_tokens=0,  # not tracked
-                    output_tokens=int(output_tokens),
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
                     cost_estimate_usd=cost,
                     success=True,
                     repo_id=repo_id,
                 )
                 logger.info(
                     "OpenAI call logged: "
-                    f"~{int(output_tokens)} tokens, ${cost:.4f}"
+                    f"{output_tokens} tokens, ${cost:.4f}"
                 )
             return result
         except (httpx.HTTPError, ValueError) as e:
@@ -226,7 +254,7 @@ async def generate_sitrep(
             )
 
     try:
-        result = await generate_openai_chat(
+        result, usage = await generate_openai_chat_with_usage(
             api_url=openai_api_url,
             api_key=api_key,
             model=fallback_model,
@@ -237,21 +265,30 @@ async def generate_sitrep(
         )
         # Log fallback usage
         if db_path:
-            output_tokens = len(result.split()) * 1.3
-            cost = estimate_cost(int(output_tokens), cost_per_1k_tokens)
+            if usage is not None:
+                input_tokens = usage.get("prompt_tokens", 0)
+                output_tokens = usage.get("completion_tokens", 0)
+            else:
+                input_tokens = _count_tokens(
+                    f"{system_prompt}\n{prompt}",
+                    fallback_model,
+                )
+                output_tokens = _count_tokens(result, fallback_model)
+
+            cost = estimate_cost(output_tokens, cost_per_1k_tokens)
             await log_ai_usage(
                 db_path=db_path,
                 provider="openai",
                 model=fallback_model,
-                input_tokens=0,
-                output_tokens=int(output_tokens),
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
                 cost_estimate_usd=cost,
                 success=True,
                 repo_id=repo_id,
             )
             logger.info(
                 "OpenAI fallback logged: "
-                f"~{int(output_tokens)} tokens, ${cost:.4f}"
+                f"{output_tokens} tokens, ${cost:.4f}"
             )
         return result
     except (httpx.HTTPError, ValueError) as e:

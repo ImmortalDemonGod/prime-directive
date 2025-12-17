@@ -13,6 +13,10 @@ pd() {
     local rc=$?
 
     if [[ "$subcmd" == "switch" && $rc -eq 88 ]]; then
+        if ! command -v tmux >/dev/null 2>&1; then
+            echo "pd: tmux is required for 'pd switch' but was not found in PATH. Please install tmux and try again." >&2
+            return 1
+        fi
         local session_name="pd-${target_repo_id}"
         if [[ -n "$TMUX" ]]; then
             tmux switch-client -t "$session_name"

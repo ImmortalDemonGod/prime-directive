@@ -18,7 +18,7 @@ import typer
 # Hydra imports
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 # Core imports
 from prime_directive.core.config import register_configs
@@ -106,7 +106,31 @@ def load_config() -> DictConfig:
     try:
         with initialize_config_dir(version_base=None, config_dir=conf_path):
             cfg = compose(config_name="config")
-            return cfg
+
+        user_cfg_path = Path.home() / ".prime-directive" / "config.yaml"
+        if user_cfg_path.exists():
+            user_cfg = OmegaConf.load(str(user_cfg_path))
+            cfg = cast(DictConfig, OmegaConf.merge(cfg, user_cfg))
+
+        try:
+            cfg.system.db_path = os.path.expanduser(
+                os.path.expandvars(str(cfg.system.db_path))
+            )
+            cfg.system.log_path = os.path.expanduser(
+                os.path.expandvars(str(cfg.system.log_path))
+            )
+        except Exception:
+            pass
+
+        try:
+            for _rid, repo in cfg.repos.items():
+                repo.path = os.path.expanduser(
+                    os.path.expandvars(str(repo.path))
+                )
+        except Exception:
+            pass
+
+        return cfg
     except Exception as e:
         msg = f"Error loading config: {e}"
         console.print(f"[bold red]{msg}[/bold red]")
@@ -169,6 +193,8 @@ async def freeze_logic(
     console.print(f"[bold blue]Freezing context for {repo_id}...[/bold blue]")
 
     # 1. Capture Git State (Sync/Blocking)
+    # 2. Capture Terminal State (Sync/Blocking)
+    # These operations are independent and can be executed concurrently.
     git_st: GitStatus
     if config.system.mock_mode:
         logger.info("MOCK MODE: Skipping actual git status check")
@@ -179,7 +205,11 @@ async def freeze_logic(
             "uncommitted_files": [],
             "diff_stat": "",
         }
-    else:
+
+        logger.info("MOCK MODE: Skipping terminal capture")
+        last_cmd = "mock_cmd"
+        term_output = "MOCK: Terminal output"
+    elif skip_terminal_capture:
         git_st = await get_status(repo_path)
         git_summary = (
             f"Branch: {git_st['branch']}\n"
@@ -188,19 +218,56 @@ async def freeze_logic(
             f"Diff: {git_st.get('diff_stat', '')}"
         )
 
-    logger.debug(f"Git state for {repo_id}: {git_st}")
-
-    # 2. Capture Terminal State (Sync/Blocking)
-    if config.system.mock_mode:
-        logger.info("MOCK MODE: Skipping terminal capture")
-        last_cmd = "mock_cmd"
-        term_output = "MOCK: Terminal output"
-    elif skip_terminal_capture:
         last_cmd = "unknown"
         term_output = "Terminal capture skipped."
     else:
-        last_cmd, term_output = await capture_terminal_state(repo_id)
+        git_task = asyncio.create_task(get_status(repo_path))
+        term_task = asyncio.create_task(capture_terminal_state(repo_id))
 
+        try:
+            git_result, term_result = await asyncio.gather(
+                git_task,
+                term_task,
+                return_exceptions=True,
+            )
+        except Exception as e:
+            logger.exception(
+                "Error running concurrent freeze capture steps",
+                extra={"repo_id": repo_id},
+            )
+            git_result = e
+            term_result = e
+
+        if isinstance(git_result, BaseException):
+            logger.warning(
+                f"Git state capture failed for {repo_id}: {git_result!s}"
+            )
+            git_st = {
+                "branch": "error",
+                "is_dirty": False,
+                "uncommitted_files": [],
+                "diff_stat": str(git_result),
+            }
+        else:
+            git_st = git_result
+
+        git_summary = (
+            f"Branch: {git_st['branch']}\n"
+            f"Dirty: {git_st['is_dirty']}\n"
+            f"Files: {git_st['uncommitted_files']}\n"
+            f"Diff: {git_st.get('diff_stat', '')}"
+        )
+
+        if isinstance(term_result, BaseException):
+            logger.warning(
+                f"Terminal capture failed for {repo_id}: {term_result!s}"
+            )
+            last_cmd = "unknown"
+            term_output = "Unexpected error during terminal capture."
+        else:
+            last_cmd, term_output = term_result
+
+    logger.debug(f"Git state for {repo_id}: {git_st}")
     logger.debug(f"Terminal state: cmd={last_cmd}")
 
     # 3. Capture Active Task (Sync)
@@ -342,7 +409,7 @@ def freeze(
     no_interview: bool = typer.Option(
         False,
         "--no-interview",
-        help="Disable interactive interview prompts",
+        help="Disable interactive interview prompts and use provided flags",
     ),
     hq: bool = typer.Option(
         False,
@@ -351,14 +418,16 @@ def freeze(
     ),
 ):
     """
-    Create a repository snapshot (Git, terminal, and active task) and generate an AI SITREP; prompts the user for optional human context unless disabled.
-    
+    Create a repository snapshot (Git, terminal, and active task) and generate an AI SITREP.
+
+    By default, this command runs an interactive interview to capture human context (objective, blocker, next step, and notes). Use `--no-interview` to skip prompts and supply values via flags.
+
     Parameters:
         repo_id (str): Identifier of the repository to snapshot.
         objective (Optional[str]): Primary focus for this session; included in the snapshot/SITREP.
         blocker (Optional[str]): Key blocker, uncertainty, or gotcha to record.
         next_step (Optional[str]): First concrete action to restart work, recorded as the next step.
-        note (Optional[str]): Additional notes or brain dump to include in the snapshot and AI summary.
+        note (Optional[str]): Optional: additional notes / brain dump.
         no_interview (bool): If True, skip interactive prompts and use provided values as-is.
         hq (bool): If True, request the higher-quality (higher-cost) AI model for SITREP generation.
     """
