@@ -1215,6 +1215,39 @@
         "dependencies": [],
         "priority": "medium",
         "subtasks": []
+      },
+      {
+        "id": 38,
+        "title": "Deploy Documentation to GitHub Pages",
+        "description": "Set up MkDocs deployment to GitHub Pages via GitHub Actions workflow.",
+        "details": "Created .github/workflows/docs.yml to build and deploy MkDocs site. Configured repository to use GitHub Actions as Pages source. Site URL: https://ImmortalDemonGod.github.io/prime-directive/.",
+        "testStrategy": "Verify workflow run in GitHub Actions and check deployed site URL.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 39,
+        "title": "Restore CI Workflows",
+        "description": "Repair CI workflows (main.yml, release.yml) by replacing invalid action versions with stable ones.",
+        "details": "Replaced non-existent 'actions/checkout@v6' and 'actions/setup-python@v6' with '@v4' and '@v5' respectively in main.yml and release.yml. Verified YAML validity.",
+        "testStrategy": "Verify CI workflows (linter, tests_linux, tests_mac, tests_win) appear and run in GitHub Actions tab.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 40,
+        "title": "Improve CLI UX for Repo IDs",
+        "description": "Enhance pd CLI to auto-fix trailing slashes in repo IDs and suggest corrections for typos.",
+        "details": "Modified prime_directive/bin/pd.py to normalize repo IDs (strip trailing slashes) and use difflib for 'Did you mean?' suggestions. Updated tests/test_freeze.py to verify new behavior.",
+        "testStrategy": "Run 'pd freeze prime-directive/' (should work) and 'pd freeze test-rep' (should suggest 'test-repo').",
+        "priority": "medium",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
       }
     ],
     "metadata": {
