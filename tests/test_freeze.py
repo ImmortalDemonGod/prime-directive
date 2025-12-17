@@ -101,7 +101,7 @@ def test_freeze_command(
         app,
         [
             "freeze",
-            "test-repo",
+            "test-repo/",
             "--no-interview",
             "--objective",
             "Testing objective",
@@ -141,11 +141,13 @@ def test_freeze_command_invalid_repo(mock_load, mock_config):
         app,
         [
             "freeze",
-            "invalid-repo",
+            "test-rep",
             "--no-interview",
             "--note",
             "Testing invalid repo",
         ],
     )
     assert result.exit_code == 1
-    assert "Repository 'invalid-repo' not found" in result.stdout
+    assert "Repository 'test-rep' not found" in result.stdout
+    assert "Did you mean" in result.stdout
+    assert "test-repo" in result.stdout
