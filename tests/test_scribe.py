@@ -127,9 +127,12 @@ async def test_generate_sitrep_fallback_openai_success():
             return_value="sk-test",
         ),
         patch(
-            "prime_directive.core.scribe.generate_openai_chat",
+            "prime_directive.core.scribe.generate_openai_chat_with_usage",
             new_callable=AsyncMock,
-            return_value="SITREP: Fallback ok.",
+            return_value=(
+                "SITREP: Fallback ok.",
+                {"prompt_tokens": 10, "completion_tokens": 5},
+            ),
         ) as mock_openai,
     ):
         result = await generate_sitrep(
