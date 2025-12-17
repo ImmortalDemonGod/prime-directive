@@ -1,3 +1,4 @@
+import asyncio
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, Mock, AsyncMock, MagicMock
@@ -42,6 +43,7 @@ def mock_config(tmp_path):
     )
 
 
+@patch("prime_directive.bin.pd.asyncio.gather", wraps=asyncio.gather)
 @patch("prime_directive.bin.pd.load_config")
 @patch("prime_directive.bin.pd.get_status", new_callable=AsyncMock)
 @patch("prime_directive.bin.pd.capture_terminal_state", new_callable=AsyncMock)
@@ -57,6 +59,7 @@ def test_freeze_command(
     mock_capture_terminal,
     mock_get_status,
     mock_load,
+    mock_gather,
     mock_config,
 ):
     mock_load.return_value = mock_config
@@ -132,6 +135,10 @@ def test_freeze_command(
     assert snapshot.human_next_step == "Testing next step"
 
     mock_init_db.assert_awaited_once()
+
+    assert mock_gather.call_count == 1
+    assert mock_gather.call_args.kwargs.get("return_exceptions") is True
+    assert len(mock_gather.call_args.args) == 2
 
 
 @patch("prime_directive.bin.pd.load_config")
