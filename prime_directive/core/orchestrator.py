@@ -11,11 +11,15 @@ from prime_directive.core.db import ContextSnapshot, EventLog, EventType
 def _is_path_prefix(prefix: str, path: str) -> bool:
     """
     Determine whether `prefix` is a directory path prefix of `path`.
-    
-    Paths are normalized and resolved to absolute paths; equality counts as a match. Only directory-boundary prefixes are considered (for example, '/a/b' matches '/a/b/c' but not '/a/bc').
-    
+
+    Paths are normalized and resolved to absolute paths; equality counts as a
+    match.
+    Only directory-boundary prefixes are considered.
+    For example, '/a/b' matches '/a/b/c' but not '/a/bc'.
+
     Returns:
-        bool: `True` if `prefix` is equal to `path` or is a directory-prefix of `path`, `False` otherwise.
+        bool: `True` if `prefix` is equal to `path` or is a directory-prefix of
+            `path`, `False` otherwise.
     """
     prefix_norm = os.path.normpath(os.path.abspath(prefix))
     path_norm = os.path.normpath(os.path.abspath(path))
@@ -60,24 +64,47 @@ async def switch_logic(
     logger: logging.Logger,
 ) -> None:
     """
-    Switch the active workspace to the repository identified by `target_repo_id`, performing optional freeze of the previously detected repo, ensuring a session for the target repo, launching the editor, initializing the database, recording a `SWITCH_IN` event, and printing the latest contextual snapshot (SITREP) if present.
-    
+    Switch the active workspace to the repository identified by
+    `target_repo_id`.
+
+    Performs optional freeze of the previously detected repo, ensures a session
+    for the target repo, launches the editor, initializes the database, records
+    a `SWITCH_IN` event, and prints the latest contextual snapshot (SITREP) if
+    present.
+
     This coroutine:
-    - Detects the current repository based on `cwd` and auto-freezes it (via `freeze_fn`) if it differs from `target_repo_id` (freeze errors are reported to `console` but do not abort the switch).
-    - Uses `ensure_session_fn` and `launch_editor_fn` to prepare and open the target repository unless `cfg.system.mock_mode` is true (in which case mock-mode actions are logged).
-    - Initializes the database via `init_db_fn`, iterates sessions from `get_session_fn`, inserts an `EventLog` with `EventType.SWITCH_IN` for the target repo, commits, then queries and prints the most recent `ContextSnapshot` (human note, AI summary, and timestamp) if available.
-    - Always calls `dispose_engine_fn()` in a finally block to ensure resources are cleaned up.
-    
+    - Detects the current repository based on `cwd` and auto-freezes it (via
+      `freeze_fn`) if it differs from `target_repo_id`. Freeze errors are
+      reported to `console` but do not abort the switch.
+    - Uses `ensure_session_fn` and `launch_editor_fn` to prepare and open the
+      target repository unless `cfg.system.mock_mode` is true. In mock mode,
+      actions are logged instead.
+    - Initializes the database via `init_db_fn`, iterates sessions from
+      `get_session_fn`, inserts an `EventLog` with `EventType.SWITCH_IN` for
+      the target repo, commits, then queries and prints the most recent
+      `ContextSnapshot` (human note, AI summary, and timestamp) if available.
+    - Always calls `dispose_engine_fn()` in a finally block to ensure resources
+      are cleaned up.
+
     Parameters:
         target_repo_id (str): Identifier of the repository to switch to.
-        cfg (Any): Configuration object exposing `repos` (mapping of repo id to repo config) and `system` (with `mock_mode`, `editor_cmd`, optional `editor_args`, and `db_path`).
-        cwd (str): Current working directory used to detect the active repository.
-        freeze_fn (Callable[[str, Any], Any]): Async callable to freeze a repository given its id and the configuration.
-        ensure_session_fn (Callable[..., Any]): Callable to ensure/create a session for the target repository.
-        launch_editor_fn (Callable[[str, str, list[str]], Any]): Callable to launch the editor for a path with command and argument list.
-        init_db_fn (Callable[[str], Any]): Async callable to initialize or connect to the database at the given path.
-        get_session_fn (Callable[[str], Any]): Callable that yields async DB session objects for the given DB path.
-        dispose_engine_fn (Callable[..., Any]): Async callable to dispose/cleanup DB engine and related resources.
+        cfg (Any): Configuration object exposing `repos` (mapping of repo id to
+            repo config) and `system` (with `mock_mode`, `editor_cmd`, optional
+            `editor_args`, and `db_path`).
+        cwd (str): Current working directory used to detect the active
+            repository.
+        freeze_fn (Callable[[str, Any], Any]): Async callable to freeze a
+            repository given its id and the configuration.
+        ensure_session_fn (Callable[..., Any]): Callable to ensure/create a
+            session for the target repository.
+        launch_editor_fn (Callable[[str, str, list[str]], Any]): Callable to
+            launch the editor for a path with command and argument list.
+        init_db_fn (Callable[[str], Any]): Async callable to initialize or
+            connect to the database at the given path.
+        get_session_fn (Callable[[str], Any]): Callable that yields async DB
+            session objects for the given DB path.
+        dispose_engine_fn (Callable[..., Any]): Async callable to
+            dispose/cleanup DB engine and related resources.
         console (Any): Console-like object used for user-facing prints.
         logger (logging.Logger): Logger for informational and debug messages.
     """
@@ -169,27 +196,41 @@ def run_switch(
     console: Any,
     logger: logging.Logger,
 ) -> bool:
-
     """
-    Execute the repository switch workflow and determine if a normal session should proceed.
-    
-    Runs the asynchronous switch_logic synchronously and performs cleanup; after completion, returns whether the caller should proceed with a normal (non-mock, non-TMUX) session.
-    
+    Execute the repository switch workflow and determine if a normal session
+    should proceed.
+
+    Runs the asynchronous switch_logic synchronously and performs cleanup;
+    after completion, returns whether the caller should proceed with a normal
+    (non-mock, non-TMUX) session.
+
     Parameters:
-    	target_repo_id (str): Identifier of the repository to switch into.
-    	cfg (Any): Configuration object containing repository and system settings (expects cfg.repos and cfg.system.mock_mode/editor_cmd/editor_args/db_path).
-    	cwd (str): Current working directory used to detect the active repository.
-    	freeze_fn (Callable[[str, Any], Any]): Function to freeze a repository state; called with the current repository id and its config.
-    	ensure_session_fn (Callable[..., Any]): Function that ensures a session exists for the target repository.
-    	launch_editor_fn (Callable[[str, str, list[str]], Any]): Function to launch an editor given a path, editor command, and editor arguments.
-    	init_db_fn (Callable[[str], Any]): Function to initialize or open the database at the given path.
-    	get_session_fn (Callable[[str], Any]): Callable that yields database sessions for a given DB path.
-    	dispose_engine_fn (Callable[..., Any]): Cleanup function invoked after switch_logic completes.
-    	console (Any): Console-like object used for user-facing output.
-    	logger (logging.Logger): Logger for diagnostic messages.
-    
+        target_repo_id (str): Identifier of the repository to switch into.
+        cfg (Any): Configuration object containing repository and system
+            settings (expects cfg.repos and cfg.system.mock_mode/editor_cmd/
+            editor_args/db_path).
+        cwd (str): Current working directory used to detect the active
+            repository.
+        freeze_fn (Callable[[str, Any], Any]): Function to freeze a repository
+            state;
+            called with the current repository id and its config.
+        ensure_session_fn (Callable[..., Any]): Function that ensures a session
+            exists for the target repository.
+        launch_editor_fn (Callable[[str, str, list[str]], Any]): Function to
+            launch an editor given a path, editor command, and editor
+            arguments.
+        init_db_fn (Callable[[str], Any]): Function to initialize or open the
+            database at the given path.
+        get_session_fn (Callable[[str], Any]): Callable that yields database
+            sessions for a given DB path.
+        dispose_engine_fn (Callable[..., Any]): Cleanup function invoked after
+            switch_logic completes.
+        console (Any): Console-like object used for user-facing output.
+        logger (logging.Logger): Logger for diagnostic messages.
+
     Returns:
-    	True if cfg.system.mock_mode is false and the TMUX environment variable is not set, False otherwise.
+        True if cfg.system.mock_mode is false and the TMUX environment variable
+        is not set, False otherwise.
     """
     asyncio.run(
         switch_logic(
@@ -207,7 +248,10 @@ def run_switch(
         )
     )
 
-    if (not cfg.system.mock_mode) and (not os.environ.get("TMUX")):
+    if (
+        not cfg.system.mock_mode
+        and not os.environ.get("TMUX")
+    ):
         return True
 
     return False
