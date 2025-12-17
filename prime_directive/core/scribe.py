@@ -41,30 +41,37 @@ async def generate_sitrep(
     cost_per_1k_tokens: float = 0.002,
 ) -> str:
     """
-    Generates a SITREP summary using Ollama.
-
-    Args:
-        repo_id (str): The ID of the repository.
-        git_state (str): Summary of git status.
-        terminal_logs (str): Recent terminal output.
-        active_task (Optional[dict]): The current active task dictionary.
-        model (str): The Ollama model to use.
-        fallback_provider (str): The fallback provider to use if Ollama fails.
-        fallback_model (str): The fallback model to use if Ollama fails.
-        require_confirmation (bool): Whether to require confirmation for OpenAI
-            fallback.
-        openai_api_url (str): The OpenAI API endpoint.
-        openai_timeout_seconds (float): Timeout in seconds for the OpenAI
-            request.
-        openai_max_tokens (int): Maximum number of tokens for the OpenAI
-            request.
-        api_url (str): The Ollama API endpoint.
-        timeout_seconds (float): Timeout in seconds for the Ollama request.
-        max_retries (int): Maximum number of retries for the Ollama request.
-        backoff_seconds (float): Backoff time in seconds between retries.
-
+    Generate a concise SITREP (situation report) summarizing repository state, recent terminal output, and optional human/task context.
+    
+    Constructs a prompt from repo_id, git_state, terminal_logs, active_task, and human_* fields, then requests a short (2–3 sentence) SITREP with an immediate next step from the configured provider and model. By default uses Ollama; can use OpenAI as the primary provider or as a fallback. When OpenAI is used and db_path is provided, the function will check monthly budget and log estimated token usage and cost.
+    
+    Parameters:
+        repo_id (str): Repository identifier included in the prompt.
+        git_state (str): Concise summary of git state to include in the prompt.
+        terminal_logs (str): Recent terminal output to include in the prompt.
+        active_task (Optional[Dict[str, Any]]): Active task with keys like `id`, `title`, and `description`.
+        human_objective (Optional[str]): Human-provided objective to include in the prompt.
+        human_blocker (Optional[str]): Human-provided blocker to include in the prompt.
+        human_next_step (Optional[str]): Human-provided suggested next step to include in the prompt.
+        human_note (Optional[str]): Additional human notes to include in the prompt.
+        model (str): Primary model name to request from the selected provider.
+        provider (str): Primary provider to use; `"ollama"` or `"openai"`.
+        fallback_provider (str): Provider to use if the primary provider fails; `"openai"` or `"none"`.
+        fallback_model (str): Model name to use for the fallback provider.
+        require_confirmation (bool): If true, prevents automatic OpenAI fallback and returns an error instead.
+        openai_api_url (str): OpenAI API endpoint URL used when provider or fallback_provider is `"openai"`.
+        openai_timeout_seconds (float): Request timeout for OpenAI calls.
+        openai_max_tokens (int): Maximum tokens to request from OpenAI.
+        api_url (str): Ollama API endpoint URL used when provider is `"ollama"`.
+        timeout_seconds (float): Request timeout for Ollama calls.
+        max_retries (int): Number of retries for Ollama requests.
+        backoff_seconds (float): Backoff delay between Ollama retries.
+        db_path (Optional[str]): Path to a local DB used for budget checks and logging; if None, budget checks and logging are skipped.
+        monthly_budget_usd (float): Monthly budget threshold used when db_path is provided.
+        cost_per_1k_tokens (float): Cost estimate per 1000 tokens used to compute estimated cost when logging usage.
+    
     Returns:
-        str: The generated SITREP string.
+        str: Generated SITREP text on success, or an error message beginning with "Error generating SITREP:" on failure.
     """
 
     task_info = "None"

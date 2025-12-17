@@ -9,6 +9,16 @@ async def _run_tmux_command(
     *,
     timeout_seconds: float,
 ) -> tuple[int, str, str]:
+    """
+    Execute the given tmux-related command asynchronously and capture its output.
+    
+    Parameters:
+        args (list[str]): Command and arguments to run (e.g., ["tmux", "capture-pane", ...]).
+        timeout_seconds (float): Seconds to wait for the process to finish before killing it.
+    
+    Returns:
+        tuple[int, str, str]: A tuple of (returncode, stdout, stderr) where stdout and stderr are decoded using replacement for decoding errors.
+    """
     proc = await asyncio.create_subprocess_exec(
         *args,
         stdout=PIPE,
@@ -33,16 +43,17 @@ async def capture_terminal_state(
     repo_id: Optional[str] = None,
 ) -> Tuple[str, str]:
     """
-    Captures the terminal state from tmux if running inside a tmux session.
-
-    Args:
-        repo_id (Optional[str]): If provided, targets the tmux session
-            'pd-{repo_id}'. Otherwise captures the current pane.
-
+    Capture the terminal's recent output and infer the last executed command from a tmux pane.
+    
+    Parameters:
+        repo_id (Optional[str]): If provided, targets the tmux session named "pd-{repo_id}"; otherwise captures the current pane.
+    
     Returns:
-        tuple[str, str]: (last_command, output_summary)
-        - last_command: The last command executed (if available) or "unknown"
-        - output_summary: The last ~50 lines of terminal output
+        Tuple[str, str]: A pair (last_command, output_summary)
+            - last_command: The last command inferred from the captured pane output, or "unknown" if it cannot be determined.
+            - output_summary: A trimmed summary of the last ~50 lines of terminal output, or a short fallback message such as
+              "No tmux session found or capture failed.", "Terminal capture timed out.", "tmux not installed.", or
+              "Unexpected error during terminal capture." when capture cannot be performed.
     """
     try:
         # Check if we are inside tmux (basic check, could be more robust)

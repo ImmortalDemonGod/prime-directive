@@ -16,6 +16,14 @@ console = Console()
 
 
 def _is_ide_environment() -> bool:
+    """
+    Detect whether the current process is running inside a Visual Studio Code or similar IDE environment.
+    
+    Checks the VSCODE environment variable and the TERM_PROGRAM environment variable for identifiers of VS Code or related IDEs.
+    
+    Returns:
+        True if running inside an IDE environment (VSCODE set or TERM_PROGRAM contains "vscode" or "windsurf"), False otherwise.
+    """
     term_program = (os.environ.get("TERM_PROGRAM") or "").lower()
     if os.environ.get("VSCODE"):
         return True
@@ -25,6 +33,12 @@ def _is_ide_environment() -> bool:
 
 
 def _tmux_session_has_active_clients(session_name: str) -> bool:
+    """
+    Determine whether a tmux session has any attached clients.
+    
+    Returns:
+        True if the tmux executable is available, the named session exists, and it has at least one attached client; False if tmux is unavailable, the session does not exist, the session has no clients, or if command timeouts/errors occur.
+    """
     if not shutil.which("tmux"):
         return False
 
@@ -56,6 +70,15 @@ def _tmux_session_has_active_clients(session_name: str) -> bool:
 
 
 def _should_skip_terminal_capture(repo_id: str) -> bool:
+    """
+    Determines whether terminal capture should be skipped based on running inside an IDE or the presence of active tmux clients for the repository.
+    
+    Parameters:
+        repo_id (str): Repository identifier used to construct the tmux session name `pd-<repo_id>`.
+    
+    Returns:
+        `True` if running in an IDE or there are no active tmux clients for the session, `False` otherwise.
+    """
     if _is_ide_environment():
         return True
 
@@ -65,6 +88,16 @@ def _should_skip_terminal_capture(repo_id: str) -> bool:
 
 class AutoFreezeHandler(FileSystemEventHandler):
     def __init__(self, repo_id: str, cfg):
+        """
+        Initialize an AutoFreezeHandler for a repository.
+        
+        Parameters:
+            repo_id (str): Identifier of the repository being monitored.
+            cfg: Configuration object containing repository settings and runtime options.
+        
+        Notes:
+            - Sets `last_modified` to the current time and `is_frozen` to False.
+        """
         self.repo_id = repo_id
         self.cfg = cfg
         self.last_modified = datetime.now()
@@ -95,8 +128,11 @@ def main(
     ),
 ):
     """
-    Background daemon to monitor repositories and auto-freeze context on
-    inactivity.
+    Run a background daemon that monitors configured repositories and auto-freezes repository context after sustained inactivity.
+    
+    Parameters:
+        interval (int): Polling interval in seconds between inactivity checks.
+        inactivity_limit (int): Inactivity threshold in seconds after which a repository will be frozen.
     """
     msg = "[bold green]Starting Prime Directive Daemon...[/bold green]"
     console.print(msg)
@@ -118,6 +154,16 @@ def main(
     observer.start()
 
     async def run_freeze(repo_id, cfg):
+        """
+        Run the freeze process for the given repository and ensure the database engine is disposed afterwards.
+        
+        Parameters:
+            repo_id (str): Identifier of the repository to freeze.
+            cfg: Configuration object used by the freeze logic.
+        
+        Returns:
+            None
+        """
         try:
             skip_terminal_capture = _should_skip_terminal_capture(repo_id)
             if skip_terminal_capture:
