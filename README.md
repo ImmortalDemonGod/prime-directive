@@ -72,9 +72,36 @@ mkdir -p ~/.prime-directive
 echo 'OPENAI_API_KEY="sk-your-key-here"' > ~/.prime-directive/.env
 
 # Add to your shell (required for API keys)
-echo 'export OPENAI_API_KEY="$(grep OPENAI_API_KEY ~/.prime-directive/.env | cut -d= -f2 | tr -d \")"' >> ~/.zshrc
+echo 'source ~/.prime-directive/.env' >> ~/.zshrc
+source ~/.zshrc
+
+```
+
+#### Shell integration (required for `pd switch`)
+
+Add the Prime Directive shell wrapper to your shell config so `pd switch` can safely manage tmux sessions:
+
+```bash
+# If you installed from a local checkout in editable mode, use the repo path:
+echo 'source /path/to/prime-directive/prime_directive/system/shell_integration.zsh' >> ~/.zshrc
+
+# Reload
 source ~/.zshrc
 ```
+
+#### Exit Code 88 protocol
+
+`pd switch` uses **exit code `88`** as a handshake signal to the shell:
+
+- **Meaning**: the Python process intentionally exited after computing the target repo/session, and the shell wrapper should perform the tmux attach/switch.
+- **Why**: tmux clients should not be parented by the Python process; this avoids fragile process hierarchies and orphaned sessions.
+
+#### Split-process architecture
+
+- **Client (Python)**: runs `pd switch <repo_id>`, freezes/thaws, and exits with `88` when a tmux attach/switch must happen at the shell level.
+- **Shell (zsh)**: the `pd()` wrapper in `shell_integration.zsh` traps `88` and runs `tmux attach-session` (outside tmux) or `tmux switch-client` (inside tmux).
+
+See DOC-AUDIT-V1.0 Sections 3.1 and 5.1 for rationale and operational details.
 
 ## Quick Start
 
@@ -94,6 +121,10 @@ pd switch other-project
 # View status of a repository
 pd status my-project
 ```
+
+## Terminal Discipline (tmux-first)
+
+Prime Directive’s terminal context capture is tmux-based. For reliable context tracking (especially when switching repos), prefer running stateful workflows inside the repository’s `pd-<repo_id>` tmux session. The `.windsurfrules` file includes a `TERMINAL_DISCIPLINE` rule with a bootstrap snippet that ensures you’re inside tmux before executing terminal commands.
 
 ## CLI Commands
 
