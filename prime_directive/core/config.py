@@ -28,6 +28,7 @@ class SystemConfig:
     db_path: str = "data/prime.db"
     log_path: str = "data/logs/pd.log"
     mock_mode: bool = False
+    auto_install_python_deps: bool = False  # Auto-install allowlisted Python deps
 
 
 @dataclass
