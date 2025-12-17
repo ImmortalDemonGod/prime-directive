@@ -84,6 +84,15 @@ _async_engines: Dict[str, AsyncEngine] = {}
 
 def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     # Expand ~ to home directory
+    """
+    Provide an AsyncEngine connected to the SQLite database at the given path and cached for reuse.
+    
+    Parameters:
+        db_path (str): Filesystem path or SQLite URI for the database. A leading "~" is expanded to the user's home directory. The special value ":memory:" uses an in-memory database. Defaults to "~/.prime-directive/data/prime.db".
+    
+    Returns:
+        sqlalchemy.ext.asyncio.AsyncEngine: An AsyncEngine configured for SQLite with foreign key support and WAL journal mode; the same engine instance is returned for repeated calls with the same path.
+    """
     db_path = os.path.expanduser(db_path)
 
     engine = _async_engines.get(db_path)
@@ -111,6 +120,15 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
 
         @event.listens_for(engine.sync_engine, "connect")
         def _set_sqlite_pragma(dbapi_connection, _connection_record):
+            """
+            Set SQLite pragmas on a newly opened DB-API connection to enable foreign key enforcement and WAL journaling.
+            
+            This function executes PRAGMA statements on the given DB-API connection: it enables foreign key constraints (`PRAGMA foreign_keys=ON`) and sets the journal mode to write-ahead logging (`PRAGMA journal_mode=WAL`). It is intended to be used as a SQLAlchemy connect event listener.
+            
+            Parameters:
+                dbapi_connection: The raw DB-API connection object provided by SQLAlchemy on connect.
+                _connection_record: Connection record passed by SQLAlchemy (unused).
+            """
             cursor = dbapi_connection.cursor()
             cursor.execute("PRAGMA foreign_keys=ON")
             cursor.execute("PRAGMA journal_mode=WAL")

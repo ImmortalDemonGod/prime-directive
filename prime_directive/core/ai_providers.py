@@ -17,7 +17,19 @@ async def log_ai_usage(
     success: bool,
     repo_id: Optional[str] = None,
 ) -> None:
-    """Log AI usage to the database for tracking and budget enforcement."""
+    """
+    Persist an AI usage record to the database for tracking and budget enforcement.
+    
+    Parameters:
+    	db_path (str): Filesystem path or connection string for the database to initialize and use.
+    	provider (str): Name of the AI provider (e.g., "openai", "ollama").
+    	model (str): Model identifier used for the request.
+    	input_tokens (int): Number of tokens sent as input.
+    	output_tokens (int): Number of tokens received as output.
+    	cost_estimate_usd (float): Estimated cost for this call in US dollars.
+    	success (bool): Whether the request completed successfully.
+    	repo_id (Optional[str]): Optional repository identifier associated with the usage record.
+    """
     from prime_directive.core.db import AIUsageLog, init_db, get_session
 
     await init_db(db_path)
@@ -37,7 +49,12 @@ async def log_ai_usage(
 
 
 async def get_monthly_usage(db_path: str) -> Tuple[float, int]:
-    """Get current month's total cost and call count for paid providers."""
+    """
+    Compute the total estimated cost and number of calls for the paid provider "openai" since the start of the current month (UTC).
+    
+    Returns:
+        (total_cost_usd, call_count): total estimated cost in USD as a float and the number of recorded calls as an int for provider "openai" from the beginning of the current month (UTC).
+    """
     from prime_directive.core.db import AIUsageLog, init_db, get_session
     from typing import cast, Any
 
@@ -71,9 +88,18 @@ async def check_budget(
     db_path: str,
     monthly_budget_usd: float,
 ) -> Tuple[bool, float, float]:
-    """Check if within budget.
-
-    Returns (within_budget, current_usage, budget).
+    """
+    Determine whether the current month's AI usage is below a specified USD budget.
+    
+    Parameters:
+        db_path (str): Filesystem path to the database containing AI usage logs.
+        monthly_budget_usd (float): Budget in US dollars to compare against current month usage.
+    
+    Returns:
+        Tuple[bool, float, float]: A tuple containing:
+            - `true` if the current month's usage is less than `monthly_budget_usd`, `false` otherwise.
+            - The current month's total estimated cost in USD.
+            - The supplied `monthly_budget_usd` value.
     """
     current_usage, _ = await get_monthly_usage(db_path)
     return (
@@ -84,7 +110,16 @@ async def check_budget(
 
 
 def estimate_cost(output_tokens: int, cost_per_1k: float = 0.002) -> float:
-    """Estimate cost based on output tokens."""
+    """
+    Estimate cost from output token count using a per-1k-token rate.
+    
+    Parameters:
+        output_tokens (int): Number of output tokens to price.
+        cost_per_1k (float): Cost in USD per 1000 tokens (default 0.002).
+    
+    Returns:
+        float: Estimated cost in USD.
+    """
     return (output_tokens / 1000) * cost_per_1k
 
 
@@ -98,6 +133,25 @@ async def generate_ollama(
     max_retries: int = 0,
     backoff_seconds: float = 0.0,
 ) -> str:
+    """
+    Request a completion from an Ollama HTTP API and return the generated text.
+    
+    Parameters:
+        api_url (str): Full Ollama endpoint URL to POST the request to.
+        model (str): Model identifier to use for generation.
+        prompt (str): User prompt to send to the model.
+        system (str): System/instructional context to include with the prompt.
+        timeout_seconds (float): Request timeout in seconds for each attempt.
+        max_retries (int): Number of retry attempts to perform on failure (default 0).
+        backoff_seconds (float): Base backoff seconds for exponential backoff between retries (default 0.0).
+    
+    Returns:
+        str: The generated response text from the Ollama API.
+    
+    Raises:
+        httpx.HTTPError: If the HTTP request fails and all retry attempts are exhausted.
+        ValueError: If the response payload is missing a valid `response` string.
+    """
     payload = {
         "model": model,
         "prompt": prompt,
@@ -138,6 +192,25 @@ async def generate_openai_chat(
     timeout_seconds: float,
     max_tokens: int,
 ) -> str:
+    """
+    Send a chat-style request to an OpenAI-compatible API and return the assistant's reply.
+    
+    Parameters:
+        api_url (str): Full URL of the OpenAI-compatible chat completions endpoint.
+        api_key (str): Bearer API key used for Authorization.
+        model (str): Model identifier to request (e.g., "gpt-4").
+        system (str): System prompt controlling assistant behavior.
+        prompt (str): User prompt content.
+        timeout_seconds (float): Request timeout in seconds.
+        max_tokens (int): Maximum number of tokens to generate for the assistant.
+    
+    Returns:
+        str: The assistant's response content with surrounding whitespace removed.
+    
+    Raises:
+        ValueError: If the response JSON is missing choices, message, or content.
+        httpx.HTTPError: If the HTTP request failed or returned a non-success status.
+    """
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",

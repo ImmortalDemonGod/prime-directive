@@ -20,7 +20,14 @@ class TestIntegrationMockMode:
 
     @pytest.fixture
     def mock_config(self):
-        """Create a mock config with mock_mode enabled."""
+        """
+        Provide a MagicMock configuration object preconfigured for mock-mode tests.
+        
+        The returned config has mock_mode enabled, an in-memory database, a test log path, AI provider/model and timeout settings appropriate for unit/integration tests, a small monthly budget and token cost, and a single test repository entry named "test-repo".
+        
+        Returns:
+            MagicMock: A configuration object with the test defaults described above.
+        """
         mock_cfg = MagicMock()
         mock_cfg.system.mock_mode = True
         mock_cfg.system.db_path = ":memory:"
@@ -64,6 +71,14 @@ class TestIntegrationMockMode:
                 ) as mock_session:
                     # Setup async generator mock
                     async def mock_gen():
+                        """
+                        Provide a mock asynchronous database session configured for tests.
+                        
+                        The yielded object is a MagicMock that mimics a DB session with mocked methods for adding and persisting data, suitable for use in async tests that expect `add`, `commit`, `flush`, and `execute` to be callable.
+                        
+                        Returns:
+                            MagicMock: A mock DB session with `add` mocked and `commit`, `flush`, and `execute` prepared for async use.
+                        """
                         session = MagicMock()
                         session.add = MagicMock()
                         session.commit = AsyncMock()
@@ -116,7 +131,21 @@ class TestChaosOllamaDown:
 
     @pytest.fixture
     def config_ollama_primary(self):
-        """Config with Ollama as primary, no fallback."""
+        """
+        Create a MagicMock configuration that uses Ollama as the primary AI provider with no fallback.
+        
+        The mock config sets:
+        - mock_mode disabled and an in-memory database
+        - logging path for tests
+        - AI provider set to "ollama" with model "qwen2.5-coder"
+        - no fallback provider (ai_fallback_provider = "none") and a fallback model value for reference
+        - require confirmation for fallback usage
+        - OpenAI and Ollama endpoint URLs and timeouts (Ollama timeout deliberately short for tests)
+        - Ollama retry/backoff disabled and test-friendly budget/cost settings
+        
+        Returns:
+            MagicMock: A mock configuration object with the described `system` attributes.
+        """
         mock_cfg = MagicMock()
         mock_cfg.system.mock_mode = False
         mock_cfg.system.db_path = ":memory:"

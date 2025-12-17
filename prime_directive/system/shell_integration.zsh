@@ -2,7 +2,8 @@
 
 # Ensure pd is in PATH or aliased
 # Assuming pd is installed via pip/uv and in path, otherwise alias it
-# alias pd="uv run pd" # Uncomment if not installed globally
+# pd wraps the real `pd` command and, when the subcommand is `switch` and the wrapped command exits with status 88, switches or attaches tmux to the session named `pd-<target_repo_id>`.
+# Returns the tmux command's exit status when handling that special `switch` case; otherwise returns the wrapped `pd` command's exit status.
 
 pd() {
     local subcmd="$1"
