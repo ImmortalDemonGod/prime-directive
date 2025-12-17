@@ -34,6 +34,7 @@ async def test_generate_sitrep_success():
         _, kwargs = mock_post.call_args
         assert kwargs["json"]["model"] == "qwen2.5-coder"
         assert "Test Task" in kwargs["json"]["prompt"]
+        assert "Chief of Staff" in kwargs["json"]["system"]
 
 
 async def test_generate_sitrep_timeout():
@@ -141,3 +142,5 @@ async def test_generate_sitrep_fallback_openai_success():
         )
         assert result == "SITREP: Fallback ok."
         mock_openai.assert_called_once()
+        _args, kwargs = mock_openai.call_args
+        assert "Chief of Staff" in kwargs["system"]
