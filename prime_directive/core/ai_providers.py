@@ -239,6 +239,25 @@ async def generate_openai_chat_with_usage(
     timeout_seconds: float,
     max_tokens: int,
 ) -> Tuple[str, Optional[OpenAIUsage]]:
+    """
+    Send a chat request to an OpenAI-compatible API and return the assistant's reply along with optional token usage.
+    
+    Parameters:
+        api_url (str): Full HTTP endpoint for the chat completion API.
+        api_key (str): Bearer API key used for Authorization.
+        model (str): Model identifier to request (e.g., "gpt-4o-mini").
+        system (str): System prompt providing high-level instructions for the assistant.
+        prompt (str): User prompt to include as the chat message.
+        timeout_seconds (float): Request timeout in seconds for the HTTP client.
+        max_tokens (int): Maximum number of tokens the model is allowed to generate for the completion.
+    
+    Returns:
+        Tuple[str, Optional[OpenAIUsage]]: A tuple where the first element is the assistant's reply (trimmed of surrounding whitespace) and the second element is an optional `OpenAIUsage` dict containing any of `prompt_tokens`, `completion_tokens`, and `total_tokens` when provided by the API.
+    
+    Raises:
+        httpx.HTTPStatusError: If the HTTP request returns a non-success status.
+        ValueError: If the API response is missing required fields (`choices`, message content) or contains invalid content.
+    """
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -292,4 +311,13 @@ async def generate_openai_chat_with_usage(
 
 
 def get_openai_api_key(env_var: str = "OPENAI_API_KEY") -> Optional[str]:
+    """
+    Retrieve the OpenAI API key from an environment variable.
+    
+    Parameters:
+        env_var (str): Name of the environment variable to read (default "OPENAI_API_KEY").
+    
+    Returns:
+        Optional[str]: The API key string if the environment variable is set and non-empty, `None` otherwise.
+    """
     return os.getenv(env_var) or None
