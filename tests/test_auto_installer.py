@@ -5,16 +5,36 @@ from prime_directive.core.auto_installer import ensure_packages, is_venv
 
 @pytest.fixture
 def mock_importlib():
+    """
+    Pytest fixture that patches importlib.util.find_spec and yields the corresponding mock.
+    
+    Returns:
+        mock: The patched `find_spec` mock (a MagicMock) used to simulate module availability in tests.
+    """
     with patch("prime_directive.core.auto_installer.importlib.util.find_spec") as mock:
         yield mock
 
 @pytest.fixture
 def mock_subprocess():
+    """
+    Mock the subprocess.check_call function to capture and assert external command invocations.
+    
+    Returns:
+        mock (unittest.mock.MagicMock): A mock replacing subprocess.check_call that records calls and arguments for assertions.
+    """
     with patch("prime_directive.core.auto_installer.subprocess.check_call") as mock:
         yield mock
 
 @pytest.fixture
 def mock_sys_prefix():
+    """
+    Pytest fixture that patches prime_directive.core.auto_installer.sys to simulate being inside a virtual environment.
+    
+    The patched `sys` mock has `prefix`, `base_prefix`, and `executable` set to values that indicate a virtual environment (prefix != base_prefix). Use this fixture to test code paths that should run only when a virtual environment is active.
+    
+    Returns:
+        mock_sys (unittest.mock.Mock): The mocked `sys` module with venv-like attributes.
+    """
     with patch("prime_directive.core.auto_installer.sys") as mock_sys:
         # Default: simulated venv (prefix != base_prefix)
         mock_sys.prefix = "/some/venv"
