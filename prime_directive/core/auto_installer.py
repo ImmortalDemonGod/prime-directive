@@ -17,19 +17,23 @@ ALLOWLIST = {
 }
 
 def is_venv() -> bool:
-    """Check if running inside a virtual environment."""
+    """
+    Determine whether the current Python interpreter is running inside a virtual environment.
+    
+    Returns:
+        bool: `True` if running in a virtual environment, `False` otherwise.
+    """
     return sys.prefix != sys.base_prefix
 
 def ensure_packages(packages: List[str], auto_install: bool = False) -> None:
     """
-    Ensure the specified Python packages are installed.
+    Ensure the listed Python packages are available, optionally installing missing allowlisted packages when running inside a virtual environment.
     
-    If auto_install is True and we are in a venv, attempts to install
-    missing packages that are on the ALLOWLIST.
+    If any packages are missing and `auto_install` is False, the function logs a warning and returns. If `auto_install` is True but the interpreter is not in a virtual environment, the function logs an error and returns. When `auto_install` is True and running in a virtual environment, only packages present in `ALLOWLIST` will be installed; non-allowlisted packages are skipped with a warning. The function attempts installation via pip and logs success or failure.
     
-    Args:
-        packages: List of package names to check/install.
-        auto_install: Whether to attempt installation if missing.
+    Parameters:
+        packages (List[str]): Package names to check for importability.
+        auto_install (bool): If True, attempt to install missing packages from `ALLOWLIST` when in a virtual environment.
     """
     missing = []
     for pkg in packages:

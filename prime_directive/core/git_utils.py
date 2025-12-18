@@ -109,22 +109,17 @@ async def get_last_touched(repo_path: str) -> Optional[float]:
 
 async def get_status(repo_path: str) -> GitStatus:
     """
-    Return the repository's git status: current branch, whether there are uncommitted changes, the list of uncommitted file paths, and a textual diff summary.
-
+    Retrieve the repository's Git status: current branch, whether there are uncommitted changes, the list of uncommitted file paths, and a diff summary.
+    
     Parameters:
-        repo_path (str): Filesystem path to the repository root (directory
-            containing .git).
-
+        repo_path (str): Path to the repository root (directory containing .git).
+    
     Returns:
-        dict: A GitStatus mapping with keys:
-            - branch (str): Current branch name, or "unknown"/"timeout"/"error"
-              on failure.
-            - is_dirty (bool): `True` if there is at least one uncommitted
-              file, `False` otherwise.
-            - uncommitted_files (list[str]): Paths reported by
-              `git status --porcelain` for uncommitted changes.
-            - diff_stat (str): Output of `git diff --stat`, or an
-              error/timeout message when applicable.
+        GitStatus: Mapping with keys:
+            - branch (str): Current branch name, or "unknown", "timeout", or "error" on failure.
+            - is_dirty (bool): True if there is at least one uncommitted file, False otherwise.
+            - uncommitted_files (list[str]): Paths reported by `git status --porcelain` for uncommitted changes.
+            - diff_stat (str): Output of `git diff --stat`, or an error/timeout message when applicable.
     """
     if not os.path.exists(os.path.join(repo_path, ".git")):
         return {
