@@ -41,6 +41,11 @@ repos:
     path: ${oc.env:HOME}/flashcore
     priority: 9
     active_branch: main
+  pytest-error-fixing-framework:
+    id: pytest-error-fixing-framework
+    path: ${oc.env:HOME}/Pytest-Error-Fixing-Framework
+    priority: 8
+    active_branch: main
   # Add your other repos here:
   # rna-predict:
   #   id: rna-predict
