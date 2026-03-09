@@ -1,7 +1,7 @@
-import os
-import logging
-from typing import Any, Callable, Optional, cast
 import asyncio
+import logging
+import os
+from typing import Any, Callable, Optional, cast
 
 from sqlalchemy import select
 
@@ -65,12 +65,12 @@ async def switch_logic(
 ) -> None:
     """
     Switch the active workspace to the repository identified by `target_repo_id`.
-    
+
     Detects the current repository based on `cwd` and, if different, attempts to freeze it.
     Ensures a session for the target repository and launches the editor unless `cfg.system.mock_mode` is true (in mock mode these actions are logged).
     Initializes the database, records an `EventType.SWITCH_IN` event for the target repository, and prints the most recent `ContextSnapshot` (human note, AI summary, and timestamp) if one exists.
     Always disposes database engine resources via `dispose_engine_fn()`.
-    
+
     Parameters:
         target_repo_id (str): Identifier of the repository to switch to.
         cfg (Any): Configuration object exposing `repos` (mapping of repo id to repo config) and `system` with `mock_mode`, `editor_cmd`, optional `editor_args`, and `db_path`.
@@ -224,10 +224,7 @@ def run_switch(
         )
     )
 
-    if (
-        not cfg.system.mock_mode
-        and not os.environ.get("TMUX")
-    ):
+    if not cfg.system.mock_mode and not os.environ.get("TMUX"):
         return True
 
     return False
