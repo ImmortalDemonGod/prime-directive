@@ -1,15 +1,17 @@
 import asyncio
 import difflib
+import json
 import logging
 import os
 import shutil
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, cast
 
 import httpx
 import typer
+import yaml
 from dotenv import load_dotenv
 
 # Hydra imports
@@ -35,9 +37,23 @@ from prime_directive.core.dependencies import (
     has_openai_api_key,
 )
 from prime_directive.core.git_utils import GitStatus, get_status
+from prime_directive.core.identity import (
+    default_operator_dossier,
+    get_dossier_path,
+    load_operator_dossier,
+    operator_dossier_to_dict,
+    sync_connection_surface,
+    validate_operator_dossier_file,
+    write_operator_dossier,
+)
 from prime_directive.core.logging_utils import setup_logging
 from prime_directive.core.orchestrator import run_switch
 from prime_directive.core.scribe import generate_sitrep
+from prime_directive.core.skill_scanner import (
+    apply_sync_proposals,
+    build_sync_proposals,
+    build_theme_suggestions,
+)
 from prime_directive.core.tasks import get_active_task
 from prime_directive.core.terminal import capture_terminal_state
 from prime_directive.core.tmux import ensure_session
@@ -52,12 +68,15 @@ load_dotenv(Path.home() / ".prime-directive" / ".env")
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 app = typer.Typer()
+dossier_app = typer.Typer()
 # Export cli for entry point
 cli = app
 console = Console()
 logger = logging.getLogger("prime_directive")
 
 _EXIT_CODE_SHELL_ATTACH = 88
+
+app.add_typer(dossier_app, name="dossier")
 
 
 def _normalize_repo_id(repo_id: str) -> str:
@@ -136,6 +155,315 @@ def load_config() -> DictConfig:
         console.print(f"[bold red]{msg}[/bold red]")
         logger.critical(msg)
         sys.exit(1)
+
+
+async def _load_recent_snapshot_texts(
+    db_path: str,
+    limit: int = 100,
+) -> list[str]:
+    await init_db(db_path)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    try:
+        async for session in get_session(db_path):
+            timestamp_col = cast(Any, ContextSnapshot.timestamp)
+            stmt = (
+                select(ContextSnapshot)
+                .where(timestamp_col >= cutoff)
+                .order_by(timestamp_col.desc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            snapshots = list(result.scalars().all())
+            texts: list[str] = []
+            for snapshot in snapshots:
+                for value in [
+                    snapshot.human_objective,
+                    snapshot.human_blocker,
+                    snapshot.human_next_step,
+                    snapshot.human_note,
+                ]:
+                    if value and value.strip():
+                        texts.append(value)
+            return texts
+    finally:
+        await dispose_engine()
+    return []
+
+
+@dossier_app.command("init")
+def dossier_init(force: bool = typer.Option(False, "--force")):
+    dossier_path = get_dossier_path()
+    if dossier_path.exists() and not force:
+        console.print(
+            f"[bold yellow]Dossier already exists:[/bold yellow] {dossier_path}"
+        )
+        console.print("Use `pd dossier init --force` to overwrite it.")
+        raise typer.Exit(code=1)
+
+    dossier = default_operator_dossier()
+    written_path = write_operator_dossier(dossier, dossier_path)
+    console.print(
+        f"[bold green]Created dossier skeleton:[/bold green] {written_path}"
+    )
+    console.print("Next step: edit the file, then run `pd dossier validate`.")
+
+
+@dossier_app.command("validate")
+def dossier_validate():
+    dossier_path = get_dossier_path()
+    report, _raw_data = validate_operator_dossier_file(dossier_path)
+
+    console.print("[bold]Operator Dossier Validation[/bold]")
+    console.print(f"Path: {dossier_path}", soft_wrap=True)
+
+    if report.errors:
+        console.print("\n[bold red]Errors[/bold red]")
+        for item in report.errors:
+            console.print(f"  - {item}")
+
+    if report.warnings:
+        console.print("\n[bold yellow]Warnings[/bold yellow]")
+        for item in report.warnings:
+            console.print(f"  - {item}")
+
+    if report.info:
+        console.print("\n[bold blue]Info[/bold blue]")
+        for item in report.info:
+            console.print(f"  - {item}")
+
+    summary = (
+        f"errors={len(report.errors)} "
+        f"warnings={len(report.warnings)} "
+        f"info={len(report.info)}"
+    )
+    if report.is_valid:
+        console.print(f"\n[bold green]Validation passed[/bold green] ({summary})")
+        return
+
+    console.print(f"\n[bold red]Validation failed[/bold red] ({summary})")
+    raise typer.Exit(code=1)
+
+
+@dossier_app.command("sync-skills")
+def dossier_sync_skills(
+    apply: bool = typer.Option(False, "--apply"),
+    dry_run: bool = typer.Option(True, "--dry-run"),
+    deep: bool = typer.Option(False, "--deep"),
+):
+    cfg = load_config()
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    summaries, proposals = build_sync_proposals(cfg, dossier)
+    theme_suggestions = []
+    if deep:
+        snapshot_texts = asyncio.run(
+            _load_recent_snapshot_texts(cfg.system.db_path)
+        )
+        theme_suggestions = build_theme_suggestions(
+            snapshot_texts,
+            dossier.capabilities.domain_expertise,
+        )
+
+    console.print("[bold]Operator Dossier Skill Sync[/bold]")
+    if summaries:
+        scan_table = Table(title="Repository Scan Summary")
+        scan_table.add_column("Repo")
+        scan_table.add_column("Files")
+        scan_table.add_column("Detected Skills")
+        for summary in summaries:
+            scan_table.add_row(
+                summary.repo_id,
+                ", ".join(summary.source_files) or "-",
+                ", ".join(summary.detected_skills) or "-",
+            )
+        console.print(scan_table)
+
+    proposal_table = Table(title="Proposals")
+    proposal_table.add_column("Action")
+    proposal_table.add_column("Repo")
+    proposal_table.add_column("Value")
+    proposal_table.add_column("Source")
+    proposal_table.add_column("Confidence")
+    for proposal in proposals:
+        proposal_table.add_row(
+            proposal.action,
+            proposal.repo_id,
+            proposal.value_name,
+            proposal.source,
+            f"{proposal.confidence:.2f}",
+        )
+    console.print(proposal_table)
+
+    if deep:
+        if theme_suggestions:
+            theme_table = Table(title="Deep Theme Suggestions")
+            theme_table.add_column("Tag")
+            theme_table.add_column("Occurrences")
+            theme_table.add_column("Sample")
+            for suggestion in theme_suggestions:
+                theme_table.add_row(
+                    suggestion.tag,
+                    str(suggestion.occurrences),
+                    suggestion.sample,
+                )
+            console.print(theme_table)
+        else:
+            console.print("[bold blue]No deep theme suggestions found.[/bold blue]")
+
+    if not proposals and not theme_suggestions:
+        console.print("[bold green]No new skill, project, or theme proposals found.[/bold green]")
+        return
+
+    if dry_run and not apply:
+        console.print(
+            "[bold blue]Dry run only.[/bold blue] Re-run with `pd dossier sync-skills --apply` to persist changes."
+        )
+        return
+
+    apply_sync_proposals(dossier, proposals)
+    existing_domain_tags = {
+        tag.strip().lower()
+        for tag in dossier.capabilities.domain_expertise
+        if tag.strip()
+    }
+    applied_theme_count = 0
+    for suggestion in theme_suggestions:
+        normalized = suggestion.tag.strip().lower()
+        if normalized in existing_domain_tags:
+            continue
+        dossier.capabilities.domain_expertise.append(suggestion.tag)
+        existing_domain_tags.add(normalized)
+        applied_theme_count += 1
+    write_operator_dossier(dossier, dossier_path)
+    console.print(
+        f"[bold green]Applied {len(proposals) + applied_theme_count} proposal(s)[/bold green] to {dossier_path}"
+    )
+
+
+@dossier_app.command("sync-tags")
+def dossier_sync_tags():
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    sync_connection_surface(dossier)
+    write_operator_dossier(dossier, dossier_path)
+    console.print(
+        f"[bold green]Synchronized connection surface[/bold green] in {dossier_path}"
+    )
+
+
+@dossier_app.command("show")
+def dossier_show(
+    layer: Optional[int] = typer.Option(None, "--layer"),
+    tags_only: bool = typer.Option(False, "--tags-only"),
+):
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    data = operator_dossier_to_dict(dossier)
+
+    if tags_only:
+        surface = data["connection_surface"]
+        table = Table(title="Operator Dossier Tags")
+        table.add_column("Category")
+        table.add_column("Tags")
+        for key, values in surface.items():
+            table.add_row(key, ", ".join(values) or "-")
+        console.print(table)
+        return
+
+    if layer is not None:
+        layer_mapping = {
+            1: "identity",
+            2: "capabilities",
+            3: "network",
+            4: "positioning",
+            5: "connection_surface",
+        }
+        section_name = layer_mapping.get(layer)
+        if section_name is None:
+            console.print("[bold red]Layer must be between 1 and 5.[/bold red]")
+            raise typer.Exit(code=1)
+        console.print(f"[bold]Operator Dossier — {section_name}[/bold]")
+        console.print_json(json.dumps(data[section_name], indent=2))
+        return
+
+    console.print("[bold]Operator Dossier[/bold]")
+    for section_name in [
+        "identity",
+        "capabilities",
+        "network",
+        "positioning",
+        "connection_surface",
+    ]:
+        console.print(f"\n[bold blue]{section_name}[/bold blue]")
+        console.print_json(json.dumps(data[section_name], indent=2))
+
+
+@dossier_app.command("export")
+def dossier_export(
+    format: str = typer.Option("json", "--format"),
+    output: Optional[Path] = typer.Option(None, "--output"),
+    layer5_only: bool = typer.Option(False, "--layer5-only"),
+):
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    data = operator_dossier_to_dict(dossier)
+    export_payload: dict[str, Any]
+    if layer5_only:
+        export_payload = {
+            "version": data["version"],
+            "connection_surface": data["connection_surface"],
+        }
+    else:
+        export_payload = data
+
+    normalized_format = format.strip().lower()
+    if normalized_format == "json":
+        payload_text = json.dumps(export_payload, indent=2, sort_keys=False)
+    elif normalized_format == "yaml":
+        payload_text = yaml.safe_dump(
+            export_payload,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+    else:
+        console.print("[bold red]Format must be `json` or `yaml`.[/bold red]")
+        raise typer.Exit(code=1)
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(payload_text, encoding="utf-8")
+        console.print(f"[bold green]Exported dossier[/bold green] to {output}")
+        return
+
+    typer.echo(payload_text)
 
 
 # Initialize logging globally with default, will be re-configured if needed
