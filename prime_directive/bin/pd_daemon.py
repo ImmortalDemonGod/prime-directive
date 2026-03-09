@@ -1,12 +1,14 @@
-import os
-import typer
-import subprocess
-import shutil
-from watchdog.observers import Observer
-from watchdog.events import FileSystemEventHandler
-from rich.console import Console
 import asyncio
+import os
+import shutil
+import subprocess
 from datetime import datetime
+
+import typer
+from rich.console import Console
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
 from prime_directive.bin.pd import freeze_logic, load_config
 from prime_directive.core.db import dispose_engine
 
@@ -17,9 +19,9 @@ console = Console()
 def _is_ide_environment() -> bool:
     """
     Detect whether the current process is running inside a Visual Studio Code or similar IDE environment.
-    
+
     Checks the VSCODE environment variable and the TERM_PROGRAM environment variable for identifiers of VS Code or related IDEs.
-    
+
     Returns:
         True if running inside an IDE environment (VSCODE set or TERM_PROGRAM contains "vscode" or "windsurf"), False otherwise.
     """
@@ -34,7 +36,7 @@ def _is_ide_environment() -> bool:
 def _tmux_session_has_active_clients(session_name: str) -> bool:
     """
     Determine whether a tmux session has any attached clients.
-    
+
     Returns:
         True if the tmux executable is available, the named session exists, and it has at least one attached client; False if tmux is unavailable, the session does not exist, the session has no clients, or if command timeouts/errors occur.
     """
@@ -71,10 +73,10 @@ def _tmux_session_has_active_clients(session_name: str) -> bool:
 def _should_skip_terminal_capture(repo_id: str) -> bool:
     """
     Determines whether terminal capture should be skipped based on running inside an IDE or the presence of active tmux clients for the repository.
-    
+
     Parameters:
         repo_id (str): Repository identifier used to construct the tmux session name `pd-<repo_id>`.
-    
+
     Returns:
         `True` if running in an IDE or there are no active tmux clients for the session, `False` otherwise.
     """
@@ -89,11 +91,11 @@ class AutoFreezeHandler(FileSystemEventHandler):
     def __init__(self, repo_id: str, cfg):
         """
         Initialize an AutoFreezeHandler for a repository.
-        
+
         Parameters:
             repo_id (str): Identifier of the repository being monitored.
             cfg: Configuration object containing repository settings and runtime options.
-        
+
         Notes:
             - Sets `last_modified` to the current time and `is_frozen` to False.
         """
@@ -128,7 +130,7 @@ def main(
 ):
     """
     Run a background daemon that monitors configured repositories and auto-freezes repository context after sustained inactivity.
-    
+
     Parameters:
         interval (int): Polling interval in seconds between inactivity checks.
         inactivity_limit (int): Inactivity threshold in seconds after which a repository will be frozen.
@@ -155,7 +157,7 @@ def main(
     async def run_freeze(repo_id, cfg):
         """
         Run the freeze process for the given repository and ensure the database engine is disposed afterwards.
-        
+
         Parameters:
             repo_id (str): Repository identifier to freeze.
             cfg: Configuration object passed to the freeze logic.
@@ -177,7 +179,7 @@ def main(
     async def daemon_loop() -> None:
         """
         Run an infinite background loop that periodically checks repositories for inactivity and triggers freezing when inactivity exceeds the configured limit.
-        
+
         For each tracked repository, if the time since its last filesystem event is greater than inactivity_limit and it is not already frozen, this function calls run_freeze(repo_id, cfg); on success it marks the handler as frozen and logs the change. If run_freeze raises OSError or ValueError, the exception is caught and logged.
         """
         while True:
