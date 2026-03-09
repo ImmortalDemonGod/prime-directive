@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional, Tuple, TypedDict
 
 import httpx
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 
 
 async def log_ai_usage(
@@ -19,18 +19,18 @@ async def log_ai_usage(
 ) -> None:
     """
     Persist an AI usage record to the database for tracking and budget enforcement.
-    
+
     Parameters:
-    	db_path (str): Filesystem path or connection string for the database to initialize and use.
-    	provider (str): Name of the AI provider (e.g., "openai", "ollama").
-    	model (str): Model identifier used for the request.
-    	input_tokens (int): Number of tokens sent as input.
-    	output_tokens (int): Number of tokens received as output.
-    	cost_estimate_usd (float): Estimated cost for this call in US dollars.
-    	success (bool): Whether the request completed successfully.
-    	repo_id (Optional[str]): Optional repository identifier associated with the usage record.
+        db_path (str): Filesystem path or connection string for the database to initialize and use.
+        provider (str): Name of the AI provider (e.g., "openai", "ollama").
+        model (str): Model identifier used for the request.
+        input_tokens (int): Number of tokens sent as input.
+        output_tokens (int): Number of tokens received as output.
+        cost_estimate_usd (float): Estimated cost for this call in US dollars.
+        success (bool): Whether the request completed successfully.
+        repo_id (Optional[str]): Optional repository identifier associated with the usage record.
     """
-    from prime_directive.core.db import AIUsageLog, init_db, get_session
+    from prime_directive.core.db import AIUsageLog, get_session, init_db
 
     await init_db(db_path)
     async for session in get_session(db_path):
@@ -51,12 +51,13 @@ async def log_ai_usage(
 async def get_monthly_usage(db_path: str) -> Tuple[float, int]:
     """
     Compute the total estimated cost and number of calls for the paid provider "openai" since the start of the current month (UTC).
-    
+
     Returns:
         (total_cost_usd, call_count): total estimated cost in USD as a float and the number of recorded calls as an int for provider "openai" from the beginning of the current month (UTC).
     """
-    from prime_directive.core.db import AIUsageLog, init_db, get_session
-    from typing import cast, Any
+    from typing import Any, cast
+
+    from prime_directive.core.db import AIUsageLog, get_session, init_db
 
     await init_db(db_path)
 
@@ -90,11 +91,11 @@ async def check_budget(
 ) -> Tuple[bool, float, float]:
     """
     Determine whether the current month's AI usage is below a specified USD budget.
-    
+
     Parameters:
         db_path (str): Filesystem path to the database containing AI usage logs.
         monthly_budget_usd (float): Budget in US dollars to compare against current month usage.
-    
+
     Returns:
         Tuple[bool, float, float]: A tuple containing:
             - `true` if the current month's usage is less than `monthly_budget_usd`, `false` otherwise.
@@ -112,11 +113,11 @@ async def check_budget(
 def estimate_cost(output_tokens: int, cost_per_1k: float = 0.002) -> float:
     """
     Estimate cost from output token count using a per-1k-token rate.
-    
+
     Parameters:
         output_tokens (int): Number of output tokens to price.
         cost_per_1k (float): Cost in USD per 1000 tokens (default 0.002).
-    
+
     Returns:
         float: Estimated cost in USD.
     """
@@ -135,7 +136,7 @@ async def generate_ollama(
 ) -> str:
     """
     Request a completion from an Ollama HTTP API and return the generated text.
-    
+
     Parameters:
         api_url (str): Full Ollama endpoint URL to POST the request to.
         model (str): Model identifier to use for generation.
@@ -144,10 +145,10 @@ async def generate_ollama(
         timeout_seconds (float): Request timeout in seconds for each attempt.
         max_retries (int): Number of retry attempts to perform on failure (default 0).
         backoff_seconds (float): Base backoff seconds for exponential backoff between retries (default 0.0).
-    
+
     Returns:
         str: The generated response text from the Ollama API.
-    
+
     Raises:
         httpx.HTTPError: If the HTTP request fails and all retry attempts are exhausted.
         ValueError: If the response payload is missing a valid `response` string.
@@ -194,7 +195,7 @@ async def generate_openai_chat(
 ) -> str:
     """
     Send a chat-style request to an OpenAI-compatible API and return the assistant's reply.
-    
+
     Parameters:
         api_url (str): Full URL of the OpenAI-compatible chat completions endpoint.
         api_key (str): Bearer API key used for Authorization.
@@ -203,10 +204,10 @@ async def generate_openai_chat(
         prompt (str): User prompt content.
         timeout_seconds (float): Request timeout in seconds.
         max_tokens (int): Maximum number of tokens to generate for the assistant.
-    
+
     Returns:
         str: The assistant's response content with surrounding whitespace removed.
-    
+
     Raises:
         ValueError: If the response JSON is missing choices, message, or content.
         httpx.HTTPError: If the HTTP request failed or returned a non-success status.
@@ -241,7 +242,7 @@ async def generate_openai_chat_with_usage(
 ) -> Tuple[str, Optional[OpenAIUsage]]:
     """
     Send a chat request to an OpenAI-compatible API and return the assistant's reply along with optional token usage.
-    
+
     Parameters:
         api_url (str): Full HTTP endpoint for the chat completion API.
         api_key (str): Bearer API key used for Authorization.
@@ -250,10 +251,10 @@ async def generate_openai_chat_with_usage(
         prompt (str): User prompt to include as the chat message.
         timeout_seconds (float): Request timeout in seconds for the HTTP client.
         max_tokens (int): Maximum number of tokens the model is allowed to generate for the completion.
-    
+
     Returns:
         Tuple[str, Optional[OpenAIUsage]]: A tuple where the first element is the assistant's reply (trimmed of surrounding whitespace) and the second element is an optional `OpenAIUsage` dict containing any of `prompt_tokens`, `completion_tokens`, and `total_tokens` when provided by the API.
-    
+
     Raises:
         httpx.HTTPStatusError: If the HTTP request returns a non-success status.
         ValueError: If the API response is missing required fields (`choices`, message content) or contains invalid content.
@@ -313,10 +314,10 @@ async def generate_openai_chat_with_usage(
 def get_openai_api_key(env_var: str = "OPENAI_API_KEY") -> Optional[str]:
     """
     Retrieve the OpenAI API key from an environment variable.
-    
+
     Parameters:
         env_var (str): Name of the environment variable to read (default "OPENAI_API_KEY").
-    
+
     Returns:
         Optional[str]: The API key string if the environment variable is set and non-empty, `None` otherwise.
     """
