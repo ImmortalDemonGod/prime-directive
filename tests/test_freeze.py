@@ -12,10 +12,10 @@ runner = CliRunner()
 def mock_config(tmp_path):
     """
     Create an OmegaConf configuration used by tests, including system settings and a single `test-repo` entry.
-    
+
     Parameters:
         tmp_path (pathlib.Path): Temporary directory path used to place the test log file.
-    
+
     Returns:
         OmegaConf: A configuration object containing:
           - system: runtime and AI-related settings (editor command, AI provider/model, API URLs, timeouts, DB and log paths, mock mode).
@@ -156,7 +156,7 @@ def test_freeze_command(
 def test_freeze_command_invalid_repo(mock_load, mock_config):
     """
     Verify the CLI reports an error and suggests a close match when the freeze command is run with an invalid repository name.
-    
+
     Asserts that the command exits with a non-zero status and that the output contains an explicit "not found" message, a "Did you mean" suggestion, and the expected repository name suggestion ("test-repo").
     """
     mock_load.return_value = mock_config
