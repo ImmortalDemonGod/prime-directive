@@ -11,7 +11,6 @@ from typer.testing import CliRunner
 
 from prime_directive.bin.pd import app
 
-
 runner = CliRunner()
 
 
@@ -22,9 +21,9 @@ class TestIntegrationMockMode:
     def mock_config(self):
         """
         Provide a MagicMock configuration object preconfigured for mock-mode tests.
-        
+
         The returned config has mock_mode enabled, an in-memory database, a test log path, AI provider/model and timeout settings appropriate for unit/integration tests, a small monthly budget and token cost, and a single test repository entry named "test-repo".
-        
+
         Returns:
             MagicMock: A configuration object with the test defaults described above.
         """
@@ -73,9 +72,9 @@ class TestIntegrationMockMode:
                     async def mock_gen():
                         """
                         Provide a mock asynchronous database session configured for tests.
-                        
+
                         The yielded object is a MagicMock that mimics a DB session with mocked methods for adding and persisting data, suitable for use in async tests that expect `add`, `commit`, `flush`, and `execute` to be callable.
-                        
+
                         Returns:
                             MagicMock: A mock DB session with `add` mocked and `commit`, `flush`, and `execute` prepared for async use.
                         """
@@ -133,7 +132,7 @@ class TestChaosOllamaDown:
     def config_ollama_primary(self):
         """
         Create a MagicMock configuration that uses Ollama as the primary AI provider with no fallback.
-        
+
         The mock config sets:
         - mock_mode disabled and an in-memory database
         - logging path for tests
@@ -142,7 +141,7 @@ class TestChaosOllamaDown:
         - require confirmation for fallback usage
         - OpenAI and Ollama endpoint URLs and timeouts (Ollama timeout deliberately short for tests)
         - Ollama retry/backoff disabled and test-friendly budget/cost settings
-        
+
         Returns:
             MagicMock: A mock configuration object with the described `system` attributes.
         """
