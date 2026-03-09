@@ -150,10 +150,9 @@ node_modules/
 *.sln
 *.sw?
 # OS specific
-.DS_Storedata/
+.DS_Store
+
+data/
 
 tests/fixtures/repos/test-repo-alpha/
 tests/fixtures/repos/test-repo-beta/
-
-# Added by Task Master AI
-.DS_Store

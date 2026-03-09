@@ -1,16 +1,15 @@
-from typing import Optional, Dict, Any
 import logging
+from typing import Any, Dict, Optional
 
 import httpx
 
 from prime_directive.core.ai_providers import (
+    check_budget,
+    estimate_cost,
     generate_ollama,
-    generate_openai_chat,
     generate_openai_chat_with_usage,
     get_openai_api_key,
     log_ai_usage,
-    check_budget,
-    estimate_cost,
 )
 
 logger = logging.getLogger("prime_directive")
@@ -19,11 +18,11 @@ logger = logging.getLogger("prime_directive")
 def _count_tokens(text: str, model: str) -> int:
     """
     Count the number of tokens in a text string using tiktoken for a specified model.
-    
+
     Parameters:
         text (str): The input text to tokenize.
         model (str): The model name used to select the encoding; if model-specific encoding cannot be obtained, a base encoding is used.
-    
+
     Returns:
         int: The token count for the input text according to the chosen encoder, or 0 if tokenization fails.
     """
@@ -67,9 +66,9 @@ async def generate_sitrep(
 ) -> str:
     """
     Generate a concise SITREP (situation report) summarizing repository state, recent terminal output, and optional human/task context.
-    
+
     Constructs a prompt from repo_id, git_state, terminal_logs, active_task, and human_* fields, then requests a short (2–3 sentence) SITREP with an immediate next step from the configured provider and model. By default uses Ollama; can use OpenAI as the primary provider or as a fallback. When OpenAI is used and db_path is provided, the function will check monthly budget and log estimated token usage and cost.
-    
+
     Parameters:
         repo_id (str): Repository identifier included in the prompt.
         git_state (str): Concise summary of git state to include in the prompt.
@@ -94,7 +93,7 @@ async def generate_sitrep(
         db_path (Optional[str]): Path to a local DB used for budget checks and logging; if None, budget checks and logging are skipped.
         monthly_budget_usd (float): Monthly budget threshold used when db_path is provided.
         cost_per_1k_tokens (float): Cost estimate per 1000 tokens used to compute estimated cost when logging usage.
-    
+
     Returns:
         str: Generated SITREP text on success, or an error message beginning with "Error generating SITREP:" on failure.
     """
