@@ -1,8 +1,8 @@
-from dataclasses import dataclass
-from typing import Optional
 import os
 import platform
 import shutil
+from dataclasses import dataclass
+from typing import Optional
 
 import requests
 
