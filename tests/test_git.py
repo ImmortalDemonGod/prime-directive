@@ -11,10 +11,10 @@ from prime_directive.core.git_utils import get_status, get_last_touched
 def temp_git_repo(tmp_path):
     """
     Create a temporary Git repository (inside the provided tmp_path) with a single initial commit and return its path.
-    
+
     Parameters:
         tmp_path (pathlib.Path): Temporary directory provided by pytest used as the parent directory for the repository.
-    
+
     Returns:
         pathlib.Path: Path to the created Git repository directory containing the initial commit.
     """
