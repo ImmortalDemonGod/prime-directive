@@ -34,14 +34,20 @@ A context snapshot captures:
 
 ### Repository Tracking
 
-Repositories are tracked via `prime_directive/system/registry.yaml`:
+Repositories are tracked via `prime_directive/conf/config.yaml`:
 
 ```yaml
 repos:
   my-project:
+    id: my-project
     path: /path/to/my-project
+    priority: 10
+    active_branch: main
   other-project:
+    id: other-project
     path: /path/to/other-project
+    priority: 5
+    active_branch: main
 ```
 
 ### Tmux Integration
@@ -57,6 +63,7 @@ Each repository gets its own tmux session (`pd-{repo_id}`), ensuring isolated te
 | `pd status <repo>` | Show repository status |
 | `pd freeze <repo>` | Save current context |
 | `pd switch <repo>` | Switch to repository |
+| `pd metrics` | Show time-to-commit metrics |
 
 ## Configuration
 
@@ -66,5 +73,6 @@ See `prime_directive/conf/config.yaml` for all configuration options.
 
 - [GitHub Repository](https://github.com/ImmortalDemonGod/prime-directive)
 - [Contributing Guide](https://github.com/ImmortalDemonGod/prime-directive/blob/main/CONTRIBUTING.md)
-- [Code Audit (2025-12-14)](CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-14_01.md)
-- [Code Audit (2025-12-15)](CODE-AUDIT-V1.0-PRIME-DIRECTIVE_2025-12-15_01.md)
+- [Verification Workflow (AIV)](AIV-SOP.md)
+- [Architecture (V2.1)](PD-ARCH-V2.1-STRATEGIST_2025-12-16.md)
+- [Freeze Protocol Specs](SPEC-V1.2-FREEZE-PROTOCOL.md)
