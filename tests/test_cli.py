@@ -184,7 +184,9 @@ def test_doctor_detects_multiple_installations(
     mock_exists.return_value = True
 
     # Patch Path.home() to use tmp_path and create a fake UV installation
-    uv_tools_dir = tmp_path / ".local" / "share" / "uv" / "tools" / "prime-directive"
+    uv_tools_dir = (
+        tmp_path / ".local" / "share" / "uv" / "tools" / "prime-directive"
+    )
     uv_tools_dir.mkdir(parents=True)
 
     with patch("prime_directive.bin.pd.Path.home", return_value=tmp_path):
@@ -257,10 +259,10 @@ def test_install_hooks_permission_denied_exits_1(
     def open_side_effect(path, *args, **kwargs):
         """
         Simulate opening a file but raise PermissionError when the target path ends with "post-commit".
-        
+
         Parameters:
             path: The file path to open; may be a str or path-like object. If the string form of `path` ends with "post-commit", this function raises PermissionError.
-        
+
         Returns:
             The file object returned by the underlying `real_open` call for the given path and mode.
         """
@@ -295,10 +297,10 @@ def test_internal_log_commit_writes_event(
     async def async_gen(_db_path=None):
         """
         Provide an asynchronous generator that yields the current database session.
-        
+
         Parameters:
             _db_path (str | None): Optional database path placeholder (unused by this generator).
-        
+
         Returns:
             session: An active asynchronous database session to be used as an async context manager or awaited consumer.
         """
@@ -328,7 +330,7 @@ def test_metrics_reports_ttc(
 ):
     """
     Verify the CLI 'metrics' command reports time-to-change metrics for a repository when SWITCH_IN and COMMIT events are present.
-    
+
     Invokes the CLI with a mocked database session that returns two EventLog entries one minute apart and asserts the output contains the metrics header and the repository identifier.
     """
     mock_load.return_value = mock_config
@@ -353,10 +355,10 @@ def test_metrics_reports_ttc(
     async def async_gen(_db_path=None):
         """
         Provide an asynchronous generator that yields the current database session.
-        
+
         Parameters:
             _db_path (str | None): Optional database path placeholder (unused by this generator).
-        
+
         Returns:
             session: An active asynchronous database session to be used as an async context manager or awaited consumer.
         """
