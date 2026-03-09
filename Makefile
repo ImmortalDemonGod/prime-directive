@@ -70,7 +70,11 @@ virtualenv:       ## Create a virtual environment.
 	@rm -rf .venv
 	@python3 -m venv .venv
 	@./.venv/bin/pip install -U pip
-	uv pip install -e .
+	@if command -v uv >/dev/null 2>&1; then \
+		uv pip install -e ".[test]"; \
+	else \
+		./.venv/bin/pip install -e ".[test]"; \
+	fi
 	@echo
 	@echo "!!! Please run 'source .venv/bin/activate' to enable the environment !!!"
 
