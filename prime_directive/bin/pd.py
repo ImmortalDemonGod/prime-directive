@@ -1,28 +1,27 @@
 import asyncio
-from datetime import datetime, timezone
+import difflib
 import logging
 import os
-from pathlib import Path
 import shutil
 import sys
-import difflib
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Optional, cast
 
-from dotenv import load_dotenv
 import httpx
-from rich.console import Console
-from rich.table import Table
-from sqlalchemy import select
 import typer
+from dotenv import load_dotenv
 
 # Hydra imports
 from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
+from rich.console import Console
+from rich.table import Table
+from sqlalchemy import select
 
 # Core imports
 from prime_directive.core.config import register_configs
-from prime_directive.core.git_utils import GitStatus, get_status
 from prime_directive.core.db import (
     ContextSnapshot,
     EventLog,
@@ -31,17 +30,18 @@ from prime_directive.core.db import (
     get_session,
     init_db,
 )
-from prime_directive.core.terminal import capture_terminal_state
-from prime_directive.core.tasks import get_active_task
-from prime_directive.core.scribe import generate_sitrep
-from prime_directive.core.tmux import ensure_session
-from prime_directive.core.windsurf import launch_editor
-from prime_directive.core.logging_utils import setup_logging
-from prime_directive.core.orchestrator import run_switch
 from prime_directive.core.dependencies import (
     get_ollama_status,
     has_openai_api_key,
 )
+from prime_directive.core.git_utils import GitStatus, get_status
+from prime_directive.core.logging_utils import setup_logging
+from prime_directive.core.orchestrator import run_switch
+from prime_directive.core.scribe import generate_sitrep
+from prime_directive.core.tasks import get_active_task
+from prime_directive.core.terminal import capture_terminal_state
+from prime_directive.core.tmux import ensure_session
+from prime_directive.core.windsurf import launch_editor
 
 # Load .env from multiple locations (in order of priority)
 # 1. Current working directory
@@ -86,9 +86,9 @@ def _resolve_repo_id(repo_id: str, cfg: DictConfig) -> str:
 def load_config() -> DictConfig:
     """
     Load and compose the application's Hydra configuration.
-    
+
     Composes and returns the structured `DictConfig` for the application. If configuration loading fails, prints an error, logs it, and exits the process with status code 1.
-    
+
     Returns:
         DictConfig: The composed Hydra configuration for the application.
     """
@@ -154,21 +154,21 @@ async def freeze_logic(
 ):
     """
     Freeze the current repository context, generate an AI SITREP, and persist a ContextSnapshot to the database.
-    
+
     Captures repository git state, terminal state (unless skipped), and active task; generates an AI SITREP using configured AI provider/model (optionally using the HQ model), and saves a ContextSnapshot (creating the Repository record if missing). Prints summary output to the console.
-    
+
     Parameters:
-    	repo_id (str): Identifier of the repository to freeze as defined in `config.repos`.
-    	config (DictConfig): Composed Hydra configuration object with system and repo settings.
-    	human_note (Optional[str]): Optional free-form note to attach to the snapshot.
-    	human_objective (Optional[str]): Optional human-provided objective to include in the SITREP and snapshot.
-    	human_blocker (Optional[str]): Optional human-provided blocker to include in the SITREP and snapshot.
-    	human_next_step (Optional[str]): Optional human-provided next step to include in the SITREP and snapshot.
-    	skip_terminal_capture (bool): If True, do not attempt to capture terminal state and store placeholder values.
-    	use_hq_model (bool): If True, prefer the configured high-quality model/provider for SITREP generation.
-    
+        repo_id (str): Identifier of the repository to freeze as defined in `config.repos`.
+        config (DictConfig): Composed Hydra configuration object with system and repo settings.
+        human_note (Optional[str]): Optional free-form note to attach to the snapshot.
+        human_objective (Optional[str]): Optional human-provided objective to include in the SITREP and snapshot.
+        human_blocker (Optional[str]): Optional human-provided blocker to include in the SITREP and snapshot.
+        human_next_step (Optional[str]): Optional human-provided next step to include in the SITREP and snapshot.
+        skip_terminal_capture (bool): If True, do not attempt to capture terminal state and store placeholder values.
+        use_hq_model (bool): If True, prefer the configured high-quality model/provider for SITREP generation.
+
     Raises:
-    	ValueError: If `repo_id` is not present in `config.repos`.
+        ValueError: If `repo_id` is not present in `config.repos`.
     """
     candidate = _normalize_repo_id(repo_id)
     if candidate not in config.repos:
@@ -326,8 +326,9 @@ async def freeze_logic(
     await init_db(config.system.db_path)
     async for session in get_session(config.system.db_path):
         # Ensure Repository exists (FK constraint)
-        from prime_directive.core.db import Repository
         from sqlalchemy import select as sql_select
+
+        from prime_directive.core.db import Repository
 
         repo_id_col = cast(Any, Repository.id)
         stmt = sql_select(Repository).where(repo_id_col == repo_id)
@@ -474,7 +475,7 @@ def freeze(
     async def run_freeze():
         """
         Run the freeze logic for the selected repository and ensure DB engine disposal.
-        
+
         Calls `freeze_logic` with the surrounding command options (note, objective, blocker, next_step, HQ flag). If `freeze_logic` raises a `ValueError`, exits the Typer command with code 1. Always disposes the database engine by awaiting `dispose_engine()` in a finally block.
         """
         try:
@@ -499,9 +500,9 @@ def freeze(
 def switch(repo_id: str):
     """
     Switch the active workspace to another repository by freezing the current repo, performing the switch, and preparing the target repo.
-    
+
     Raises:
-    	typer.Exit: With code 1 if `repo_id` is not present in configuration; with `_EXIT_CODE_SHELL_ATTACH` if the switch requires attaching a new shell.
+        typer.Exit: With code 1 if `repo_id` is not present in configuration; with `_EXIT_CODE_SHELL_ATTACH` if the switch requires attaching a new shell.
     """
     logger.info(f"Command: switch {repo_id}")
     cfg = load_config()
@@ -531,12 +532,12 @@ def switch(repo_id: str):
 def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
     """
     Install a Git post-commit hook that logs commits for a single configured repository or for all configured repositories.
-    
+
     Creates a "post-commit" script under each target repository's .git/hooks directory that invokes the internal `pd _internal-log-commit <repo_id>` command, and makes the script executable.
-    
+
     Parameters:
         repo_id (Optional[str]): If provided, install the hook only for the repository with this config ID; if `None`, install hooks for all repositories defined in the configuration.
-    
+
     Raises:
         typer.Exit: Exits with code 1 if the specified repo_id is not found in the configuration, if the target path is not a Git repository (missing `.git`), or if filesystem operations fail while creating or writing the hook.
     """
@@ -590,9 +591,9 @@ def install_hooks(repo_id: Optional[str] = typer.Argument(None)):
 def internal_log_commit(repo_id: str):
     """
     Record a commit event for the given repository in the application's event log.
-    
+
     This creates and persists an EventLog entry with EventType.COMMIT associated with the provided repository identifier using the configured database, and ensures database resources are cleaned up.
-    
+
     Parameters:
         repo_id (str): Identifier of the repository to associate with the commit event.
     """
@@ -602,7 +603,7 @@ def internal_log_commit(repo_id: str):
     async def run_internal():
         """
         Record a commit event for the current repository in the application's database.
-        
+
         Initializes the database connection, inserts an EventLog with EventType.COMMIT for the enclosing `repo_id`, commits the change, and ensures the database engine is disposed on exit.
         """
         try:
@@ -624,15 +625,15 @@ def internal_log_commit(repo_id: str):
 def _format_seconds(seconds: float) -> str:
     """
     Format a duration in seconds into a compact human-readable string.
-    
+
     Converts the given number of seconds to hours, minutes, and seconds and returns:
     - "HhMMmSSs" when one hour or more,
     - "MmSSs" when at least one minute but less than an hour,
     - "Ss" when less than one minute.
-    
+
     Parameters:
         seconds (float): Duration in seconds.
-    
+
     Returns:
         str: Formatted duration string, e.g. "1h02m03s", "12m34s", or "45s".
     """
@@ -650,7 +651,7 @@ def _format_seconds(seconds: float) -> str:
 def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
     """
     Display time-to-commit metrics for one or all configured repositories.
-    
+
     Calculates intervals between a SWITCH_IN event and the next COMMIT event to derive average and most recent time-to-commit (TTC) and the number of samples for each repository, then prints a summary table to the console. When a `repo_id` is provided, metrics are limited to that repository.
     Parameters:
         repo_id (Optional[str]): Repository identifier to limit the report to a single repository; when omitted, metrics for all configured repositories are shown.
@@ -664,7 +665,7 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
     async def run_metrics():
         """
         Compute and display time-to-commit (TTC) metrics for one or all repositories.
-        
+
         Initializes the database, collects EventLog entries for the specified repo_id (or all repos if none provided), computes intervals from each SWITCH_IN event to the next COMMIT event, and prints a table showing the average TTC, the most recent TTC, and the sample count for each repository. Ensures the database engine is disposed on completion.
         """
         try:
@@ -729,7 +730,7 @@ def metrics(repo_id: Optional[str] = typer.Option(None, "--repo")):
 def list_repos():
     """
     Display a table of all managed repositories.
-    
+
     Prints a Rich table showing each repository's ID, priority, active branch (or "N/A"), and filesystem path. Repositories are sorted by priority in descending order.
     """
     logger.info("Command: list")
@@ -782,7 +783,7 @@ def status_command():
     async def run_status():
         """
         Collects repository statuses and populates the display table with git state and last snapshot timestamps.
-        
+
         This coroutine initializes the database, iterates configured repositories, obtains each repository's git status and most recent ContextSnapshot timestamp, and adds a row to the shared table containing repository id, priority, branch, git status, and last snapshot time. The database engine is always disposed when finished.
         """
         try:
@@ -885,12 +886,12 @@ def sitrep(
 ):
     """
     Show a situational report (SITREP) for a repository.
-    
+
     If deep_dive is enabled, compile recent historical snapshots and produce a longitudinal
     SITREP using the configured high-quality AI model; deep-dive requires a valid OpenAI API key.
     When not deep-diving, display the latest snapshot's timestamp, optional human-provided
     fields (objective, blocker, next step, note), and the AI summary.
-    
+
     Parameters:
         repo_id (str): Identifier of the repository to inspect.
         deep_dive (bool): When True, generate a longitudinal summary from historical snapshots.
@@ -905,7 +906,7 @@ def sitrep(
     async def run_sitrep():
         """
         Show recent context snapshots for the configured repository and, if requested, produce an HQ deep-dive SITREP.
-        
+
         Initializes the database, retrieves up to `limit` ContextSnapshot records for `repo_id`, and prints either a brief SITREP of the latest snapshot (timestamp, human objective/blocker/next step/note, and AI summary) or a longitudinal deep-dive. For deep dives, the function compiles a historical narrative from the snapshots and calls the OpenAI-based chat generator (requires OPENAI_API_KEY) to produce a concise longitudinal summary; any errors from the AI call are printed. The database engine is always disposed on exit.
         """
         await init_db(cfg.system.db_path)
@@ -1076,7 +1077,7 @@ effectively.
 def ai_usage():
     """
     Print a month-to-date AI usage and budget report to the console.
-    
+
     Includes the total estimated cost and call count for the current month, the configured monthly budget and remaining balance with a color-coded usage warning, and a table of up to 10 recent AI call logs showing time, provider, model, tokens, cost, and success status.
     """
     logger.info("Command: ai-usage")
@@ -1089,7 +1090,7 @@ def ai_usage():
     async def run_usage():
         """
         Display a month-to-date AI usage report and recent API calls.
-        
+
         Queries stored AI usage metrics, prints totals (calls, cost, budget, remaining and usage percentage)
         and a table of recent API calls to the console, and ensures the database engine is initialized
         and disposed.
@@ -1258,21 +1259,35 @@ def doctor():
         pd_locations = []
         search_paths = [
             Path.home() / ".local" / "bin" / "pd",
-            Path.home() / ".local" / "share" / "uv" / "tools" / "prime-directive",
-            Path.home() / ".local" / "share" / "pipx" / "venvs" / "prime-directive",
+            Path.home()
+            / ".local"
+            / "share"
+            / "uv"
+            / "tools"
+            / "prime-directive",
+            Path.home()
+            / ".local"
+            / "share"
+            / "pipx"
+            / "venvs"
+            / "prime-directive",
         ]
         for p in search_paths:
             if p.exists():
                 pd_locations.append(str(p))
         if pd_locations:
-            checks.append((
-                "Installation",
-                "⚠️",
-                f"Multiple installs detected: {', '.join(pd_locations)}. "
-                "May cause config shadowing. Remove with: rm -rf <path>",
-            ))
+            checks.append(
+                (
+                    "Installation",
+                    "⚠️",
+                    f"Multiple installs detected: {', '.join(pd_locations)}. "
+                    "May cause config shadowing. Remove with: rm -rf <path>",
+                )
+            )
         else:
-            checks.append(("Installation", "✅", "Single installation (editable)"))
+            checks.append(
+                ("Installation", "✅", "Single installation (editable)")
+            )
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
