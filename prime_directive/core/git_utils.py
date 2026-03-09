@@ -1,9 +1,8 @@
 import asyncio
-from asyncio.subprocess import PIPE
-from typing import List, Dict, Union, Optional
 import os
 import re
-
+from asyncio.subprocess import PIPE
+from typing import Dict, List, Optional, Union
 
 GitStatus = Dict[str, Union[str, bool, List[str]]]
 
@@ -110,10 +109,10 @@ async def get_last_touched(repo_path: str) -> Optional[float]:
 async def get_status(repo_path: str) -> GitStatus:
     """
     Retrieve the repository's Git status: current branch, whether there are uncommitted changes, the list of uncommitted file paths, and a diff summary.
-    
+
     Parameters:
         repo_path (str): Path to the repository root (directory containing .git).
-    
+
     Returns:
         GitStatus: Mapping with keys:
             - branch (str): Current branch name, or "unknown", "timeout", or "error" on failure.
