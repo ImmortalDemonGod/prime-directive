@@ -1,6 +1,6 @@
 import asyncio
-from asyncio.subprocess import PIPE
 import re
+from asyncio.subprocess import PIPE
 from typing import Optional, Tuple
 
 
@@ -11,11 +11,11 @@ async def _run_tmux_command(
 ) -> tuple[int, str, str]:
     """
     Execute the given tmux-related command asynchronously and capture its output.
-    
+
     Parameters:
         args (list[str]): Command and arguments to run (e.g., ["tmux", "capture-pane", ...]).
         timeout_seconds (float): Seconds to wait for the process to finish before killing it.
-    
+
     Returns:
         tuple[int, str, str]: A tuple of (returncode, stdout, stderr) where stdout and stderr are decoded using replacement for decoding errors.
     """
@@ -44,10 +44,10 @@ async def capture_terminal_state(
 ) -> Tuple[str, str]:
     """
     Capture the terminal's recent output and infer the last executed command from a tmux pane.
-    
+
     Parameters:
         repo_id (Optional[str]): If provided, targets the tmux session named "pd-{repo_id}"; otherwise captures the current pane.
-    
+
     Returns:
         Tuple[str, str]: A pair (last_command, output_summary)
             - last_command: The last command inferred from the captured pane output, or "unknown" if it cannot be determined.
