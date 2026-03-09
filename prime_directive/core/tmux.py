@@ -1,6 +1,6 @@
-import subprocess
 import os
 import shutil
+import subprocess
 
 
 def ensure_session(repo_id: str, repo_path: str, attach: bool = True):
