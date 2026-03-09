@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
-
 from typing import Dict, Optional
+
 from hydra.core.config_store import ConfigStore
 
 
@@ -28,7 +28,9 @@ class SystemConfig:
     db_path: str = "data/prime.db"
     log_path: str = "data/logs/pd.log"
     mock_mode: bool = False
-    auto_install_python_deps: bool = False  # Auto-install allowlisted Python deps
+    auto_install_python_deps: bool = (
+        False  # Auto-install allowlisted Python deps
+    )
 
 
 @dataclass
