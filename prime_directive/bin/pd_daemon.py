@@ -157,11 +157,8 @@ def main(
         Run the freeze process for the given repository and ensure the database engine is disposed afterwards.
         
         Parameters:
-            repo_id (str): Identifier of the repository to freeze.
-            cfg: Configuration object used by the freeze logic.
-        
-        Returns:
-            None
+            repo_id (str): Repository identifier to freeze.
+            cfg: Configuration object passed to the freeze logic.
         """
         try:
             skip_terminal_capture = _should_skip_terminal_capture(repo_id)
@@ -178,6 +175,11 @@ def main(
             await dispose_engine()
 
     async def daemon_loop() -> None:
+        """
+        Run an infinite background loop that periodically checks repositories for inactivity and triggers freezing when inactivity exceeds the configured limit.
+        
+        For each tracked repository, if the time since its last filesystem event is greater than inactivity_limit and it is not already frozen, this function calls run_freeze(repo_id, cfg); on success it marks the handler as frozen and logs the change. If run_freeze raises OSError or ValueError, the exception is caught and logged.
+        """
         while True:
             await asyncio.sleep(interval)
             now = datetime.now()

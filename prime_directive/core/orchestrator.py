@@ -64,49 +64,25 @@ async def switch_logic(
     logger: logging.Logger,
 ) -> None:
     """
-    Switch the active workspace to the repository identified by
-    `target_repo_id`.
-
-    Performs optional freeze of the previously detected repo, ensures a session
-    for the target repo, launches the editor, initializes the database, records
-    a `SWITCH_IN` event, and prints the latest contextual snapshot (SITREP) if
-    present.
-
-    This coroutine:
-    - Detects the current repository based on `cwd` and auto-freezes it (via
-      `freeze_fn`) if it differs from `target_repo_id`. Freeze errors are
-      reported to `console` but do not abort the switch.
-    - Uses `ensure_session_fn` and `launch_editor_fn` to prepare and open the
-      target repository unless `cfg.system.mock_mode` is true. In mock mode,
-      actions are logged instead.
-    - Initializes the database via `init_db_fn`, iterates sessions from
-      `get_session_fn`, inserts an `EventLog` with `EventType.SWITCH_IN` for
-      the target repo, commits, then queries and prints the most recent
-      `ContextSnapshot` (human note, AI summary, and timestamp) if available.
-    - Always calls `dispose_engine_fn()` in a finally block to ensure resources
-      are cleaned up.
-
+    Switch the active workspace to the repository identified by `target_repo_id`.
+    
+    Detects the current repository based on `cwd` and, if different, attempts to freeze it.
+    Ensures a session for the target repository and launches the editor unless `cfg.system.mock_mode` is true (in mock mode these actions are logged).
+    Initializes the database, records an `EventType.SWITCH_IN` event for the target repository, and prints the most recent `ContextSnapshot` (human note, AI summary, and timestamp) if one exists.
+    Always disposes database engine resources via `dispose_engine_fn()`.
+    
     Parameters:
         target_repo_id (str): Identifier of the repository to switch to.
-        cfg (Any): Configuration object exposing `repos` (mapping of repo id to
-            repo config) and `system` (with `mock_mode`, `editor_cmd`, optional
-            `editor_args`, and `db_path`).
-        cwd (str): Current working directory used to detect the active
-            repository.
-        freeze_fn (Callable[[str, Any], Any]): Async callable to freeze a
-            repository given its id and the configuration.
-        ensure_session_fn (Callable[..., Any]): Callable to ensure/create a
-            session for the target repository.
-        launch_editor_fn (Callable[[str, str, list[str]], Any]): Callable to
-            launch the editor for a path with command and argument list.
-        init_db_fn (Callable[[str], Any]): Async callable to initialize or
-            connect to the database at the given path.
-        get_session_fn (Callable[[str], Any]): Callable that yields async DB
-            session objects for the given DB path.
-        dispose_engine_fn (Callable[..., Any]): Async callable to
-            dispose/cleanup DB engine and related resources.
+        cfg (Any): Configuration object exposing `repos` (mapping of repo id to repo config) and `system` with `mock_mode`, `editor_cmd`, optional `editor_args`, and `db_path`.
+        cwd (str): Current working directory used to detect the active repository.
+        freeze_fn (Callable[[str, Any], Any]): Async callable to freeze a repository given its id and the configuration.
+        ensure_session_fn (Callable[..., Any]): Callable to ensure or create a session for the target repository.
+        launch_editor_fn (Callable[[str, str, list[str]], Any]): Callable to launch the editor for a path with command and argument list.
+        init_db_fn (Callable[[str], Any]): Async callable to initialize or connect to the database at the given path.
+        get_session_fn (Callable[[str], Any]): Callable that yields async DB session objects for the given DB path.
+        dispose_engine_fn (Callable[..., Any]): Async callable to dispose/cleanup DB engine and related resources.
         console (Any): Console-like object used for user-facing prints.
-        logger (logging.Logger): Logger for informational and debug messages.
+        logger (logging.Logger): Logger for informational messages.
     """
     try:
         current_repo_id = detect_current_repo_id(cwd, cfg.repos)
