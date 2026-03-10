@@ -8,6 +8,7 @@ import re
 import tomllib
 from typing import Any
 
+from prime_directive.core.empire import ProjectRole, load_empire_if_exists
 from prime_directive.core.identity import (
     OperatorDossier,
     ProjectBuilt,
@@ -18,6 +19,12 @@ from prime_directive.core.identity import (
 RUNTIME_CONFIDENCE = 0.8
 DEV_CONFIDENCE = 0.5
 LANGUAGE_CONFIDENCE = 0.95
+ROLE_CAPABILITY_TAGS = {
+    ProjectRole.RESEARCH: ["research"],
+    ProjectRole.INFRASTRUCTURE: ["infrastructure"],
+    ProjectRole.MAINTENANCE: ["maintenance"],
+    ProjectRole.EXPERIMENTAL: ["experimental"],
+}
 
 SKILL_ALIASES = {
     "@prisma/client": "Prisma",
@@ -92,6 +99,9 @@ class SyncProposal:
     source: str
     confidence: float
     project_tech_stack: list[str] = field(default_factory=list)
+    project_description: str = ""
+    project_capability_tags: list[str] = field(default_factory=list)
+    project_url: str | None = None
 
 
 @dataclass(frozen=True)
@@ -99,6 +109,7 @@ class ThemeSuggestion:
     tag: str
     occurrences: int
     sample: str
+    confidence: float = 0.0
 
 
 def build_sync_proposals(
@@ -118,6 +129,8 @@ def build_sync_proposals(
 
     summaries: list[RepoScanSummary] = []
     proposals: list[SyncProposal] = []
+    empire = load_empire_if_exists(cfg)
+    empire_projects = empire.projects if empire is not None else {}
 
     for repo_id, repo_cfg in cfg.repos.items():
         repo_path = Path(str(repo_cfg.path)).expanduser()
@@ -147,8 +160,9 @@ def build_sync_proposals(
             )
             proposed_for_repo.add(normalized)
 
-        if repo_id.lower() not in existing_projects:
-            source = summaries[-1].source_files[0] if summaries[-1].source_files else str(repo_path)
+        empire_project = empire_projects.get(repo_id)
+        if empire_project is not None and repo_id.lower() not in existing_projects:
+            source = "empire.yaml"
             proposals.append(
                 SyncProposal(
                     action="add_project",
@@ -157,6 +171,11 @@ def build_sync_proposals(
                     source=source,
                     confidence=0.9,
                     project_tech_stack=tech_stack,
+                    project_description=empire_project.description,
+                    project_capability_tags=_build_project_capability_tags(
+                        empire_project
+                    ),
+                    project_url=None,
                 )
             )
 
@@ -201,10 +220,10 @@ def apply_sync_proposals(
             dossier.capabilities.projects_built.append(
                 ProjectBuilt(
                     name=proposal.value_name,
-                    description=f"Managed repository: {proposal.repo_id}",
+                    description=proposal.project_description,
                     tech_stack=proposal.project_tech_stack,
-                    capability_tags=[],
-                    url=None,
+                    capability_tags=proposal.project_capability_tags,
+                    url=proposal.project_url,
                 )
             )
             existing_project_names.add(normalized)
@@ -217,6 +236,8 @@ def scan_repository(repo_path: Path) -> list[DetectedSkill]:
     pyproject_path = repo_path / "pyproject.toml"
     package_json_path = repo_path / "package.json"
     tsconfig_path = repo_path / "tsconfig.json"
+    cargo_toml_path = repo_path / "Cargo.toml"
+    go_mod_path = repo_path / "go.mod"
 
     if pyproject_path.exists():
         detected.append(
@@ -238,6 +259,26 @@ def scan_repository(repo_path: Path) -> list[DetectedSkill]:
             )
         )
         detected.extend(scan_package_json_dependencies(package_json_path))
+
+    if cargo_toml_path.exists():
+        detected.append(
+            DetectedSkill(
+                skill_name="Rust",
+                source=str(cargo_toml_path),
+                confidence=LANGUAGE_CONFIDENCE,
+            )
+        )
+        detected.extend(scan_cargo_toml_dependencies(cargo_toml_path))
+
+    if go_mod_path.exists():
+        detected.append(
+            DetectedSkill(
+                skill_name="Go",
+                source=str(go_mod_path),
+                confidence=LANGUAGE_CONFIDENCE,
+            )
+        )
+        detected.extend(scan_go_mod_dependencies(go_mod_path))
 
     unique: dict[tuple[str, str], DetectedSkill] = {}
     for item in detected:
@@ -293,6 +334,88 @@ def scan_pyproject_dependencies(pyproject_path: Path) -> list[DetectedSkill]:
                     confidence=DEV_CONFIDENCE,
                 )
             )
+
+    return detected
+
+
+def scan_cargo_toml_dependencies(cargo_toml_path: Path) -> list[DetectedSkill]:
+    with cargo_toml_path.open("rb") as handle:
+        data = tomllib.load(handle)
+
+    detected: list[DetectedSkill] = []
+    for section_name, confidence in [
+        ("dependencies", RUNTIME_CONFIDENCE),
+        ("build-dependencies", DEV_CONFIDENCE),
+        ("dev-dependencies", DEV_CONFIDENCE),
+    ]:
+        for name in _as_dict(data.get(section_name)).keys():
+            detected.append(
+                DetectedSkill(
+                    skill_name=format_skill_name(name),
+                    source=str(cargo_toml_path),
+                    confidence=confidence,
+                )
+            )
+
+    for target_config in _as_dict(data.get("target")).values():
+        target_dict = _as_dict(target_config)
+        for section_name, confidence in [
+            ("dependencies", RUNTIME_CONFIDENCE),
+            ("build-dependencies", DEV_CONFIDENCE),
+            ("dev-dependencies", DEV_CONFIDENCE),
+        ]:
+            for name in _as_dict(target_dict.get(section_name)).keys():
+                detected.append(
+                    DetectedSkill(
+                        skill_name=format_skill_name(name),
+                        source=str(cargo_toml_path),
+                        confidence=confidence,
+                    )
+                )
+
+    return detected
+
+
+def scan_go_mod_dependencies(go_mod_path: Path) -> list[DetectedSkill]:
+    content = go_mod_path.read_text(encoding="utf-8")
+    detected: list[DetectedSkill] = []
+    in_require_block = False
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("//"):
+            continue
+        if line.startswith("require ("):
+            in_require_block = True
+            continue
+        if in_require_block and line == ")":
+            in_require_block = False
+            continue
+
+        module_path = ""
+        confidence = RUNTIME_CONFIDENCE
+        if in_require_block:
+            module_path = line.split()[0]
+        elif line.startswith("require "):
+            parts = line.split()
+            if len(parts) >= 2:
+                module_path = parts[1]
+        elif line.startswith("tool "):
+            parts = line.split()
+            if len(parts) >= 2:
+                module_path = parts[1]
+                confidence = DEV_CONFIDENCE
+
+        if not module_path:
+            continue
+
+        detected.append(
+            DetectedSkill(
+                skill_name=format_skill_name(_extract_go_module_name(module_path)),
+                source=str(go_mod_path),
+                confidence=confidence,
+            )
+        )
 
     return detected
 
@@ -385,6 +508,24 @@ def build_theme_suggestions(
     ]
     suggestions.sort(key=lambda item: (-item.occurrences, item.tag))
     return suggestions[:limit]
+
+
+def _build_project_capability_tags(project: Any) -> list[str]:
+    tags = []
+    if getattr(project, "domain", "").strip():
+        tags.append(normalize_tag(project.domain))
+    tags.extend(ROLE_CAPABILITY_TAGS.get(project.role, []))
+    return sorted({tag for tag in tags if tag})
+
+
+def _extract_go_module_name(module_path: str) -> str:
+    parts = [part for part in module_path.split("/") if part]
+    if not parts:
+        return module_path
+    candidate = parts[-1]
+    if candidate.startswith("v") and candidate[1:].isdigit() and len(parts) > 1:
+        candidate = parts[-2]
+    return candidate
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
