@@ -632,12 +632,97 @@ def _validate_tag_list(
         report.warnings.append(f'{location} contains duplicate tag "{tag}"')
 
 
+def preview_operator_dossier_tag_normalization_fixes(
+    raw_data: dict[str, Any],
+) -> list[str]:
+    fixes: list[str] = []
+    for location, tags in _iter_normalized_tag_lists(raw_data):
+        for tag in tags:
+            normalized = normalize_tag(tag)
+            if tag != normalized:
+                fixes.append(f'{location}: "{tag}" -> "{normalized}"')
+    return fixes
+
+
+def apply_operator_dossier_tag_normalization_fixes(
+    raw_data: dict[str, Any],
+) -> list[str]:
+    fixes: list[str] = []
+    capabilities = raw_data.get("capabilities")
+    identity = raw_data.get("identity")
+    connection_surface = raw_data.get("connection_surface")
+
+    if isinstance(capabilities, dict) and isinstance(
+        capabilities.get("domain_expertise"),
+        list,
+    ):
+        capabilities["domain_expertise"], field_fixes = _normalize_tag_sequence(
+            [str(item) for item in capabilities["domain_expertise"]],
+            "capabilities.domain_expertise",
+        )
+        fixes.extend(field_fixes)
+
+    if isinstance(identity, dict):
+        publications = identity.get("publications")
+        if isinstance(publications, list):
+            for index, item in enumerate(publications):
+                if not isinstance(item, dict) or not isinstance(item.get("tags"), list):
+                    continue
+                item["tags"], field_fixes = _normalize_tag_sequence(
+                    [str(tag) for tag in item["tags"]],
+                    f"identity.publications[{index}].tags",
+                )
+                fixes.extend(field_fixes)
+
+    if isinstance(capabilities, dict):
+        projects_built = capabilities.get("projects_built")
+        if isinstance(projects_built, list):
+            for index, item in enumerate(projects_built):
+                if not isinstance(item, dict) or not isinstance(
+                    item.get("capability_tags"),
+                    list,
+                ):
+                    continue
+                item["capability_tags"], field_fixes = _normalize_tag_sequence(
+                    [str(tag) for tag in item["capability_tags"]],
+                    f"capabilities.projects_built[{index}].capability_tags",
+                )
+                fixes.extend(field_fixes)
+
+    if isinstance(connection_surface, dict):
+        for field_name in CONNECTION_SURFACE_FIELDS:
+            tags = connection_surface.get(field_name)
+            if not isinstance(tags, list):
+                continue
+            connection_surface[field_name], field_fixes = _normalize_tag_sequence(
+                [str(tag) for tag in tags],
+                f"connection_surface.{field_name}",
+            )
+            fixes.extend(field_fixes)
+
+    return fixes
+
+
 def normalize_tag(value: str) -> str:
     normalized = value.strip().lower().replace("_", "-")
     normalized = "-".join(part for part in normalized.replace("/", " ").split())
     while "--" in normalized:
         normalized = normalized.replace("--", "-")
     return normalized
+
+
+def _normalize_tag_sequence(
+    tags: list[str],
+    location: str,
+) -> tuple[list[str], list[str]]:
+    normalized_tags: list[str] = []
+    fixes: list[str] = []
+    for tag in tags:
+        normalized = normalize_tag(tag)
+        normalized_tags.append(normalized)
+        if tag != normalized:
+            fixes.append(f'{location}: "{tag}" -> "{normalized}"')
+    return normalized_tags, fixes
 
 
 def _normalized_tag_set(values: list[Any]) -> set[str]:
