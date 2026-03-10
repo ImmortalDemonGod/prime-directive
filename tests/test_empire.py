@@ -1,3 +1,4 @@
+import pytest
 from omegaconf import OmegaConf
 
 from prime_directive.core.empire import (
@@ -65,11 +66,10 @@ projects:
         encoding="utf-8",
     )
 
-    try:
+    with pytest.raises(ValueError) as excinfo:
         load_empire_config(cfg, empire_path)
-        assert False
-    except ValueError as exc:
-        assert "not present in config.yaml repos" in str(exc)
+
+    assert "not present in config.yaml repos" in str(excinfo.value)
 
 
 def test_load_empire_config_rejects_cycles(tmp_path):
@@ -104,8 +104,5 @@ projects:
         encoding="utf-8",
     )
 
-    try:
+    with pytest.raises(ValueError, match="contains a cycle"):
         load_empire_config(cfg, empire_path)
-        assert False
-    except ValueError as exc:
-        assert "contains a cycle" in str(exc)
