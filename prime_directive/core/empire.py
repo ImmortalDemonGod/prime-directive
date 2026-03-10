@@ -22,6 +22,14 @@ class StrategicWeight(str, Enum):
     LOW = "LOW"
 
 
+WEIGHT_NUMERIC_MAP = {
+    StrategicWeight.CRITICAL: 4,
+    StrategicWeight.HIGH: 3,
+    StrategicWeight.MEDIUM: 2,
+    StrategicWeight.LOW: 1,
+}
+
+
 @dataclass(frozen=True)
 class EmpireProject:
     id: str
@@ -33,12 +41,7 @@ class EmpireProject:
 
     @property
     def weight_numeric(self) -> int:
-        return {
-            StrategicWeight.CRITICAL.value: 4,
-            StrategicWeight.HIGH.value: 3,
-            StrategicWeight.MEDIUM.value: 2,
-            StrategicWeight.LOW.value: 1,
-        }[self.strategic_weight.value]
+        return WEIGHT_NUMERIC_MAP[self.strategic_weight]
 
 
 @dataclass(frozen=True)
@@ -140,7 +143,7 @@ def _find_cycle(projects: dict[str, EmpireProject]) -> list[str]:
     def visit(node: str) -> list[str]:
         if node in active:
             start = stack.index(node)
-            return stack[start:] + [node]
+            return [*stack[start:], node]
         if node in visited:
             return []
 
