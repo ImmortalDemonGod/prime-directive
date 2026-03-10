@@ -5,6 +5,7 @@ import logging
 import os
 import shutil
 import sys
+from click.core import ParameterSource
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, cast
@@ -568,6 +569,7 @@ def dossier_validate():
 
 @dossier_app.command("sync-skills")
 def dossier_sync_skills(
+    ctx: typer.Context,
     apply: bool = typer.Option(
         False,
         "--apply",
@@ -585,6 +587,12 @@ def dossier_sync_skills(
     ),
 ):
     """Scan configured repos and propose dossier skill/project updates."""
+    dry_run_explicit = (
+        ctx.get_parameter_source("dry_run") == ParameterSource.COMMANDLINE
+    )
+    if apply and dry_run_explicit:
+        raise typer.BadParameter("`--apply` and `--dry-run` cannot be used together.")
+
     cfg = load_config()
     dossier_path = get_dossier_path()
     if not dossier_path.exists():
@@ -607,7 +615,11 @@ def dossier_sync_skills(
         )
         ai_model = getattr(cfg.system, "ai_model", "qwen2.5-coder")
         ai_provider = getattr(cfg.system, "ai_provider", "ollama")
-        fallback_provider = getattr(cfg.system, "ai_fallback_provider", "none")
+        fallback_provider = getattr(
+            cfg.system,
+            "ai_fallback_provider",
+            "none",
+        )
         fallback_model = getattr(cfg.system, "ai_fallback_model", "gpt-4o-mini")
         require_confirmation = getattr(
             cfg.system,
@@ -728,7 +740,7 @@ def dossier_sync_skills(
         console.print("[bold green]No new skill, project, or theme proposals found.[/bold green]")
         return
 
-    if dry_run and not apply:
+    if not apply:
         console.print(
             "[bold blue]Dry run only.[/bold blue] Re-run with `pd dossier sync-skills --apply` to persist changes."
         )
