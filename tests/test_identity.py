@@ -1,9 +1,13 @@
+import json
 from unittest.mock import patch
+from omegaconf import OmegaConf
 import yaml
 from typer.testing import CliRunner
 
 from prime_directive.bin.pd import app
 from prime_directive.core.identity import (
+    ProjectBuilt,
+    Skill,
     default_operator_dossier,
     GeographicEntry,
     load_operator_dossier,
@@ -102,7 +106,15 @@ def test_validate_operator_dossier_file_warns_on_non_normalized_tags(tmp_path):
 
 
 def test_dossier_init_creates_file(tmp_path):
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+    cfg = OmegaConf.create(
+        {
+            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "repos": {},
+        }
+    )
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=cfg
+    ):
         result = runner.invoke(app, ["dossier", "init"], catch_exceptions=False)
 
     dossier_path = tmp_path / ".prime-directive" / "operator_dossier.yaml"
@@ -111,7 +123,9 @@ def test_dossier_init_creates_file(tmp_path):
     assert dossier_path.exists()
     data = yaml.safe_load(dossier_path.read_text(encoding="utf-8"))
     assert data["version"] == "3.1"
-    assert "Created dossier skeleton" in result.stdout
+    assert "PRIME DIRECTIVE — Operator Dossier Setup" in result.stdout
+    assert "Skeleton written to" in result.stdout
+    assert "Auto-populated:" in result.stdout
 
 
 def test_dossier_init_without_force_refuses_overwrite(tmp_path):
@@ -219,7 +233,8 @@ def test_dossier_sync_tags_updates_connection_surface(tmp_path):
     loaded = load_operator_dossier(dossier_path)
 
     assert result.exit_code == 0
-    assert "Synchronized connection surface" in result.stdout
+    assert "Tag Sync — Deriving connection_surface from Layers 1-4" in result.stdout
+    assert "Updated" in result.stdout
     assert "developer-tooling" in loaded.connection_surface.topic_tags
     assert "open-source" in loaded.connection_surface.experience_tags
     assert "ownership" in loaded.connection_surface.philosophy_tags
@@ -237,8 +252,45 @@ def test_dossier_show_tags_only_outputs_tag_table(tmp_path):
         result = runner.invoke(app, ["dossier", "show", "--tags-only"], catch_exceptions=False)
 
     assert result.exit_code == 0
-    assert "Operator Dossier Tags" in result.stdout
+    assert "Operator Connection Surface (Layer 5)" in result.stdout
     assert "developer-tooling" in result.stdout
+    assert "Total tags:" in result.stdout
+
+
+def test_dossier_show_layer_2_outputs_rich_capabilities_view(tmp_path):
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    dossier = default_operator_dossier()
+    dossier.capabilities.skills = [
+        Skill(
+            name="Python",
+            depth="expert",
+            recency="active",
+            evidence="Detected in pyproject.toml",
+        )
+    ]
+    dossier.capabilities.domain_expertise = ["developer-tooling"]
+    dossier.capabilities.projects_built = [
+        ProjectBuilt(
+            name="prime-directive",
+            description="CLI tool for context preservation",
+            tech_stack=["Python", "Typer"],
+            capability_tags=["developer-tooling", "infrastructure"],
+            url=None,
+        )
+    ]
+    write_operator_dossier(dossier, dossier_path)
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+        result = runner.invoke(app, ["dossier", "show", "--layer", "2"], catch_exceptions=False)
+
+    assert result.exit_code == 0
+    assert "Operator Dossier — Layer 2: Technical Capabilities" in result.stdout
+    assert "Skills (1)" in result.stdout
+    assert "developer-tooling" in result.stdout
+    assert "prime-directive" in result.stdout
+    assert "Capability Tags" in result.stdout
 
 
 def test_dossier_export_layer5_only_json_to_stdout(tmp_path):
@@ -260,6 +312,41 @@ def test_dossier_export_layer5_only_json_to_stdout(tmp_path):
     assert '"connection_surface"' in result.stdout
     assert '"developer-tooling"' in result.stdout
     assert '"identity"' not in result.stdout
+
+
+def test_dossier_export_full_json_matches_black_box_contract_shape(tmp_path):
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    dossier = default_operator_dossier()
+    dossier.identity.values = ["verification-over-trust"]
+    dossier.capabilities.domain_expertise = ["developer-tooling"]
+    dossier.network.industries = ["devtools"]
+    dossier.positioning.positioning_statement = "Verification-first systems builder"
+    dossier.connection_surface.topic_tags = ["developer-tooling"]
+    write_operator_dossier(dossier, dossier_path)
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+        result = runner.invoke(
+            app,
+            ["dossier", "export", "--format", "json"],
+            catch_exceptions=False,
+        )
+
+    exported = json.loads(result.stdout)
+
+    assert result.exit_code == 0
+    assert exported["version"] == "3.1"
+    assert set(exported.keys()) == {
+        "version",
+        "identity",
+        "capabilities",
+        "network",
+        "positioning",
+        "connection_surface",
+    }
+    assert exported["capabilities"]["domain_expertise"] == ["developer-tooling"]
+    assert exported["connection_surface"]["topic_tags"] == ["developer-tooling"]
 
 
 def test_dossier_export_yaml_to_file(tmp_path):
@@ -290,3 +377,24 @@ def test_dossier_export_yaml_to_file(tmp_path):
     assert result.exit_code == 0
     assert export_path.exists()
     assert exported["connection_surface"]["topic_tags"] == ["developer-tooling"]
+
+
+def test_dossier_export_tags_only_to_stdout(tmp_path):
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    dossier = default_operator_dossier()
+    dossier.connection_surface.topic_tags = ["developer-tooling"]
+    dossier.connection_surface.philosophy_tags = ["verification-over-trust"]
+    write_operator_dossier(dossier, dossier_path)
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+        result = runner.invoke(
+            app,
+            ["dossier", "export", "--format", "tags-only"],
+            catch_exceptions=False,
+        )
+
+    assert result.exit_code == 0
+    assert "topic_tags: developer-tooling" in result.stdout
+    assert "philosophy_tags: verification-over-trust" in result.stdout
