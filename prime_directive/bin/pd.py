@@ -1,15 +1,18 @@
 import asyncio
 import difflib
+import json
 import logging
 import os
 import shutil
 import sys
-from datetime import datetime, timezone
+from click.core import ParameterSource
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Optional, cast
 
 import httpx
 import typer
+import yaml
 from dotenv import load_dotenv
 
 # Hydra imports
@@ -17,6 +20,7 @@ from hydra import compose, initialize_config_dir
 from hydra.core.global_hydra import GlobalHydra
 from omegaconf import DictConfig, OmegaConf
 from rich.console import Console
+from rich.panel import Panel
 from rich.table import Table
 from sqlalchemy import select
 
@@ -34,10 +38,28 @@ from prime_directive.core.dependencies import (
     get_ollama_status,
     has_openai_api_key,
 )
+from prime_directive.core.dossier_ai import generate_theme_suggestions_with_ai
+from prime_directive.core.empire import load_empire_if_exists
 from prime_directive.core.git_utils import GitStatus, get_status
+from prime_directive.core.identity import (
+    apply_operator_dossier_tag_normalization_fixes,
+    default_operator_dossier,
+    get_dossier_path,
+    load_operator_dossier,
+    operator_dossier_to_dict,
+    parse_operator_dossier,
+    preview_operator_dossier_tag_normalization_fixes,
+    sync_connection_surface,
+    validate_operator_dossier_file,
+    write_operator_dossier,
+)
 from prime_directive.core.logging_utils import setup_logging
 from prime_directive.core.orchestrator import run_switch
 from prime_directive.core.scribe import generate_sitrep
+from prime_directive.core.skill_scanner import (
+    apply_sync_proposals,
+    build_sync_proposals,
+)
 from prime_directive.core.tasks import get_active_task
 from prime_directive.core.terminal import capture_terminal_state
 from prime_directive.core.tmux import ensure_session
@@ -52,12 +74,15 @@ load_dotenv(Path.home() / ".prime-directive" / ".env")
 load_dotenv(Path(__file__).parent.parent.parent / ".env")
 
 app = typer.Typer()
+dossier_app = typer.Typer()
 # Export cli for entry point
 cli = app
 console = Console()
 logger = logging.getLogger("prime_directive")
 
 _EXIT_CODE_SHELL_ATTACH = 88
+
+app.add_typer(dossier_app, name="dossier")
 
 
 def _normalize_repo_id(repo_id: str) -> str:
@@ -106,11 +131,14 @@ def load_config() -> DictConfig:
     try:
         with initialize_config_dir(version_base=None, config_dir=conf_path):
             cfg = compose(config_name="config")
+        OmegaConf.set_struct(cfg, False)
 
         user_cfg_path = Path.home() / ".prime-directive" / "config.yaml"
         if user_cfg_path.exists():
             user_cfg = OmegaConf.load(str(user_cfg_path))
             cfg = cast(DictConfig, OmegaConf.merge(cfg, user_cfg))
+            if "repos" in user_cfg:
+                cfg.repos = user_cfg.repos
 
         try:
             cfg.system.db_path = os.path.expanduser(
@@ -136,6 +164,809 @@ def load_config() -> DictConfig:
         console.print(f"[bold red]{msg}[/bold red]")
         logger.critical(msg)
         sys.exit(1)
+
+
+async def _load_recent_snapshot_texts(
+    db_path: str,
+    limit: int = 100,
+) -> tuple[list[str], int, int]:
+    await init_db(db_path)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+    try:
+        async for session in get_session(db_path):
+            timestamp_col = cast(Any, ContextSnapshot.timestamp)
+            stmt = (
+                select(ContextSnapshot)
+                .where(timestamp_col >= cutoff)
+                .order_by(timestamp_col.desc())
+                .limit(limit)
+            )
+            result = await session.execute(stmt)
+            snapshots = list(result.scalars().all())
+            texts: list[str] = []
+            repo_ids: set[str] = set()
+            for snapshot in snapshots:
+                repo_ids.add(snapshot.repo_id)
+                for value in [
+                    snapshot.human_objective,
+                    snapshot.human_blocker,
+                    snapshot.human_next_step,
+                    snapshot.human_note,
+                ]:
+                    if value and value.strip():
+                        texts.append(value)
+            return texts, len(snapshots), len(repo_ids)
+    finally:
+        await dispose_engine()
+    return [], 0, 0
+
+
+def _seed_programming_languages(dossier: Any, summaries: list[Any]) -> None:
+    detected_languages = {
+        item
+        for item in dossier.identity.languages.get("programming", [])
+        if str(item).strip()
+    }
+    for summary in summaries:
+        for skill_name in summary.detected_skills:
+            if skill_name in {"Python", "JavaScript", "TypeScript", "Rust", "Go", "SQL"}:
+                detected_languages.add(skill_name)
+    dossier.identity.languages["programming"] = sorted(detected_languages)
+
+
+def _bootstrap_dossier(cfg: DictConfig) -> tuple[Any, list[Any], list[Any]]:
+    dossier = default_operator_dossier()
+    summaries, proposals = build_sync_proposals(cfg, dossier)
+    apply_sync_proposals(dossier, proposals)
+    _seed_programming_languages(dossier, summaries)
+    sync_connection_surface(dossier)
+    return dossier, summaries, proposals
+
+
+def _render_connection_surface_table(surface: dict[str, list[str]]) -> tuple[Table, int]:
+    table = Table(show_header=False)
+    table.add_column("Category", style="bold cyan")
+    table.add_column("Tags")
+    total_tags = 0
+    for key, label in [
+        ("experience_tags", "Experience"),
+        ("topic_tags", "Topics"),
+        ("geographic_tags", "Geography"),
+        ("education_tags", "Education"),
+        ("industry_tags", "Industries"),
+        ("hobby_tags", "Hobbies"),
+        ("philosophy_tags", "Philosophy"),
+    ]:
+        values = surface.get(key, [])
+        total_tags += len(values)
+        table.add_row(label, ", ".join(values) or "-")
+    return table, total_tags
+
+
+def _format_skill_profile(depth: str, recency: str) -> str:
+    bars = {
+        "expert": "███████████",
+        "proficient": "████████░░░",
+        "familiar": "████░░░░░░░",
+    }
+    return f"{bars.get(depth, '░░░░░░░░░░░')} {depth or '-'} ({recency or '-'})"
+
+
+def _print_capabilities_layer(dossier: Any) -> None:
+    console.print("[bold]Operator Dossier — Layer 2: Technical Capabilities[/bold]")
+
+    console.rule(f"Skills ({len(dossier.capabilities.skills)})")
+    if dossier.capabilities.skills:
+        skill_table = Table()
+        skill_table.add_column("Skill")
+        skill_table.add_column("Profile")
+        skill_table.add_column("Evidence")
+        for skill in dossier.capabilities.skills:
+            skill_table.add_row(
+                skill.name or "-",
+                _format_skill_profile(skill.depth, skill.recency),
+                skill.evidence or "-",
+            )
+        console.print(skill_table)
+    else:
+        console.print("-")
+
+    console.rule(
+        f"Domain Expertise ({len(dossier.capabilities.domain_expertise)})"
+    )
+    console.print(", ".join(dossier.capabilities.domain_expertise) or "-")
+
+    console.rule(f"Projects Built ({len(dossier.capabilities.projects_built)})")
+    if dossier.capabilities.projects_built:
+        project_table = Table()
+        project_table.add_column("Project")
+        project_table.add_column("Tech Stack")
+        project_table.add_column("Capability Tags")
+        project_table.add_column("Description")
+        for project in dossier.capabilities.projects_built:
+            project_table.add_row(
+                project.name or "-",
+                ", ".join(project.tech_stack) or "-",
+                ", ".join(project.capability_tags) or "-",
+                project.description or "-",
+            )
+        console.print(project_table)
+    else:
+        console.print("-")
+
+    console.rule(f"Methodologies ({len(dossier.capabilities.methodologies)})")
+    if dossier.capabilities.methodologies:
+        methodology_table = Table()
+        methodology_table.add_column("Methodology")
+        methodology_table.add_column("Description")
+        methodology_table.add_column("Contexts")
+        for methodology in dossier.capabilities.methodologies:
+            methodology_table.add_row(
+                methodology.name or "-",
+                methodology.description or "-",
+                ", ".join(methodology.applicable_contexts) or "-",
+            )
+        console.print(methodology_table)
+    else:
+        console.print("-")
+
+
+def _print_identity_layer(dossier: Any) -> None:
+    console.print("[bold]Operator Dossier — Layer 1: Human Identity[/bold]")
+
+    console.rule(f"Education ({len(dossier.identity.education)})")
+    if dossier.identity.education:
+        table = Table()
+        table.add_column("Institution")
+        table.add_column("Degree")
+        table.add_column("Field")
+        table.add_column("Years")
+        for item in dossier.identity.education:
+            table.add_row(
+                item.institution or "-",
+                item.degree or "-",
+                item.field or "-",
+                item.years or "-",
+            )
+        console.print(table)
+    else:
+        console.print("-")
+
+    console.rule("Languages")
+    spoken = ", ".join(dossier.identity.languages.get("spoken", [])) or "-"
+    programming = ", ".join(dossier.identity.languages.get("programming", [])) or "-"
+    console.print(f"Spoken: {spoken}")
+    console.print(f"Programming: {programming}")
+
+    console.rule(f"Hobbies ({len(dossier.identity.hobbies)})")
+    console.print(", ".join(dossier.identity.hobbies) or "-")
+
+    console.rule(
+        f"Formative Experiences ({len(dossier.identity.formative_experiences)})"
+    )
+    console.print("\n".join(dossier.identity.formative_experiences) or "-")
+
+    console.rule(
+        f"Intellectual Influences ({len(dossier.identity.intellectual_influences)})"
+    )
+    console.print("\n".join(dossier.identity.intellectual_influences) or "-")
+
+    console.rule(f"Values ({len(dossier.identity.values)})")
+    console.print("\n".join(dossier.identity.values) or "-")
+
+
+def _print_network_layer(dossier: Any) -> None:
+    console.print("[bold]Operator Dossier — Layer 3: Professional Network[/bold]")
+
+    console.rule(f"Companies ({len(dossier.network.companies)})")
+    if dossier.network.companies:
+        table = Table()
+        table.add_column("Company")
+        table.add_column("Role")
+        table.add_column("Years")
+        table.add_column("Accomplishment")
+        for item in dossier.network.companies:
+            table.add_row(
+                item.name or "-",
+                item.role or "-",
+                item.years or "-",
+                item.accomplishment or "-",
+            )
+        console.print(table)
+    else:
+        console.print("-")
+
+    console.rule(f"Industries ({len(dossier.network.industries)})")
+    console.print(", ".join(dossier.network.industries) or "-")
+
+    console.rule(
+        f"Institutional Overlaps ({len(dossier.network.institutional_overlaps)})"
+    )
+    if dossier.network.institutional_overlaps:
+        for item in dossier.network.institutional_overlaps:
+            console.print(
+                f"{item.get('type', '-')}: {item.get('value', '-')}"
+            )
+    else:
+        console.print("-")
+
+
+def _print_positioning_layer(dossier: Any) -> None:
+    console.print("[bold]Operator Dossier — Layer 4: Strategic Positioning[/bold]")
+
+    console.rule("Positioning Statement")
+    console.print(dossier.positioning.positioning_statement or "-")
+
+    console.rule(
+        f"Competitive Differentiation ({len(dossier.positioning.competitive_differentiation)})"
+    )
+    console.print(
+        "\n".join(dossier.positioning.competitive_differentiation) or "-"
+    )
+
+    console.rule(f"Offerings ({len(dossier.positioning.offerings)})")
+    if dossier.positioning.offerings:
+        table = Table()
+        table.add_column("Name")
+        table.add_column("Description")
+        table.add_column("Deliverable")
+        table.add_column("Timeline")
+        for item in dossier.positioning.offerings:
+            table.add_row(
+                item.name or "-",
+                item.description or "-",
+                item.deliverable or "-",
+                item.typical_timeline or "-",
+            )
+        console.print(table)
+    else:
+        console.print("-")
+
+    console.rule(f"Case Studies ({len(dossier.positioning.case_studies)})")
+    if dossier.positioning.case_studies:
+        for item in dossier.positioning.case_studies:
+            title = item.get("title") or item.get("client") or "Case Study"
+            outcome = item.get("outcome") or item.get("description") or "-"
+            console.print(f"{title}: {outcome}")
+    else:
+        console.print("-")
+
+    console.rule("Revenue Model")
+    console.print(dossier.positioning.revenue_model or "-")
+
+
+def _print_connection_surface_layer(dossier: Any) -> None:
+    table, total_tags = _render_connection_surface_table(
+        operator_dossier_to_dict(dossier)["connection_surface"]
+    )
+    console.print("[bold]Operator Connection Surface (Layer 5)[/bold]")
+    console.print(table)
+    console.print(f"\n[bold]Total tags:[/bold] {total_tags} across 7 categories")
+
+
+@dossier_app.command("init")
+def dossier_init(
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing dossier file.",
+    )
+):
+    """Generate a dossier skeleton with repo-derived capability seed data."""
+    dossier_path = get_dossier_path()
+    if dossier_path.exists() and not force:
+        console.print(
+            f"[bold yellow]Dossier already exists:[/bold yellow] {dossier_path}"
+        )
+        console.print("Use `pd dossier init --force` to overwrite it.")
+        raise typer.Exit(code=1)
+
+    console.print(
+        Panel.fit(
+            "This will create ~/.prime-directive/operator_dossier.yaml\n"
+            "with a skeleton structure and auto-populated capability data.",
+            title="PRIME DIRECTIVE — Operator Dossier Setup",
+            border_style="blue",
+        )
+    )
+    cfg = load_config()
+    empire = load_empire_if_exists(cfg)
+    console.print("Pre-populating from your configured repositories...")
+    dossier, summaries, proposals = _bootstrap_dossier(cfg)
+    written_path = write_operator_dossier(dossier, dossier_path)
+    source_file_count = sum(len(summary.source_files) for summary in summaries)
+    skill_proposal_count = sum(
+        1 for proposal in proposals if proposal.action == "add_skill"
+    )
+    project_proposal_count = sum(
+        1 for proposal in proposals if proposal.action == "add_project"
+    )
+    console.print(f"  Found {len(cfg.repos)} repos in config.yaml")
+    if empire is not None:
+        console.print(f"  Found {len(empire.projects)} projects in empire.yaml")
+    console.print(
+        f"  Scanned {source_file_count} dependency file(s) across configured repos"
+    )
+    console.print(
+        f"\n[bold green]Skeleton written to[/bold green] {written_path}"
+    )
+    console.print("\n[bold]Auto-populated:[/bold]")
+    console.print(
+        f"  capabilities.projects_built: {len(dossier.capabilities.projects_built)} project(s) from {project_proposal_count} proposal(s)"
+    )
+    console.print(
+        f"  capabilities.skills: {len(dossier.capabilities.skills)} detected skill(s) from {skill_proposal_count} proposal(s)"
+    )
+    console.print(
+        f"  identity.languages.programming: {len(dossier.identity.languages.get('programming', []))} detected language(s)"
+    )
+    console.print(
+        f"  connection_surface.topic_tags: {len(dossier.connection_surface.topic_tags)} derived tag(s)"
+    )
+    console.print("\n[bold]Still needs your input:[/bold]")
+    console.print("  identity (education, military, hobbies, values, publications)")
+    console.print("  network (companies, industries, collaborators, overlaps)")
+    console.print("  positioning (statement, offerings, case studies, revenue model)")
+    console.print("  connection_surface.philosophy_tags (manual only)")
+    console.print(
+        "\n[bold blue]Tip:[/bold blue] Run `pd dossier validate` after editing to check for errors."
+    )
+
+
+@dossier_app.command("validate")
+def dossier_validate():
+    """Parse and validate the operator dossier, reporting errors and warnings."""
+    dossier_path = get_dossier_path()
+    report, raw_data = validate_operator_dossier_file(dossier_path)
+    normalization_fixes = (
+        preview_operator_dossier_tag_normalization_fixes(raw_data)
+        if raw_data
+        else []
+    )
+    if normalization_fixes:
+        console.print("\n[bold yellow]Tag normalization fixes available[/bold yellow]")
+        for item in normalization_fixes:
+            console.print(f"  - {item}")
+        if typer.confirm("Apply suggested tag normalization fixes?", default=True):
+            applied_fixes = apply_operator_dossier_tag_normalization_fixes(raw_data)
+            if applied_fixes:
+                write_operator_dossier(parse_operator_dossier(raw_data), dossier_path)
+                console.print(
+                    f"\n[bold green]Applied {len(applied_fixes)} tag normalization fix(es).[/bold green]"
+                )
+                report, raw_data = validate_operator_dossier_file(dossier_path)
+
+    console.print("[bold]Operator Dossier Validation[/bold]")
+    console.print(f"Path: {dossier_path}", soft_wrap=True)
+
+    if report.errors:
+        console.print("\n[bold red]Errors[/bold red]")
+        for item in report.errors:
+            console.print(f"  - {item}")
+
+    if report.warnings:
+        console.print("\n[bold yellow]Warnings[/bold yellow]")
+        for item in report.warnings:
+            console.print(f"  - {item}")
+
+    if report.info:
+        console.print("\n[bold blue]Info[/bold blue]")
+        for item in report.info:
+            console.print(f"  - {item}")
+
+    summary = (
+        f"errors={len(report.errors)} "
+        f"warnings={len(report.warnings)} "
+        f"info={len(report.info)}"
+    )
+    if report.is_valid:
+        console.print(f"\n[bold green]Validation passed[/bold green] ({summary})")
+        return
+
+    console.print(f"\n[bold red]Validation failed[/bold red] ({summary})")
+    raise typer.Exit(code=1)
+
+
+@dossier_app.command("sync-skills")
+def dossier_sync_skills(
+    ctx: typer.Context,
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Persist all proposed skill, project, and theme additions.",
+    ),
+    dry_run: bool = typer.Option(
+        True,
+        "--dry-run",
+        help="Show proposals without modifying the dossier. Default behavior.",
+    ),
+    deep: bool = typer.Option(
+        False,
+        "--deep",
+        help="Analyze recent snapshot text for repeated domain themes.",
+    ),
+):
+    """Scan configured repos and propose dossier skill/project updates."""
+    dry_run_explicit = (
+        ctx.get_parameter_source("dry_run") == ParameterSource.COMMANDLINE
+    )
+    if apply and dry_run_explicit:
+        raise typer.BadParameter("`--apply` and `--dry-run` cannot be used together.")
+
+    cfg = load_config()
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    summaries, proposals = build_sync_proposals(cfg, dossier)
+    theme_suggestions = []
+    deep_error: Optional[str] = None
+    deep_snapshot_count = 0
+    deep_repo_count = 0
+    deep_cost_line: Optional[str] = None
+    if deep:
+        snapshot_texts, deep_snapshot_count, deep_repo_count = asyncio.run(
+            _load_recent_snapshot_texts(cfg.system.db_path)
+        )
+        ai_model = getattr(cfg.system, "ai_model", "qwen2.5-coder")
+        ai_provider = getattr(cfg.system, "ai_provider", "ollama")
+        fallback_provider = getattr(
+            cfg.system,
+            "ai_fallback_provider",
+            "none",
+        )
+        fallback_model = getattr(cfg.system, "ai_fallback_model", "gpt-4o-mini")
+        require_confirmation = getattr(
+            cfg.system,
+            "ai_require_confirmation",
+            True,
+        )
+        openai_api_url = getattr(
+            cfg.system,
+            "openai_api_url",
+            "https://api.openai.com/v1/chat/completions",
+        )
+        openai_timeout_seconds = getattr(cfg.system, "openai_timeout_seconds", 10.0)
+        openai_max_tokens = getattr(cfg.system, "openai_max_tokens", 150)
+        ollama_api_url = getattr(
+            cfg.system,
+            "ollama_api_url",
+            "http://localhost:11434/api/generate",
+        )
+        ollama_timeout_seconds = getattr(cfg.system, "ollama_timeout_seconds", 5.0)
+        ollama_max_retries = getattr(cfg.system, "ollama_max_retries", 0)
+        ollama_backoff_seconds = getattr(cfg.system, "ollama_backoff_seconds", 0.0)
+        ai_monthly_budget_usd = getattr(cfg.system, "ai_monthly_budget_usd", 10.0)
+        ai_cost_per_1k_tokens = getattr(cfg.system, "ai_cost_per_1k_tokens", 0.002)
+        theme_suggestions, deep_metadata, deep_error = asyncio.run(
+            generate_theme_suggestions_with_ai(
+                snapshot_texts=snapshot_texts,
+                existing_tags=dossier.capabilities.domain_expertise,
+                model=ai_model,
+                provider=ai_provider,
+                fallback_provider=fallback_provider,
+                fallback_model=fallback_model,
+                require_confirmation=require_confirmation,
+                openai_api_url=openai_api_url,
+                openai_timeout_seconds=openai_timeout_seconds,
+                openai_max_tokens=openai_max_tokens,
+                api_url=ollama_api_url,
+                timeout_seconds=ollama_timeout_seconds,
+                max_retries=ollama_max_retries,
+                backoff_seconds=ollama_backoff_seconds,
+                db_path=cfg.system.db_path,
+                monthly_budget_usd=ai_monthly_budget_usd,
+                cost_per_1k_tokens=ai_cost_per_1k_tokens,
+            )
+        )
+        if deep_metadata is not None:
+            total_tokens = deep_metadata.input_tokens + deep_metadata.output_tokens
+            deep_cost_line = (
+                f"Cost: {total_tokens} tokens (${deep_metadata.cost_estimate_usd:.4f})"
+            )
+
+    console.print("[bold]Operator Dossier Skill Sync[/bold]")
+    if summaries:
+        scan_table = Table(title="Repository Scan Summary")
+        scan_table.add_column("Repo")
+        scan_table.add_column("Files")
+        scan_table.add_column("Detected Skills")
+        for summary in summaries:
+            scan_table.add_row(
+                summary.repo_id,
+                ", ".join(summary.source_files) or "-",
+                ", ".join(summary.detected_skills) or "-",
+            )
+        console.print(scan_table)
+
+    proposal_table = Table(title="Proposals")
+    proposal_table.add_column("Action")
+    proposal_table.add_column("Repo")
+    proposal_table.add_column("Value")
+    proposal_table.add_column("Source")
+    proposal_table.add_column("Confidence")
+    for proposal in proposals:
+        proposal_table.add_row(
+            proposal.action,
+            proposal.repo_id,
+            proposal.value_name,
+            proposal.source,
+            f"{proposal.confidence:.2f}",
+        )
+    console.print(proposal_table)
+    skill_proposal_count = sum(
+        1 for proposal in proposals if proposal.action == "add_skill"
+    )
+    project_proposal_count = sum(
+        1 for proposal in proposals if proposal.action == "add_project"
+    )
+
+    if deep:
+        console.print(
+            f"\n[bold]Deep Analysis (LLM)[/bold]\n\n  Scanned {deep_snapshot_count} snapshots across {deep_repo_count} repos (last 30 days)"
+        )
+        if deep_error:
+            console.print(f"[bold red]{deep_error}[/bold red]")
+        elif theme_suggestions:
+            theme_table = Table(title="Deep Theme Suggestions")
+            theme_table.add_column("Tag")
+            theme_table.add_column("Occurrences")
+            theme_table.add_column("Evidence")
+            theme_table.add_column("Confidence")
+            for suggestion in theme_suggestions:
+                theme_table.add_row(
+                    suggestion.tag,
+                    str(suggestion.occurrences),
+                    suggestion.sample,
+                    f"{suggestion.confidence:.2f}",
+                )
+            console.print(theme_table)
+        else:
+            console.print("[bold blue]No deep theme suggestions found.[/bold blue]")
+        if deep_cost_line is not None:
+            console.print(f"\n  {deep_cost_line}")
+
+    console.print("\n[bold]Summary[/bold]")
+    console.print(f"  {skill_proposal_count} new skill proposal(s)")
+    console.print(f"  {project_proposal_count} new project proposal(s)")
+    console.print(f"  {len(theme_suggestions)} theme suggestion(s)")
+
+    if not proposals and not theme_suggestions:
+        console.print("[bold green]No new skill, project, or theme proposals found.[/bold green]")
+        return
+
+    if not apply:
+        console.print(
+            "[bold blue]Dry run only.[/bold blue] Re-run with `pd dossier sync-skills --apply` to persist changes."
+        )
+        return
+
+    apply_sync_proposals(dossier, proposals)
+    _seed_programming_languages(dossier, summaries)
+    existing_domain_tags = {
+        tag.strip().lower()
+        for tag in dossier.capabilities.domain_expertise
+        if tag.strip()
+    }
+    applied_theme_count = 0
+    for suggestion in theme_suggestions:
+        normalized = suggestion.tag.strip().lower()
+        if normalized in existing_domain_tags:
+            continue
+        dossier.capabilities.domain_expertise.append(suggestion.tag)
+        existing_domain_tags.add(normalized)
+        applied_theme_count += 1
+    write_operator_dossier(dossier, dossier_path)
+    console.print(
+        f"[bold green]Applied {len(proposals) + applied_theme_count} proposal(s)[/bold green] to {dossier_path}"
+    )
+
+
+@dossier_app.command("sync-tags")
+def dossier_sync_tags():
+    """Regenerate Layer 5 connection-surface tags from dossier Layers 1-4."""
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    before_surface = operator_dossier_to_dict(dossier)["connection_surface"]
+    sync_connection_surface(dossier)
+    after_surface = operator_dossier_to_dict(dossier)["connection_surface"]
+    summary_table = Table(title="Tag Sync Summary")
+    summary_table.add_column("Category")
+    summary_table.add_column("Before")
+    summary_table.add_column("After")
+    summary_table.add_column("Change")
+    total_before = 0
+    total_after = 0
+    for field_name in [
+        "experience_tags",
+        "topic_tags",
+        "geographic_tags",
+        "education_tags",
+        "industry_tags",
+        "hobby_tags",
+        "philosophy_tags",
+    ]:
+        before_tags = before_surface.get(field_name, [])
+        after_tags = after_surface.get(field_name, [])
+        total_before += len(before_tags)
+        total_after += len(after_tags)
+        if field_name == "philosophy_tags":
+            change = "preserved, manual"
+        else:
+            added = sorted(set(after_tags) - set(before_tags))
+            removed = sorted(set(before_tags) - set(after_tags))
+            if added and removed:
+                change = f"+{len(added)} / -{len(removed)}"
+            elif added:
+                change = f"+{len(added)}: {', '.join(added[:3])}"
+            elif removed:
+                change = f"-{len(removed)}: {', '.join(removed[:3])}"
+            else:
+                change = "unchanged"
+        summary_table.add_row(
+            field_name,
+            str(len(before_tags)),
+            str(len(after_tags)),
+            change,
+        )
+    write_operator_dossier(dossier, dossier_path)
+    console.print("[bold]Tag Sync — Deriving connection_surface from Layers 1-4[/bold]")
+    console.print(summary_table)
+    console.print(
+        f"[bold]Total:[/bold] {total_before} → {total_after} tag(s)"
+    )
+    console.print(
+        f"[bold green]Updated[/bold green] {dossier_path}"
+    )
+
+
+@dossier_app.command("show")
+def dossier_show(
+    layer: Optional[int] = typer.Option(
+        None,
+        "--layer",
+        help="Show only a specific dossier layer (1-5).",
+    ),
+    tags_only: bool = typer.Option(
+        False,
+        "--tags-only",
+        help="Show only Layer 5 connection-surface tags.",
+    ),
+):
+    """Display the dossier in human-readable terminal output."""
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+
+    if tags_only:
+        _print_connection_surface_layer(dossier)
+        return
+
+    if layer is not None:
+        layer_mapping = {
+            1: "identity",
+            2: "capabilities",
+            3: "network",
+            4: "positioning",
+            5: "connection_surface",
+        }
+        section_name = layer_mapping.get(layer)
+        if section_name is None:
+            console.print("[bold red]Layer must be between 1 and 5.[/bold red]")
+            raise typer.Exit(code=1)
+        if layer == 2:
+            _print_capabilities_layer(dossier)
+            return
+        if layer == 1:
+            _print_identity_layer(dossier)
+            return
+        if layer == 3:
+            _print_network_layer(dossier)
+            return
+        if layer == 4:
+            _print_positioning_layer(dossier)
+            return
+        if layer == 5:
+            _print_connection_surface_layer(dossier)
+            return
+        return
+
+    console.print("[bold]Operator Dossier[/bold]")
+    console.print()
+    _print_identity_layer(dossier)
+    console.print()
+    _print_capabilities_layer(dossier)
+    console.print()
+    _print_network_layer(dossier)
+    console.print()
+    _print_positioning_layer(dossier)
+    console.print()
+    _print_connection_surface_layer(dossier)
+
+
+@dossier_app.command("export")
+def dossier_export(
+    format: str = typer.Option(
+        "json",
+        "--format",
+        help="Output format: json, yaml, or tags-only.",
+    ),
+    output: Optional[Path] = typer.Option(
+        None,
+        "--output",
+        help="Write the export to a file instead of stdout.",
+    ),
+    layer5_only: bool = typer.Option(
+        False,
+        "--layer5-only",
+        help="Export only the connection_surface payload.",
+    ),
+):
+    """Export the dossier for downstream systems or inspection."""
+    dossier_path = get_dossier_path()
+    if not dossier_path.exists():
+        console.print(
+            f"[bold red]Dossier file not found:[/bold red] {dossier_path}"
+        )
+        console.print("Run `pd dossier init` first.")
+        raise typer.Exit(code=1)
+
+    dossier = load_operator_dossier(dossier_path)
+    data = operator_dossier_to_dict(dossier)
+
+    if layer5_only:
+        export_payload = {
+            "version": data["version"],
+            "connection_surface": data["connection_surface"],
+        }
+    else:
+        export_payload = data
+
+    normalized_format = format.strip().lower()
+    if normalized_format == "json":
+        payload_text = json.dumps(export_payload, indent=2, sort_keys=False)
+    elif normalized_format == "yaml":
+        payload_text = yaml.safe_dump(
+            export_payload,
+            sort_keys=False,
+            allow_unicode=True,
+        )
+    elif normalized_format == "tags-only":
+        payload_text = "\n".join(
+            f"{key}: {', '.join(values) or '-'}"
+            for key, values in data["connection_surface"].items()
+        )
+    else:
+        console.print(
+            "[bold red]Format must be `json`, `yaml`, or `tags-only`.[/bold red]"
+        )
+        raise typer.Exit(code=1)
+
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(payload_text, encoding="utf-8")
+        console.print(f"[bold green]Exported dossier[/bold green] to {output}")
+        return
+
+    typer.echo(payload_text)
 
 
 # Initialize logging globally with default, will be re-configured if needed
