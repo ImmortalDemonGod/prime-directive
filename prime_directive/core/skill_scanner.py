@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+from itertools import pairwise
 import json
 from pathlib import Path
 import re
@@ -490,7 +491,7 @@ def build_theme_suggestions(
         per_text_tags: set[str] = set()
         for token in tokens:
             per_text_tags.add(normalize_tag(token))
-        for left, right in zip(tokens, tokens[1:]):
+        for left, right in pairwise(tokens):
             if left == right:
                 continue
             per_text_tags.add(normalize_tag(f"{left} {right}"))
