@@ -258,7 +258,10 @@ def load_operator_dossier(path: Optional[Path] = None) -> OperatorDossier:
     target_path = path or get_dossier_path()
     report, raw_data = validate_operator_dossier_file(target_path)
     if report.errors:
-        raise ValueError("; ".join(report.errors))
+        formatted_errors = "\n".join(f"- {item}" for item in report.errors)
+        raise ValueError(
+            f"Operator dossier validation failed for {target_path}:\n{formatted_errors}"
+        )
     return parse_operator_dossier(raw_data)
 
 
