@@ -282,9 +282,9 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
         },
     )
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
-        "prime_directive.bin.pd.load_config", return_value=cfg
-    ), patch(
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ), patch("prime_directive.bin.pd.load_config", return_value=cfg), patch(
         "prime_directive.core.skill_scanner.load_empire_if_exists",
         return_value=empire,
     ):
@@ -309,6 +309,49 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
     assert project.description == "Repo 1 description"
     assert "full-stack" in project.capability_tags
     assert "experimental" in project.capability_tags
+
+
+def test_dossier_sync_skills_rejects_apply_and_dry_run_together(tmp_path):
+    repo_path = tmp_path / "repo1"
+    repo_path.mkdir()
+    (repo_path / "pyproject.toml").write_text(
+        """
+[project]
+name = "repo1"
+dependencies = ["httpx>=0.27.0"]
+""".strip(),
+        encoding="utf-8",
+    )
+
+    cfg = OmegaConf.create(
+        {
+            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "repos": {
+                "repo1": {
+                    "id": "repo1",
+                    "path": str(repo_path),
+                    "priority": 10,
+                    "active_branch": "main",
+                }
+            },
+        }
+    )
+
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    write_operator_dossier(default_operator_dossier(), dossier_path)
+
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ), patch("prime_directive.bin.pd.load_config", return_value=cfg):
+        result = runner.invoke(
+            app,
+            ["dossier", "sync-skills", "--apply", "--dry-run"],
+        )
+
+    assert result.exit_code != 0
+    assert "--apply` and `--dry-run` cannot be used together" in result.output
 
 
 def test_build_theme_suggestions_extracts_repeated_snapshot_themes():
