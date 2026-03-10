@@ -1,13 +1,40 @@
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
-from prime_directive.bin.pd import app
+from prime_directive.bin.pd import app, load_config
 from omegaconf import OmegaConf
 from datetime import datetime, timezone
 
 from prime_directive.core.db import EventLog, EventType
 
 runner = CliRunner()
+
+
+def test_load_config_accepts_user_defined_repo_ids(tmp_path):
+    config_dir = tmp_path / ".prime-directive"
+    config_dir.mkdir(parents=True)
+    user_config = config_dir / "config.yaml"
+    user_config.write_text(
+        """
+system:
+  db_path: ~/.prime-directive/custom.db
+  log_path: ~/.prime-directive/custom.log
+repos:
+  demo-py:
+    id: demo-py
+    path: /tmp/demo-py
+    priority: 10
+    active_branch: main
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with patch("prime_directive.bin.pd.Path.home", return_value=tmp_path):
+        cfg = load_config()
+
+    assert "demo-py" in cfg.repos
+    assert cfg.repos["demo-py"].path == "/tmp/demo-py"
+    assert str(cfg.system.db_path).endswith("custom.db")
 
 
 @pytest.fixture
@@ -370,3 +397,132 @@ def test_metrics_reports_ttc(
     assert result.exit_code == 0
     assert "Prime Directive Metrics" in result.stdout
     assert "repo1" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_init_with_force_overwrites_existing_file(mock_load, tmp_path, mock_config):
+    """Test that dossier init --force overwrites an existing dossier file."""
+    cfg = OmegaConf.create(
+        {
+            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "repos": {},
+        }
+    )
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    dossier_path.write_text("old: content", encoding="utf-8")
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=cfg
+    ):
+        result = runner.invoke(app, ["dossier", "init", "--force"], catch_exceptions=False)
+
+    assert result.exit_code == 0
+    assert dossier_path.exists()
+    import yaml
+
+    data = yaml.safe_load(dossier_path.read_text(encoding="utf-8"))
+    assert data["version"] == "3.1"
+    assert "old: content" not in dossier_path.read_text(encoding="utf-8")
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_show_missing_file_exits_with_error(mock_load, tmp_path, mock_config):
+    """Test that dossier show exits with error when dossier file doesn't exist."""
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=mock_config
+    ):
+        result = runner.invoke(app, ["dossier", "show"], catch_exceptions=False)
+
+    assert result.exit_code == 1
+    assert "Dossier file not found" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_show_with_invalid_layer_exits_with_error(mock_load, tmp_path, mock_config):
+    """Test that dossier show --layer with invalid layer number exits with error."""
+    from prime_directive.core.identity import default_operator_dossier, write_operator_dossier
+
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    write_operator_dossier(default_operator_dossier(), dossier_path)
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=mock_config
+    ):
+        result = runner.invoke(
+            app, ["dossier", "show", "--layer", "6"], catch_exceptions=False
+        )
+
+    assert result.exit_code == 1
+    assert "must be between 1 and 5" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_export_with_invalid_format_exits_with_error(
+    mock_load, tmp_path, mock_config
+):
+    """Test that dossier export with invalid format exits with error."""
+    from prime_directive.core.identity import default_operator_dossier, write_operator_dossier
+
+    dossier_dir = tmp_path / ".prime-directive"
+    dossier_dir.mkdir(parents=True)
+    dossier_path = dossier_dir / "operator_dossier.yaml"
+    write_operator_dossier(default_operator_dossier(), dossier_path)
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=mock_config
+    ):
+        result = runner.invoke(
+            app,
+            ["dossier", "export", "--format", "xml"],
+            catch_exceptions=False,
+        )
+
+    assert result.exit_code == 1
+    assert "Format must be" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_sync_skills_missing_file_exits_with_error(mock_load, tmp_path, mock_config):
+    """Test that dossier sync-skills exits with error when dossier file doesn't exist."""
+    cfg = OmegaConf.create(
+        {
+            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "repos": {},
+        }
+    )
+
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=cfg
+    ):
+        result = runner.invoke(app, ["dossier", "sync-skills"], catch_exceptions=False)
+
+    assert result.exit_code == 1
+    assert "Dossier file not found" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_sync_tags_missing_file_exits_with_error(mock_load, tmp_path, mock_config):
+    """Test that dossier sync-tags exits with error when dossier file doesn't exist."""
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=mock_config
+    ):
+        result = runner.invoke(app, ["dossier", "sync-tags"], catch_exceptions=False)
+
+    assert result.exit_code == 1
+    assert "Dossier file not found" in result.stdout
+
+
+@patch("prime_directive.bin.pd.load_config")
+def test_dossier_validate_missing_file_exits_with_error(mock_load, tmp_path, mock_config):
+    """Test that dossier validate exits with error when dossier file doesn't exist."""
+    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
+        "prime_directive.bin.pd.load_config", return_value=mock_config
+    ):
+        result = runner.invoke(app, ["dossier", "validate"], catch_exceptions=False)
+
+    assert result.exit_code == 1
+    assert "Dossier file not found" in result.stdout
