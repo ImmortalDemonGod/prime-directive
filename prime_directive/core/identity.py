@@ -720,11 +720,16 @@ def _normalize_tag_sequence(
 ) -> tuple[list[str], list[str]]:
     normalized_tags: list[str] = []
     fixes: list[str] = []
+    seen: set[str] = set()
     for tag in tags:
         normalized = normalize_tag(tag)
-        normalized_tags.append(normalized)
         if tag != normalized:
             fixes.append(f'{location}: "{tag}" -> "{normalized}"')
+        if normalized in seen:
+            fixes.append(f'{location}: removed duplicate "{normalized}"')
+            continue
+        seen.add(normalized)
+        normalized_tags.append(normalized)
     return normalized_tags, fixes
 
 
@@ -734,6 +739,25 @@ def _normalized_tag_set(values: list[Any]) -> set[str]:
         for value in values
         if str(value).strip()
     }
+
+
+def migrate_operator_dossier(raw_data: dict[str, Any]) -> dict[str, Any]:
+    """Migrate a dossier from an older version to 3.1 in-place.
+
+    Currently handles v3.0 → v3.1 (no structural changes; version bump only).
+    Returns the mutated raw_data dict.
+    Raises ValueError if the version is unrecognised.
+    """
+    version = str(raw_data.get("version", "")).strip()
+    if version == "3.1":
+        return raw_data
+    if version == "3.0":
+        raw_data["version"] = "3.1"
+        return raw_data
+    raise ValueError(
+        f"Cannot migrate dossier from version {version!r}; "
+        "only 3.0 → 3.1 is supported"
+    )
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
