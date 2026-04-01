@@ -1860,8 +1860,11 @@ def sitrep(
                     "[/dim]"
                 )
 
-                # Build historical narrative
+                # Build historical narrative with a character budget
+                # ~12 000 chars ≈ 3 000 tokens, leaving room for prompt overhead
+                _MAX_NARRATIVE_CHARS = 12_000
                 history_entries = []
+                chars_used = 0
                 for i, snap in enumerate(reversed(snapshots)):  # oldest first
                     entry = f"--- Snapshot {i+1} ({snap.timestamp}) ---\n"
                     if snap.human_objective:
@@ -1874,7 +1877,13 @@ def sitrep(
                         entry += f"Notes: {snap.human_note}\n"
                     entry += f"AI Summary: {snap.ai_sitrep}\n"
                     entry += f"Git State: {snap.git_status_summary}\n"
+                    if chars_used + len(entry) > _MAX_NARRATIVE_CHARS:
+                        history_entries.append(
+                            f"[{len(snapshots) - i} older snapshot(s) truncated]"
+                        )
+                        break
                     history_entries.append(entry)
+                    chars_used += len(entry)
 
                 historical_narrative = "\n".join(history_entries)
 
@@ -2172,6 +2181,20 @@ def doctor():
             checks.append(
                 ("Installation", "✅", "Single installation (editable)")
             )
+
+    # 5. Shell integration
+    current_shell = os.environ.get("SHELL", "")
+    if "zsh" in current_shell:
+        checks.append(("Shell Integration", "✅", f"zsh detected ({current_shell})"))
+    elif current_shell:
+        checks.append((
+            "Shell Integration",
+            "⚠️",
+            f"{current_shell} detected — shell_integration.zsh is ZSH-only. "
+            "Source prime_directive/system/shell_integration.bash for Bash.",
+        ))
+    else:
+        checks.append(("Shell Integration", "⚠️", "$SHELL not set; cannot verify integration"))
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
