@@ -25,6 +25,23 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     if not os.path.exists(tasks_path):
         return None
 
+    # Warn if tasks.json hasn't been modified in >48 hours while the repo
+    # is clearly active (git activity is checked by the caller — here we
+    # just surface the staleness so the SITREP can flag it).
+    _STALE_THRESHOLD_SECONDS = 48 * 3600
+    try:
+        mtime = os.path.getmtime(tasks_path)
+        age_seconds = __import__("time").time() - mtime
+        if age_seconds > _STALE_THRESHOLD_SECONDS:
+            import warnings
+            warnings.warn(
+                f"tasks.json has not been updated in "
+                f"{age_seconds / 3600:.0f}h — task data may be stale",
+                stacklevel=2,
+            )
+    except OSError:
+        pass
+
     try:
         with open(tasks_path, "r") as f:
             data = json.load(f)
