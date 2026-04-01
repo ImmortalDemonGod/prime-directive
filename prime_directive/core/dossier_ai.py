@@ -161,17 +161,32 @@ async def generate_theme_suggestions_with_ai(
         "Return only valid JSON. Tags must be lowercase, hyphenated, and specific enough for operator identity matching."
     )
 
+    async def finalize_error(
+        used_provider: str,
+        used_model: str,
+        error: Exception,
+        *,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
+    ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+        cost = estimate_cost(output_tokens, cost_per_1k_tokens) if used_provider == "openai" else 0.0
+        await _log_usage(
+            db_path,
+            used_provider,
+            used_model,
+            input_tokens,
+            output_tokens,
+            cost,
+            False,
+        )
+        return [], None, f"Error generating theme suggestions: {error!s}"
+
     async def finalize_success(
         response_text: str,
         used_provider: str,
         used_model: str,
         usage: Optional[dict[str, int]],
     ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
-        suggestions = _parse_theme_suggestions_response(
-            response_text,
-            existing_tags,
-            limit,
-        )
         if usage is not None:
             input_tokens = usage.get("prompt_tokens", 0)
             output_tokens = usage.get("completion_tokens", 0)
@@ -179,6 +194,20 @@ async def generate_theme_suggestions_with_ai(
             input_tokens = _count_tokens(f"{system_prompt}\n{prompt}", used_model)
             output_tokens = _count_tokens(response_text, used_model)
         cost = estimate_cost(output_tokens, cost_per_1k_tokens) if used_provider == "openai" else 0.0
+        try:
+            suggestions = _parse_theme_suggestions_response(
+                response_text,
+                existing_tags,
+                limit,
+            )
+        except (ValueError, json.JSONDecodeError) as parse_error:
+            return await finalize_error(
+                used_provider,
+                used_model,
+                parse_error,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+            )
         await _log_usage(
             db_path,
             used_provider,
@@ -199,22 +228,6 @@ async def generate_theme_suggestions_with_ai(
             ),
             None,
         )
-
-    async def finalize_error(
-        used_provider: str,
-        used_model: str,
-        error: Exception,
-    ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
-        await _log_usage(
-            db_path,
-            used_provider,
-            used_model,
-            0,
-            0,
-            0.0,
-            False,
-        )
-        return [], None, f"Error generating theme suggestions: {error!s}"
 
     if provider == "openai":
         api_key = get_openai_api_key()
