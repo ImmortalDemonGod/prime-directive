@@ -35,6 +35,11 @@ def _count_tokens(text: str, model: str) -> int:
             enc = tiktoken.get_encoding("cl100k_base")
 
         return len(enc.encode(text))
+    except ImportError:
+        logger.warning(
+            "tiktoken not installed; token counts will be 0 and cost tracking inactive"
+        )
+        return len(text) // 4
     except Exception:
         return 0
 
