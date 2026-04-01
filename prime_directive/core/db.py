@@ -2,8 +2,9 @@ import os
 import threading
 from datetime import datetime, timezone
 from enum import Enum
-from typing import AsyncGenerator, Dict, Optional
+from typing import Any, AsyncGenerator, Dict, Optional
 
+import sqlalchemy
 from sqlalchemy import Index, event
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -149,10 +150,48 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
         return engine
 
 
-async def init_db(db_path: str = "data/prime.db"):
+async def init_db(db_path: str = "data/prime.db") -> None:
+    await migrate_db(db_path)
+
+
+# Schema version history:
+#   0 → 1: initial schema (Repository, ContextSnapshot, EventLog, AIUsageLog)
+_CURRENT_SCHEMA_VERSION = 1
+
+_MIGRATIONS: dict[int, list[str]] = {
+    1: [],  # baseline — tables created by create_all; no ALTER statements needed
+}
+
+
+async def migrate_db(db_path: str = "data/prime.db") -> None:
+    """Apply any pending schema migrations based on PRAGMA user_version.
+
+    Safe to call on every startup: it is a no-op when the DB is already
+    at the current version.  New columns should be added here as
+    ``ALTER TABLE … ADD COLUMN …`` statements keyed by the target version.
+    """
     engine = get_engine(db_path)
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
+
+        def _get_version(sync_conn: Any) -> int:
+            row = sync_conn.execute(
+                sqlalchemy.text("PRAGMA user_version")
+            ).fetchone()
+            return int(row[0]) if row else 0
+
+        def _set_version(sync_conn: Any, version: int) -> None:
+            sync_conn.execute(
+                sqlalchemy.text(f"PRAGMA user_version = {version}")
+            )
+
+        current = await conn.run_sync(_get_version)
+
+        for version in range(current + 1, _CURRENT_SCHEMA_VERSION + 1):
+            statements = _MIGRATIONS.get(version, [])
+            for sql in statements:
+                await conn.execute(sqlalchemy.text(sql))
+            await conn.run_sync(lambda c, v=version: _set_version(c, v))
 
 
 async def get_session(
