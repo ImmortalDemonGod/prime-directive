@@ -761,6 +761,7 @@ def dossier_sync_skills(
         dossier.capabilities.domain_expertise.append(suggestion.tag)
         existing_domain_tags.add(normalized)
         applied_theme_count += 1
+    sync_connection_surface(dossier)
     write_operator_dossier(dossier, dossier_path)
     console.print(
         f"[bold green]Applied {len(proposals) + applied_theme_count} proposal(s)[/bold green] to {dossier_path}"
