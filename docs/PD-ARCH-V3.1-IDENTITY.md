@@ -104,7 +104,7 @@ The following V3.0 components are completely untouched by V3.1:
 
 The relationship between V3.0 and V3.1 is **producer-consumer**, not **bidirectional**.
 
-```
+```text
 V3.0 (Portfolio Engine)                    V3.1 (Identity Protocol)
 ─────────────────────                      ────────────────────────
 
@@ -289,11 +289,11 @@ capabilities:
   domain_expertise:
     - "forensic-auditing"
     - "verification-systems"
-    - "ML-pipeline"
+    - "ml-pipeline"
     - "environmental-data"
     - "nuclear-electronics"
     - "developer-tooling"
-    - "AST-mutation-testing"
+    - "ast-mutation-testing"
     - "agent-safety"
 
   # Published research with connection-surface tags
@@ -313,12 +313,12 @@ capabilities:
       url: "https://github.com/ImmortalDemonGod/prime-directive"
       description: "CLI tool for multi-project context preservation and portfolio management"
       tech_stack: ["Python", "Typer", "SQLModel", "Hydra", "Rich", "asyncio"]
-      capability_tags: ["developer-tooling", "CLI-design", "async-python", "AI-integration"]
+      capability_tags: ["developer-tooling", "cli-design", "async-python", "ai-integration"]
     - name: "rna-predict"
       url: null
       description: "RNA 3D structure prediction using AlphaFold 3-inspired architecture"
       tech_stack: ["Python", "PyTorch", "Hydra", "pytest"]
-      capability_tags: ["ML-pipeline", "structural-biology", "diffusion-models"]
+      capability_tags: ["ml-pipeline", "structural-biology", "diffusion-models"]
     - name: "black-box"
       url: null
       description: "Strategic outreach and intelligence platform"
@@ -375,7 +375,7 @@ network:
   # Industries operated in — tagged for matching
   industries:
     - "defense"
-    - "AI-agents"
+    - "ai-agents"
     - "devtools"
     - "environmental"
     - "fintech"
@@ -475,7 +475,7 @@ connection_surface:
   topic_tags:
     - "verification"
     - "forensic-auditing"
-    - "ML-pipeline"
+    - "ml-pipeline"
     - "developer-tooling"
     - "async-python"
     - "diffusion-models"
@@ -497,7 +497,7 @@ connection_surface:
   # Derived from network.industries
   industry_tags:
     - "defense"
-    - "AI-agents"
+    - "ai-agents"
     - "devtools"
     - "environmental"
     - "fintech"
@@ -904,7 +904,7 @@ V3.1 adds a new Typer command group (`pd dossier`) to the existing CLI. All comm
 
 ### 5.1 Command Overview
 
-```
+```text
 pd dossier <COMMAND> [OPTIONS]
 
 Commands:
@@ -1006,11 +1006,11 @@ $ pd dossier show --tags-only
 🛡️ Operator Connection Surface (Layer 5)
 
   Experience:   military, career-pivot, self-taught, research, open-source
-  Topics:       verification, forensic-auditing, ML-pipeline, developer-tooling,
+  Topics:       verification, forensic-auditing, ml-pipeline, developer-tooling,
                 async-python, diffusion-models, compositional-gap, agent-safety
   Geography:    charleston-sc, san-francisco-ca
   Education:    university-of-example, computer-science, artificial-intelligence
-  Industries:   defense, AI-agents, devtools, environmental, fintech
+  Industries:   defense, ai-agents, devtools, environmental, fintech
   Hobbies:      backpacking, chess, technical-writing, open-source
   Philosophy:   verification-over-trust, ownership, systems-thinking,
                 craft-over-speed, anti-hype
@@ -1036,9 +1036,9 @@ $ pd dossier show --layer 2
 
 ──── Domain Expertise (8) ───────────────────────────
 
-  forensic-auditing, verification-systems, ML-pipeline,
+  forensic-auditing, verification-systems, ml-pipeline,
   environmental-data, nuclear-electronics, developer-tooling,
-  AST-mutation-testing, agent-safety
+  ast-mutation-testing, agent-safety
 
 ──── Projects Built (3) ─────────────────────────────
 
@@ -1214,10 +1214,10 @@ Options:
   "version": "3.1",
   "connection_surface": {
     "experience_tags": ["military", "career-pivot", "self-taught", "research", "open-source"],
-    "topic_tags": ["verification", "forensic-auditing", "ML-pipeline", "developer-tooling", "async-python", "diffusion-models", "compositional-gap", "agent-safety", "code-quality"],
+    "topic_tags": ["verification", "forensic-auditing", "ml-pipeline", "developer-tooling", "async-python", "diffusion-models", "compositional-gap", "agent-safety", "code-quality"],
     "geographic_tags": ["charleston-sc", "san-francisco-ca"],
     "education_tags": ["university-of-example", "computer-science", "artificial-intelligence"],
-    "industry_tags": ["defense", "AI-agents", "devtools", "environmental", "fintech"],
+    "industry_tags": ["defense", "ai-agents", "devtools", "environmental", "fintech"],
     "hobby_tags": ["backpacking", "chess", "technical-writing", "open-source"],
     "philosophy_tags": ["verification-over-trust", "ownership", "systems-thinking", "craft-over-speed", "anti-hype"]
   }
@@ -1290,10 +1290,10 @@ interface OperatorConnectionSurface {
   version: string;                    // "3.1"
   connection_surface: {
     experience_tags: string[];        // e.g., ["military", "career-pivot"]
-    topic_tags: string[];             // e.g., ["verification", "ML-pipeline"]
+    topic_tags: string[];             // e.g., ["verification", "ml-pipeline"]
     geographic_tags: string[];        // e.g., ["charleston-sc"]
     education_tags: string[];         // e.g., ["university-of-example"]
-    industry_tags: string[];          // e.g., ["defense", "AI-agents"]
+    industry_tags: string[];          // e.g., ["defense", "ai-agents"]
     hobby_tags: string[];             // e.g., ["backpacking", "chess"]
     philosophy_tags: string[];        // e.g., ["craft-over-speed"]
   };
@@ -1497,11 +1497,11 @@ function generateHooks(
 **Operator tags** (from dossier export):
 ```
 experience:  military, career-pivot, self-taught, research, open-source
-topics:      verification, forensic-auditing, ML-pipeline, developer-tooling
+topics:      verification, forensic-auditing, ml-pipeline, developer-tooling
 hobbies:     backpacking, chess, technical-writing
 philosophy:  verification-over-trust, ownership, craft-over-speed
 geography:   charleston-sc, san-francisco-ca
-industries:  defense, AI-agents, devtools
+industries:  defense, ai-agents, devtools
 ```
 
 **Target "Patrick" tags** (from black-box ExtractedSignals, normalized):
