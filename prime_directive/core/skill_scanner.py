@@ -162,7 +162,11 @@ def build_sync_proposals(
             proposed_for_repo.add(normalized)
 
         empire_project = empire_projects.get(repo_id)
-        if empire_project is not None and repo_id.lower() not in existing_projects:
+        if (
+            empire_project is not None
+            and repo_id.lower() not in existing_projects
+            and repo_path.exists()
+        ):
             source = "empire.yaml"
             proposals.append(
                 SyncProposal(
@@ -240,6 +244,7 @@ def scan_repository(repo_path: Path) -> list[DetectedSkill]:
     cargo_toml_path = repo_path / "Cargo.toml"
     go_mod_path = repo_path / "go.mod"
 
+    requirements_path = repo_path / "requirements.txt"
     if pyproject_path.exists():
         detected.append(
             DetectedSkill(
@@ -249,6 +254,15 @@ def scan_repository(repo_path: Path) -> list[DetectedSkill]:
             )
         )
         detected.extend(scan_pyproject_dependencies(pyproject_path))
+    elif requirements_path.exists():
+        detected.append(
+            DetectedSkill(
+                skill_name="Python",
+                source=str(requirements_path),
+                confidence=LANGUAGE_CONFIDENCE,
+            )
+        )
+        detected.extend(scan_requirements_txt(requirements_path))
 
     if package_json_path.exists():
         language_name = "TypeScript" if tsconfig_path.exists() else "JavaScript"
@@ -336,6 +350,29 @@ def scan_pyproject_dependencies(pyproject_path: Path) -> list[DetectedSkill]:
                 )
             )
 
+    return detected
+
+
+def scan_requirements_txt(requirements_path: Path) -> list[DetectedSkill]:
+    detected: list[DetectedSkill] = []
+    try:
+        content = requirements_path.read_text(encoding="utf-8")
+    except OSError:
+        return detected
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or line.startswith("-"):
+            continue
+        name = extract_requirement_name(line)
+        if not name:
+            continue
+        detected.append(
+            DetectedSkill(
+                skill_name=format_skill_name(name),
+                source=str(requirements_path),
+                confidence=RUNTIME_CONFIDENCE,
+            )
+        )
     return detected
 
 
