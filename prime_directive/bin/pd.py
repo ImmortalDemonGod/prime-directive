@@ -83,6 +83,8 @@ logger = logging.getLogger("prime_directive")
 _EXIT_CODE_SHELL_ATTACH = 88
 
 app.add_typer(dossier_app, name="dossier")
+empire_app = typer.Typer()
+app.add_typer(empire_app, name="empire")
 
 
 def _normalize_repo_id(repo_id: str) -> str:
@@ -513,6 +515,53 @@ def dossier_init(
     )
 
 
+@empire_app.command("init")
+def empire_init(
+    force: bool = typer.Option(False, "--force", help="Overwrite existing empire.yaml"),
+) -> None:
+    """Generate a skeleton empire.yaml at ~/.prime-directive/empire.yaml."""
+    from prime_directive.core.empire import get_empire_path, ProjectRole, StrategicWeight
+
+    empire_path = get_empire_path()
+    if empire_path.exists() and not force:
+        console.print(
+            f"[bold red]empire.yaml already exists:[/bold red] {empire_path}"
+        )
+        console.print("Use --force to overwrite.")
+        raise typer.Exit(code=1)
+
+    cfg = load_config()
+    repo_ids = list(getattr(cfg, "repos", {}).keys())
+
+    skeleton: dict = {
+        "version": "3.0",
+        "projects": {},
+    }
+    for repo_id in repo_ids:
+        skeleton["projects"][repo_id] = {
+            "domain": "",
+            "role": ProjectRole.RESEARCH.value,
+            "strategic_weight": StrategicWeight.MEDIUM.value,
+            "description": "",
+            "depends_on": [],
+        }
+
+    empire_path.parent.mkdir(parents=True, exist_ok=True)
+    import yaml as _yaml
+    with empire_path.open("w", encoding="utf-8") as fh:
+        _yaml.safe_dump(skeleton, fh, sort_keys=False, allow_unicode=True)
+
+    console.print(f"[bold green]Empire skeleton written to[/bold green] {empire_path}")
+    console.print(
+        f"  {len(repo_ids)} repo(s) scaffolded. "
+        "Edit role/strategic_weight/description/depends_on for each project."
+    )
+    roles = ", ".join(r.value for r in ProjectRole)
+    weights = ", ".join(w.value for w in StrategicWeight)
+    console.print(f"  Valid roles: {roles}")
+    console.print(f"  Valid weights: {weights}")
+
+
 @dossier_app.command("validate")
 def dossier_validate():
     """Parse and validate the operator dossier, reporting errors and warnings."""
@@ -664,6 +713,9 @@ def dossier_sync_skills(
                 cost_per_1k_tokens=ai_cost_per_1k_tokens,
             )
         )
+        if deep_error is not None:
+            console.print(f"[bold red]Deep analysis error:[/bold red] {deep_error}")
+            raise typer.Exit(code=1)
         if deep_metadata is not None:
             total_tokens = deep_metadata.input_tokens + deep_metadata.output_tokens
             deep_cost_line = (
