@@ -38,6 +38,12 @@ def _count_tokens(text: str, model: str) -> int:
             enc = tiktoken.get_encoding("cl100k_base")
 
         return len(enc.encode(text))
+    except ImportError:
+        import logging
+        logging.getLogger("prime_directive").warning(
+            "tiktoken not installed; token counts will be 0 and cost tracking inactive"
+        )
+        return 0
     except Exception:
         return 0
 
@@ -137,6 +143,7 @@ async def generate_theme_suggestions_with_ai(
     monthly_budget_usd: float,
     cost_per_1k_tokens: float,
     limit: int = 5,
+    max_prompt_chars: int = 12000,
 ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
     joined_snapshots = "\n\n".join(
         f"[{index}] {text.strip()}"
@@ -145,6 +152,8 @@ async def generate_theme_suggestions_with_ai(
     )
     if not joined_snapshots:
         return [], None, None
+    if len(joined_snapshots) > max_prompt_chars:
+        joined_snapshots = joined_snapshots[:max_prompt_chars]
 
     prompt = (
         "Recent context snapshots:\n"
