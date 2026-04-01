@@ -113,8 +113,8 @@ def test_dossier_init_creates_file(tmp_path):
         }
     )
     with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
-        "prime_directive.bin.pd.load_config", return_value=cfg
-    ):
+        "prime_directive.core.empire.Path.home", return_value=tmp_path
+    ), patch("prime_directive.bin.pd.load_config", return_value=cfg):
         result = runner.invoke(app, ["dossier", "init"], catch_exceptions=False)
 
     dossier_path = tmp_path / ".prime-directive" / "operator_dossier.yaml"
