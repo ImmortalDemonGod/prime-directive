@@ -54,7 +54,9 @@ def get_empire_path() -> Path:
     return Path.home() / ".prime-directive" / "empire.yaml"
 
 
-def load_empire_if_exists(cfg: Any, path: Optional[Path] = None) -> Optional[EmpireConfig]:
+def load_empire_if_exists(
+    cfg: Any, path: Optional[Path] = None
+) -> Optional[EmpireConfig]:
     target_path = path or get_empire_path()
     if not target_path.exists():
         return None
@@ -73,7 +75,9 @@ def load_empire_config(cfg: Any, path: Optional[Path] = None) -> EmpireConfig:
 def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
     version = str(raw_data.get("version", "")).strip()
     if version != "3.0":
-        raise ValueError(f'Invalid empire version: expected "3.0", got {version!r}')
+        raise ValueError(
+            f'Invalid empire version: expected "3.0", got {version!r}'
+        )
 
     raw_projects = raw_data.get("projects")
     if not isinstance(raw_projects, dict):
@@ -88,7 +92,9 @@ def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
                 f"Empire project `{project_id}` is not present in config.yaml repos"
             )
         if not isinstance(raw_project, dict):
-            raise ValueError(f"Empire project `{project_id}` must be a mapping")
+            raise ValueError(
+                f"Empire project `{project_id}` must be a mapping"
+            )
 
         role_value = str(raw_project.get("role", "")).strip()
         weight_value = str(raw_project.get("strategic_weight", "")).strip()
@@ -109,7 +115,9 @@ def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
 
         depends_on = raw_project.get("depends_on", [])
         if not isinstance(depends_on, list):
-            raise ValueError(f"Empire project `{project_id}` field `depends_on` must be a list")
+            raise ValueError(
+                f"Empire project `{project_id}` field `depends_on` must be a list"
+            )
 
         projects[project_id] = EmpireProject(
             id=project_id,
@@ -117,12 +125,16 @@ def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
             role=role,
             strategic_weight=strategic_weight,
             description=str(raw_project.get("description", "")).strip(),
-            depends_on=[str(item).strip() for item in depends_on if str(item).strip()],
+            depends_on=[
+                str(item).strip() for item in depends_on if str(item).strip()
+            ],
         )
 
     project_ids = set(projects.keys())
     for project in projects.values():
-        invalid_deps = [item for item in project.depends_on if item not in project_ids]
+        invalid_deps = [
+            item for item in project.depends_on if item not in project_ids
+        ]
         if invalid_deps:
             raise ValueError(
                 f"Empire project `{project.id}` has invalid depends_on entries: {', '.join(invalid_deps)}"
@@ -130,7 +142,9 @@ def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
 
     cycle = _find_cycle(projects)
     if cycle:
-        raise ValueError(f"Empire dependency graph contains a cycle: {' -> '.join(cycle)}")
+        raise ValueError(
+            f"Empire dependency graph contains a cycle: {' -> '.join(cycle)}"
+        )
 
     return EmpireConfig(version=version, projects=projects)
 
