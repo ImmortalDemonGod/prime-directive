@@ -35,40 +35,34 @@ async def ensure_session(
         return
 
     if returncode != 0:
-        # Create new session
-        if shutil.which("uv"):
-            cmd = [
-                "tmux",
-                "new-session",
-                "-d",
-                "-s",
-                session_name,
-                "-c",
-                repo_path,
-                "uv",
-                "shell",
-            ]
-        else:
-            shell = os.environ.get("SHELL") or "bash"
-            cmd = [
-                "tmux",
-                "new-session",
-                "-d",
-                "-s",
-                session_name,
-                "-c",
-                repo_path,
-                shell,
-            ]
+        # Create new session in the repo directory using the user's shell
+        shell = os.environ.get("SHELL") or "bash"
+        cmd = [
+            "tmux",
+            "new-session",
+            "-d",
+            "-s",
+            session_name,
+            "-c",
+            repo_path,
+            shell,
+        ]
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
-            await asyncio.wait_for(proc.wait(), timeout=5.0)
+            rc = await asyncio.wait_for(proc.wait(), timeout=5.0)
         except asyncio.TimeoutError:
             logger.error("tmux new-session timed out for %s", session_name)
+            return
+        if rc != 0:
+            logger.error(
+                "tmux new-session failed for %s (exit %d)",
+                session_name,
+                rc,
+            )
             return
 
     # Attach logic
