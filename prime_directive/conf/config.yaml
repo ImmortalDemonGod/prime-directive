@@ -23,98 +23,12 @@ system:
   auto_install_python_deps: false  # Auto-install allowlisted Python deps if missing
 
 repos:
-  # The system managing itself
+  # Default: prime-directive manages itself.
+  # Add your own repos in ~/.prime-directive/config.yaml (merged at load time).
   prime-directive:
     id: prime-directive
     path: ${oc.env:HOME}/prime-directive
     priority: 10
-    active_branch: main
-  # GitHub profile README repo
-  github-profile:
-    id: github-profile
-    path: ${oc.env:HOME}/ImmortalDemonGod-1
-    priority: 5
-    active_branch: main
-  # Flash Core
-  flashcore:
-    id: flashcore
-    path: ${oc.env:HOME}/flashcore
-    priority: 9
-    active_branch: main
-  pytest-error-fixing-framework:
-    id: pytest-error-fixing-framework
-    path: ${oc.env:HOME}/Pytest-Error-Fixing-Framework
-    priority: 8
-    active_branch: main
-  black-box:
-    id: black-box
-    path: ${oc.env:HOME}/black-box
-    priority: 10
-    active_branch: main
-  cultivation-os:
-    id: cultivation-os
-    path: ${oc.env:HOME}/cultivation-os
-    priority: 9
-    active_branch: main
-  openclaw-workspace:
-    id: openclaw-workspace
-    path: ${oc.env:HOME}/.openclaw/workspace
-    priority: 9
-    active_branch: main
-  aiv-protocol:
-    id: aiv-protocol
-    path: ${oc.env:HOME}/repos/aiv-protocol
-    priority: 8
-    active_branch: main
-  arc-taxonomy-reproduction:
-    id: arc-taxonomy-reproduction
-    path: ${oc.env:HOME}/arc-taxonomy-reproduction
-    priority: 5
-    active_branch: main
-  blue-thumb-dashboard:
-    id: blue-thumb-dashboard
-    path: ${oc.env:HOME}/blue-thumb-dashboard
-    priority: 7
-    active_branch: main
-  bluestream-test:
-    id: bluestream-test
-    path: ${oc.env:HOME}/bluestream-test
-    priority: 6
-    active_branch: master
-  ImmortalDemonGod:
-    id: ImmortalDemonGod
-    path: ${oc.env:HOME}/ImmortalDemonGod
-    priority: 6
-    active_branch: main
-  Holistic-Performance-Enhancement:
-    id: Holistic-Performance-Enhancement
-    path: /Volumes/Totallynotaharddrive/Holistic-Performance-Enhancement
-    priority: 6
-    active_branch: main
-  RNA-PREDICT:
-    id: RNA-PREDICT
-    path: /Volumes/Totallynotaharddrive/RNA_PREDICT
-    priority: 4
-    active_branch: main
-  bio-systems-engineering:
-    id: bio-systems-engineering
-    path: /Volumes/Totallynotaharddrive/bio-systems-engineering
-    priority: 5
-    active_branch: main
-  PrimordialEncounters:
-    id: PrimordialEncounters
-    path: /Volumes/Totallynotaharddrive/PrimordialEncounters
-    priority: 3
-    active_branch: main
-  DocInsight:
-    id: DocInsight
-    path: /Volumes/Totallynotaharddrive/DocInsight
-    priority: 3
-    active_branch: main
-  assignment1-basics:
-    id: assignment1-basics
-    path: /Volumes/Totallynotaharddrive/assignment1-basics
-    priority: 5
     active_branch: main
 
 hydra:
