@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import Counter
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -8,6 +9,8 @@ from pathlib import Path
 import re
 import tomllib
 from typing import Any
+
+logger = logging.getLogger("prime_directive")
 
 from prime_directive.core.empire import ProjectRole, load_empire_if_exists
 from prime_directive.core.identity import (
@@ -135,7 +138,11 @@ def build_sync_proposals(
 
     for repo_id, repo_cfg in cfg.repos.items():
         repo_path = Path(str(repo_cfg.path)).expanduser()
-        detected = scan_repository(repo_path)
+        try:
+            detected = scan_repository(repo_path)
+        except (OSError, ValueError) as exc:
+            logger.warning("Skipping repo %s: scan failed: %s", repo_id, exc)
+            continue
         tech_stack = sorted({item.skill_name for item in detected})
         summaries.append(
             RepoScanSummary(
