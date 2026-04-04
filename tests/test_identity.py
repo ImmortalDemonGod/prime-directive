@@ -459,3 +459,111 @@ def test_dossier_export_tags_only_to_stdout(tmp_path):
     assert result.exit_code == 0
     assert "topic_tags: developer-tooling" in result.stdout
     assert "philosophy_tags: verification-over-trust" in result.stdout
+
+
+import pytest
+
+from prime_directive.core.identity import (
+    migrate_operator_dossier,
+    validate_operator_dossier_data,
+)
+
+
+# ── migrate_operator_dossier ──
+
+
+def test_migrate_operator_dossier_v30_to_v31():
+    raw = {"version": "3.0", "identity": {}, "capabilities": {}}
+    result = migrate_operator_dossier(raw)
+    assert result["version"] == "3.1"
+    assert result is raw
+
+
+def test_migrate_operator_dossier_v31_is_noop():
+    raw = {"version": "3.1"}
+    result = migrate_operator_dossier(raw)
+    assert result["version"] == "3.1"
+
+
+def test_migrate_operator_dossier_unsupported_version_raises():
+    with pytest.raises(
+        ValueError, match="Cannot migrate dossier from version '2.0'"
+    ):
+        migrate_operator_dossier({"version": "2.0"})
+
+
+def test_migrate_operator_dossier_empty_version_raises():
+    with pytest.raises(ValueError, match="Cannot migrate"):
+        migrate_operator_dossier({})
+
+
+# ── validate_operator_dossier_data: auto-migration ──
+
+
+def test_validate_auto_migrates_v30_dossier():
+    raw = {
+        "version": "3.0",
+        "identity": {},
+        "capabilities": {},
+        "network": {},
+        "positioning": {},
+        "connection_surface": {},
+    }
+    report = validate_operator_dossier_data(raw)
+    assert raw["version"] == "3.1"
+    assert not any("Invalid dossier version" in e for e in report.errors)
+
+
+def test_validate_handles_yaml_float_version():
+    raw = {
+        "version": 3.1,
+        "identity": {},
+        "capabilities": {},
+        "network": {},
+        "positioning": {},
+        "connection_surface": {},
+    }
+    report = validate_operator_dossier_data(raw)
+    assert raw["version"] == "3.1"
+    assert not any("Invalid dossier version" in e for e in report.errors)
+
+
+def test_validate_handles_yaml_int_version():
+    raw = {
+        "version": 3,
+        "identity": {},
+        "capabilities": {},
+        "network": {},
+        "positioning": {},
+        "connection_surface": {},
+    }
+    report = validate_operator_dossier_data(raw)
+    assert any("Cannot migrate" in e for e in report.errors)
+
+
+def test_validate_handles_yaml_float_v30():
+    raw = {
+        "version": 3.0,
+        "identity": {},
+        "capabilities": {},
+        "network": {},
+        "positioning": {},
+        "connection_surface": {},
+    }
+    report = validate_operator_dossier_data(raw)
+    assert raw["version"] == "3.1"
+    assert not any("Invalid dossier version" in e for e in report.errors)
+
+
+def test_validate_unsupported_version_records_both_errors():
+    raw = {
+        "version": "1.0",
+        "identity": {},
+        "capabilities": {},
+        "network": {},
+        "positioning": {},
+        "connection_surface": {},
+    }
+    report = validate_operator_dossier_data(raw)
+    assert any("Cannot migrate" in e for e in report.errors)
+    assert any("Invalid dossier version" in e for e in report.errors)
