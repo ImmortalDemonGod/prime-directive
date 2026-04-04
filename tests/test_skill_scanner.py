@@ -5,7 +5,12 @@ from typer.testing import CliRunner
 
 from prime_directive.bin.pd import app
 from prime_directive.core.dossier_ai import AIAnalysisMetadata
-from prime_directive.core.empire import EmpireConfig, EmpireProject, ProjectRole, StrategicWeight
+from prime_directive.core.empire import (
+    EmpireConfig,
+    EmpireProject,
+    ProjectRole,
+    StrategicWeight,
+)
 from prime_directive.core.identity import (
     default_operator_dossier,
     load_operator_dossier,
@@ -168,11 +173,25 @@ dependencies = ["httpx>=0.27.0", "sqlmodel>=0.0.27"]
 
     assert len(summaries) == 1
     assert summaries[0].repo_id == "repo1"
-    assert any(item.action == "add_skill" and item.value_name == "httpx" for item in proposals)
-    assert any(item.action == "add_skill" and item.value_name == "SQLModel" for item in proposals)
-    assert any(item.action == "add_project" and item.value_name == "repo1" for item in proposals)
-    assert not any(item.action == "add_skill" and item.value_name == "Python" for item in proposals)
-    project_proposal = next(item for item in proposals if item.action == "add_project")
+    assert any(
+        item.action == "add_skill" and item.value_name == "httpx"
+        for item in proposals
+    )
+    assert any(
+        item.action == "add_skill" and item.value_name == "SQLModel"
+        for item in proposals
+    )
+    assert any(
+        item.action == "add_project" and item.value_name == "repo1"
+        for item in proposals
+    )
+    assert not any(
+        item.action == "add_skill" and item.value_name == "Python"
+        for item in proposals
+    )
+    project_proposal = next(
+        item for item in proposals if item.action == "add_project"
+    )
     assert project_proposal.project_description == "Repo 1 description"
     assert "developer-tooling" in project_proposal.project_capability_tags
     assert "infrastructure" in project_proposal.project_capability_tags
@@ -192,7 +211,10 @@ dependencies = ["httpx>=0.27.0"]
 
     cfg = OmegaConf.create(
         {
-            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "system": {
+                "db_path": ":memory:",
+                "log_path": str(tmp_path / "pd.log"),
+            },
             "repos": {
                 "repo1": {
                     "id": "repo1",
@@ -222,13 +244,19 @@ dependencies = ["httpx>=0.27.0"]
         },
     )
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
-        "prime_directive.bin.pd.load_config", return_value=cfg
-    ), patch(
-        "prime_directive.core.skill_scanner.load_empire_if_exists",
-        return_value=empire,
+    with (
+        patch(
+            "prime_directive.core.identity.Path.home", return_value=tmp_path
+        ),
+        patch("prime_directive.bin.pd.load_config", return_value=cfg),
+        patch(
+            "prime_directive.core.skill_scanner.load_empire_if_exists",
+            return_value=empire,
+        ),
     ):
-        result = runner.invoke(app, ["dossier", "sync-skills"], catch_exceptions=False)
+        result = runner.invoke(
+            app, ["dossier", "sync-skills"], catch_exceptions=False
+        )
 
     loaded = load_operator_dossier(dossier_path)
 
@@ -252,7 +280,10 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
 
     cfg = OmegaConf.create(
         {
-            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "system": {
+                "db_path": ":memory:",
+                "log_path": str(tmp_path / "pd.log"),
+            },
             "repos": {
                 "repo1": {
                     "id": "repo1",
@@ -282,11 +313,15 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
         },
     )
 
-    with patch(
-        "prime_directive.core.identity.Path.home", return_value=tmp_path
-    ), patch("prime_directive.bin.pd.load_config", return_value=cfg), patch(
-        "prime_directive.core.skill_scanner.load_empire_if_exists",
-        return_value=empire,
+    with (
+        patch(
+            "prime_directive.core.identity.Path.home", return_value=tmp_path
+        ),
+        patch("prime_directive.bin.pd.load_config", return_value=cfg),
+        patch(
+            "prime_directive.core.skill_scanner.load_empire_if_exists",
+            return_value=empire,
+        ),
     ):
         result = runner.invoke(
             app,
@@ -296,7 +331,9 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
 
     loaded = load_operator_dossier(dossier_path)
     skill_names = {skill.name for skill in loaded.capabilities.skills}
-    project_names = {project.name for project in loaded.capabilities.projects_built}
+    project_names = {
+        project.name for project in loaded.capabilities.projects_built
+    }
 
     assert result.exit_code == 0
     assert "Applied" in result.stdout
@@ -304,7 +341,9 @@ def test_dossier_sync_skills_apply_persists_changes(tmp_path):
     assert "Next.js" in skill_names
     assert "repo1" in project_names
     project = next(
-        project for project in loaded.capabilities.projects_built if project.name == "repo1"
+        project
+        for project in loaded.capabilities.projects_built
+        if project.name == "repo1"
     )
     assert project.description == "Repo 1 description"
     assert "full-stack" in project.capability_tags
@@ -325,7 +364,10 @@ dependencies = ["httpx>=0.27.0"]
 
     cfg = OmegaConf.create(
         {
-            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "system": {
+                "db_path": ":memory:",
+                "log_path": str(tmp_path / "pd.log"),
+            },
             "repos": {
                 "repo1": {
                     "id": "repo1",
@@ -342,9 +384,12 @@ dependencies = ["httpx>=0.27.0"]
     dossier_path = dossier_dir / "operator_dossier.yaml"
     write_operator_dossier(default_operator_dossier(), dossier_path)
 
-    with patch(
-        "prime_directive.core.identity.Path.home", return_value=tmp_path
-    ), patch("prime_directive.bin.pd.load_config", return_value=cfg):
+    with (
+        patch(
+            "prime_directive.core.identity.Path.home", return_value=tmp_path
+        ),
+        patch("prime_directive.bin.pd.load_config", return_value=cfg),
+    ):
         result = runner.invoke(
             app,
             ["dossier", "sync-skills", "--apply", "--dry-run"],
@@ -382,7 +427,10 @@ dependencies = ["httpx>=0.27.0"]
 
     cfg = OmegaConf.create(
         {
-            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "system": {
+                "db_path": ":memory:",
+                "log_path": str(tmp_path / "pd.log"),
+            },
             "repos": {
                 "repo1": {
                     "id": "repo1",
@@ -399,39 +447,44 @@ dependencies = ["httpx>=0.27.0"]
     dossier_path = dossier_dir / "operator_dossier.yaml"
     write_operator_dossier(default_operator_dossier(), dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
-        "prime_directive.bin.pd.load_config", return_value=cfg
-    ), patch(
-        "prime_directive.bin.pd._load_recent_snapshot_texts",
-        return_value=(
-            [
-                "Investigating gradient debugging for diffusion training instability.",
-                "Need gradient debugging and diffusion training fixes before next run.",
-                "Documented diffusion training blocker after more gradient debugging.",
-            ],
-            3,
-            1,
+    with (
+        patch(
+            "prime_directive.core.identity.Path.home", return_value=tmp_path
         ),
-    ), patch(
-        "prime_directive.bin.pd.generate_theme_suggestions_with_ai",
-        new_callable=AsyncMock,
-        return_value=(
-            [
-                ThemeSuggestion(
-                    tag="gradient-debugging",
-                    occurrences=3,
-                    sample="3 snapshots mention gradient debugging",
-                    confidence=0.7,
-                )
-            ],
-            AIAnalysisMetadata(
-                provider="openai",
-                model="gpt-4o-mini",
-                input_tokens=120,
-                output_tokens=30,
-                cost_estimate_usd=0.0001,
+        patch("prime_directive.bin.pd.load_config", return_value=cfg),
+        patch(
+            "prime_directive.bin.pd._load_recent_snapshot_texts",
+            return_value=(
+                [
+                    "Investigating gradient debugging for diffusion training instability.",
+                    "Need gradient debugging and diffusion training fixes before next run.",
+                    "Documented diffusion training blocker after more gradient debugging.",
+                ],
+                3,
+                1,
             ),
-            None,
+        ),
+        patch(
+            "prime_directive.bin.pd.generate_theme_suggestions_with_ai",
+            new_callable=AsyncMock,
+            return_value=(
+                [
+                    ThemeSuggestion(
+                        tag="gradient-debugging",
+                        occurrences=3,
+                        sample="3 snapshots mention gradient debugging",
+                        confidence=0.7,
+                    )
+                ],
+                AIAnalysisMetadata(
+                    provider="openai",
+                    model="gpt-4o-mini",
+                    input_tokens=120,
+                    output_tokens=30,
+                    cost_estimate_usd=0.0001,
+                ),
+                None,
+            ),
         ),
     ):
         result = runner.invoke(
