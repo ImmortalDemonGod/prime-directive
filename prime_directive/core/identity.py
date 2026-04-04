@@ -154,10 +154,16 @@ class ConnectionSurface:
 class OperatorDossier:
     version: str = "3.1"
     identity: HumanIdentity = field(default_factory=HumanIdentity)
-    capabilities: TechnicalCapabilities = field(default_factory=TechnicalCapabilities)
+    capabilities: TechnicalCapabilities = field(
+        default_factory=TechnicalCapabilities
+    )
     network: ProfessionalNetwork = field(default_factory=ProfessionalNetwork)
-    positioning: StrategicPositioning = field(default_factory=StrategicPositioning)
-    connection_surface: ConnectionSurface = field(default_factory=ConnectionSurface)
+    positioning: StrategicPositioning = field(
+        default_factory=StrategicPositioning
+    )
+    connection_surface: ConnectionSurface = field(
+        default_factory=ConnectionSurface
+    )
 
 
 @dataclass
@@ -210,7 +216,9 @@ def sync_connection_surface(dossier: OperatorDossier) -> OperatorDossier:
     for project in dossier.capabilities.projects_built:
         topic_tags.update(_normalized_tag_set(project.capability_tags))
     for research_item in dossier.capabilities.research:
-        topic_tags.update(_normalized_tag_set(_as_list(research_item.get("tags"))))
+        topic_tags.update(
+            _normalized_tag_set(_as_list(research_item.get("tags")))
+        )
 
     geographic_tags = {
         normalize_tag(entry.location.replace(",", " "))
@@ -331,7 +339,9 @@ def validate_operator_dossier_data(
     }
     for project in _as_list(capabilities.get("projects_built")):
         project_dict = _as_dict(project)
-        project_name = str(project_dict.get("name", "project")).strip() or "project"
+        project_name = (
+            str(project_dict.get("name", "project")).strip() or "project"
+        )
         for tech in _as_list(project_dict.get("tech_stack")):
             normalized = str(tech).strip().lower()
             if normalized and normalized not in skill_names:
@@ -371,7 +381,9 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
             specialty=str(military_raw.get("specialty", "")),
             clearance=_optional_str(military_raw.get("clearance")),
             years=str(military_raw.get("years", "")),
-            stations=[str(item) for item in _as_list(military_raw.get("stations"))],
+            stations=[
+                str(item) for item in _as_list(military_raw.get("stations"))
+            ],
             deployments=[
                 str(item) for item in _as_list(military_raw.get("deployments"))
             ],
@@ -388,7 +400,10 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                     years=str(item.get("years", "")),
                     notable=_optional_str(item.get("notable")),
                 )
-                for item in (_as_dict(entry) for entry in _as_list(identity.get("education")))
+                for item in (
+                    _as_dict(entry)
+                    for entry in _as_list(identity.get("education"))
+                )
             ],
             military=military,
             geographic_history=[
@@ -404,7 +419,9 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
             languages={
                 "spoken": [
                     str(item)
-                    for item in _as_list(_as_dict(identity.get("languages")).get("spoken"))
+                    for item in _as_list(
+                        _as_dict(identity.get("languages")).get("spoken")
+                    )
                 ],
                 "programming": [
                     str(item)
@@ -430,7 +447,8 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                     tags=[str(tag) for tag in _as_list(item.get("tags"))],
                 )
                 for item in (
-                    _as_dict(entry) for entry in _as_list(identity.get("publications"))
+                    _as_dict(entry)
+                    for entry in _as_list(identity.get("publications"))
                 )
             ],
             values=[str(item) for item in _as_list(identity.get("values"))],
@@ -443,21 +461,29 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                     recency=str(item.get("recency", "")),
                     evidence=str(item.get("evidence", "")),
                 )
-                for item in (_as_dict(entry) for entry in _as_list(capabilities.get("skills")))
+                for item in (
+                    _as_dict(entry)
+                    for entry in _as_list(capabilities.get("skills"))
+                )
             ],
             domain_expertise=[
-                str(item) for item in _as_list(capabilities.get("domain_expertise"))
+                str(item)
+                for item in _as_list(capabilities.get("domain_expertise"))
             ],
             research=[
-                _as_dict(item) for item in _as_list(capabilities.get("research"))
+                _as_dict(item)
+                for item in _as_list(capabilities.get("research"))
             ],
             projects_built=[
                 ProjectBuilt(
                     name=str(item.get("name", "")),
                     description=str(item.get("description", "")),
-                    tech_stack=[str(tag) for tag in _as_list(item.get("tech_stack"))],
+                    tech_stack=[
+                        str(tag) for tag in _as_list(item.get("tech_stack"))
+                    ],
                     capability_tags=[
-                        str(tag) for tag in _as_list(item.get("capability_tags"))
+                        str(tag)
+                        for tag in _as_list(item.get("capability_tags"))
                     ],
                     url=_optional_str(item.get("url")),
                 )
@@ -494,15 +520,24 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                     years=str(item.get("years", "")),
                     accomplishment=str(item.get("accomplishment", "")),
                 )
-                for item in (_as_dict(entry) for entry in _as_list(network.get("companies")))
+                for item in (
+                    _as_dict(entry)
+                    for entry in _as_list(network.get("companies"))
+                )
             ],
-            industries=[str(item) for item in _as_list(network.get("industries"))],
+            industries=[
+                str(item) for item in _as_list(network.get("industries"))
+            ],
             testimonials=[
-                _as_dict(item) for item in _as_list(network.get("testimonials"))
+                _as_dict(item)
+                for item in _as_list(network.get("testimonials"))
             ],
-            communities=[_as_dict(item) for item in _as_list(network.get("communities"))],
+            communities=[
+                _as_dict(item) for item in _as_list(network.get("communities"))
+            ],
             collaborators=[
-                _as_dict(item) for item in _as_list(network.get("collaborators"))
+                _as_dict(item)
+                for item in _as_list(network.get("collaborators"))
             ],
             institutional_overlaps=[
                 _as_dict(item)
@@ -510,7 +545,9 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
             ],
         ),
         positioning=StrategicPositioning(
-            positioning_statement=str(positioning.get("positioning_statement", "")),
+            positioning_statement=str(
+                positioning.get("positioning_statement", "")
+            ),
             competitive_differentiation=[
                 str(item)
                 for item in _as_list(
@@ -525,7 +562,8 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                     typical_timeline=str(item.get("typical_timeline", "")),
                 )
                 for item in (
-                    _as_dict(entry) for entry in _as_list(positioning.get("offerings"))
+                    _as_dict(entry)
+                    for entry in _as_list(positioning.get("offerings"))
                 )
             ],
             active_engagements=[
@@ -533,7 +571,8 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                 for item in _as_list(positioning.get("active_engagements"))
             ],
             case_studies=[
-                _as_dict(item) for item in _as_list(positioning.get("case_studies"))
+                _as_dict(item)
+                for item in _as_list(positioning.get("case_studies"))
             ],
             revenue_model=str(positioning.get("revenue_model", "")),
         ),
@@ -541,34 +580,53 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
             experience_tags=sorted(
                 [
                     str(item)
-                    for item in _as_list(connection_surface.get("experience_tags"))
+                    for item in _as_list(
+                        connection_surface.get("experience_tags")
+                    )
                 ]
             ),
             topic_tags=sorted(
-                [str(item) for item in _as_list(connection_surface.get("topic_tags"))]
+                [
+                    str(item)
+                    for item in _as_list(connection_surface.get("topic_tags"))
+                ]
             ),
             geographic_tags=sorted(
                 [
                     str(item)
-                    for item in _as_list(connection_surface.get("geographic_tags"))
+                    for item in _as_list(
+                        connection_surface.get("geographic_tags")
+                    )
                 ]
             ),
             education_tags=sorted(
                 [
                     str(item)
-                    for item in _as_list(connection_surface.get("education_tags"))
+                    for item in _as_list(
+                        connection_surface.get("education_tags")
+                    )
                 ]
             ),
             industry_tags=sorted(
-                [str(item) for item in _as_list(connection_surface.get("industry_tags"))]
+                [
+                    str(item)
+                    for item in _as_list(
+                        connection_surface.get("industry_tags")
+                    )
+                ]
             ),
             hobby_tags=sorted(
-                [str(item) for item in _as_list(connection_surface.get("hobby_tags"))]
+                [
+                    str(item)
+                    for item in _as_list(connection_surface.get("hobby_tags"))
+                ]
             ),
             philosophy_tags=sorted(
                 [
                     str(item)
-                    for item in _as_list(connection_surface.get("philosophy_tags"))
+                    for item in _as_list(
+                        connection_surface.get("philosophy_tags")
+                    )
                 ]
             ),
         ),
@@ -585,7 +643,10 @@ def _iter_normalized_tag_lists(
     collected: list[tuple[str, list[str]]] = [
         (
             "capabilities.domain_expertise",
-            [str(item) for item in _as_list(capabilities.get("domain_expertise"))],
+            [
+                str(item)
+                for item in _as_list(capabilities.get("domain_expertise"))
+            ],
         )
     ]
     for index, item in enumerate(_as_list(identity.get("publications"))):
@@ -608,7 +669,10 @@ def _iter_normalized_tag_lists(
         collected.append(
             (
                 f"connection_surface.{field_name}",
-                [str(tag) for tag in _as_list(connection_surface.get(field_name))],
+                [
+                    str(tag)
+                    for tag in _as_list(connection_surface.get(field_name))
+                ],
             )
         )
     return collected
@@ -659,9 +723,11 @@ def apply_operator_dossier_tag_normalization_fixes(
         capabilities.get("domain_expertise"),
         list,
     ):
-        capabilities["domain_expertise"], field_fixes = _normalize_tag_sequence(
-            [str(item) for item in capabilities["domain_expertise"]],
-            "capabilities.domain_expertise",
+        capabilities["domain_expertise"], field_fixes = (
+            _normalize_tag_sequence(
+                [str(item) for item in capabilities["domain_expertise"]],
+                "capabilities.domain_expertise",
+            )
         )
         fixes.extend(field_fixes)
 
@@ -669,7 +735,9 @@ def apply_operator_dossier_tag_normalization_fixes(
         publications = identity.get("publications")
         if isinstance(publications, list):
             for index, item in enumerate(publications):
-                if not isinstance(item, dict) or not isinstance(item.get("tags"), list):
+                if not isinstance(item, dict) or not isinstance(
+                    item.get("tags"), list
+                ):
                     continue
                 item["tags"], field_fixes = _normalize_tag_sequence(
                     [str(tag) for tag in item["tags"]],
@@ -697,9 +765,11 @@ def apply_operator_dossier_tag_normalization_fixes(
             tags = connection_surface.get(field_name)
             if not isinstance(tags, list):
                 continue
-            connection_surface[field_name], field_fixes = _normalize_tag_sequence(
-                [str(tag) for tag in tags],
-                f"connection_surface.{field_name}",
+            connection_surface[field_name], field_fixes = (
+                _normalize_tag_sequence(
+                    [str(tag) for tag in tags],
+                    f"connection_surface.{field_name}",
+                )
             )
             fixes.extend(field_fixes)
 
@@ -708,7 +778,9 @@ def apply_operator_dossier_tag_normalization_fixes(
 
 def normalize_tag(value: str) -> str:
     normalized = value.strip().lower().replace("_", "-")
-    normalized = "-".join(part for part in normalized.replace("/", " ").split())
+    normalized = "-".join(
+        part for part in normalized.replace("/", " ").split()
+    )
     while "--" in normalized:
         normalized = normalized.replace("--", "-")
     return normalized
@@ -735,9 +807,7 @@ def _normalize_tag_sequence(
 
 def _normalized_tag_set(values: list[Any]) -> set[str]:
     return {
-        normalize_tag(str(value))
-        for value in values
-        if str(value).strip()
+        normalize_tag(str(value)) for value in values if str(value).strip()
     }
 
 
