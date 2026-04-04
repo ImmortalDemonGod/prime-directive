@@ -8,6 +8,7 @@ from typing import Optional
 import httpx
 
 from prime_directive.core.ai_providers import (
+    OpenAIUsage,
     check_budget,
     estimate_cost,
     generate_ollama,
@@ -40,6 +41,7 @@ def _count_tokens(text: str, model: str) -> int:
         return len(enc.encode(text))
     except ImportError:
         import logging
+
         logging.getLogger("prime_directive").warning(
             "tiktoken not installed; token counts will be 0 and cost tracking inactive"
         )
@@ -68,9 +70,13 @@ def _parse_theme_suggestions_response(
     elif isinstance(payload, list):
         raw_suggestions = payload
     else:
-        raise ValueError("Theme extraction response must be a JSON object or list")
+        raise ValueError(
+            "Theme extraction response must be a JSON object or list"
+        )
 
-    existing = {normalize_tag(tag) for tag in existing_tags if str(tag).strip()}
+    existing = {
+        normalize_tag(tag) for tag in existing_tags if str(tag).strip()
+    }
     suggestions: list[ThemeSuggestion] = []
     seen: set[str] = set()
 
@@ -86,13 +92,17 @@ def _parse_theme_suggestions_response(
         suggestions.append(
             ThemeSuggestion(
                 tag=normalized,
-                occurrences=max(int(occurrences_raw), 0)
-                if isinstance(occurrences_raw, int)
-                else 0,
+                occurrences=(
+                    max(int(occurrences_raw), 0)
+                    if isinstance(occurrences_raw, int)
+                    else 0
+                ),
                 sample=evidence,
-                confidence=max(0.0, min(float(confidence_raw), 1.0))
-                if isinstance(confidence_raw, (int, float))
-                else 0.0,
+                confidence=(
+                    max(0.0, min(float(confidence_raw), 1.0))
+                    if isinstance(confidence_raw, (int, float))
+                    else 0.0
+                ),
             )
         )
         seen.add(normalized)
@@ -177,8 +187,14 @@ async def generate_theme_suggestions_with_ai(
         *,
         input_tokens: int = 0,
         output_tokens: int = 0,
-    ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
-        cost = estimate_cost(output_tokens, cost_per_1k_tokens) if used_provider == "openai" else 0.0
+    ) -> tuple[
+        list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]
+    ]:
+        cost = (
+            estimate_cost(output_tokens, cost_per_1k_tokens)
+            if used_provider == "openai"
+            else 0.0
+        )
         await _log_usage(
             db_path,
             used_provider,
@@ -194,15 +210,23 @@ async def generate_theme_suggestions_with_ai(
         response_text: str,
         used_provider: str,
         used_model: str,
-        usage: Optional[dict[str, int]],
-    ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+        usage: Optional[OpenAIUsage],
+    ) -> tuple[
+        list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]
+    ]:
         if usage is not None:
             input_tokens = usage.get("prompt_tokens", 0)
             output_tokens = usage.get("completion_tokens", 0)
         else:
-            input_tokens = _count_tokens(f"{system_prompt}\n{prompt}", used_model)
+            input_tokens = _count_tokens(
+                f"{system_prompt}\n{prompt}", used_model
+            )
             output_tokens = _count_tokens(response_text, used_model)
-        cost = estimate_cost(output_tokens, cost_per_1k_tokens) if used_provider == "openai" else 0.0
+        cost = (
+            estimate_cost(output_tokens, cost_per_1k_tokens)
+            if used_provider == "openai"
+            else 0.0
+        )
         try:
             suggestions = _parse_theme_suggestions_response(
                 response_text,
@@ -241,13 +265,23 @@ async def generate_theme_suggestions_with_ai(
     if provider == "openai":
         api_key = get_openai_api_key()
         if not api_key:
-            return [], None, "Error generating theme suggestions: OPENAI_API_KEY not set"
+            return (
+                [],
+                None,
+                "Error generating theme suggestions: OPENAI_API_KEY not set",
+            )
         if db_path:
-            within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+            within_budget, current, budget = await check_budget(
+                db_path, monthly_budget_usd
+            )
             if not within_budget:
-                return [], None, (
-                    "Error generating theme suggestions: Monthly budget exceeded "
-                    f"(${current:.2f}/${budget:.2f})"
+                return (
+                    [],
+                    None,
+                    (
+                        "Error generating theme suggestions: Monthly budget exceeded "
+                        f"(${current:.2f}/${budget:.2f})"
+                    ),
                 )
         try:
             response_text, usage = await generate_openai_chat_with_usage(
@@ -259,7 +293,9 @@ async def generate_theme_suggestions_with_ai(
                 timeout_seconds=openai_timeout_seconds,
                 max_tokens=openai_max_tokens,
             )
-            return await finalize_success(response_text, "openai", model, usage)
+            return await finalize_success(
+                response_text, "openai", model, usage
+            )
         except (httpx.HTTPError, ValueError, json.JSONDecodeError) as error:
             return await finalize_error("openai", model, error)
 
@@ -274,25 +310,43 @@ async def generate_theme_suggestions_with_ai(
             backoff_seconds=backoff_seconds,
         )
         return await finalize_success(response_text, "ollama", model, None)
-    except (httpx.HTTPError, ValueError, json.JSONDecodeError) as primary_error:
+    except (
+        httpx.HTTPError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as primary_error:
         if fallback_provider != "openai":
             return await finalize_error("ollama", model, primary_error)
 
     if require_confirmation:
-        return [], None, "Error generating theme suggestions: OpenAI fallback requires confirmation"
+        return (
+            [],
+            None,
+            "Error generating theme suggestions: OpenAI fallback requires confirmation",
+        )
 
     api_key = get_openai_api_key()
     if not api_key:
-        return [], None, (
-            "Error generating theme suggestions: OpenAI fallback requested but OPENAI_API_KEY not set"
+        return (
+            [],
+            None,
+            (
+                "Error generating theme suggestions: OpenAI fallback requested but OPENAI_API_KEY not set"
+            ),
         )
 
     if db_path:
-        within_budget, current, budget = await check_budget(db_path, monthly_budget_usd)
+        within_budget, current, budget = await check_budget(
+            db_path, monthly_budget_usd
+        )
         if not within_budget:
-            return [], None, (
-                "Error generating theme suggestions: Monthly budget exceeded "
-                f"(${current:.2f}/${budget:.2f})"
+            return (
+                [],
+                None,
+                (
+                    "Error generating theme suggestions: Monthly budget exceeded "
+                    f"(${current:.2f}/${budget:.2f})"
+                ),
             )
 
     try:
@@ -305,6 +359,8 @@ async def generate_theme_suggestions_with_ai(
             timeout_seconds=openai_timeout_seconds,
             max_tokens=openai_max_tokens,
         )
-        return await finalize_success(response_text, "openai", fallback_model, usage)
+        return await finalize_success(
+            response_text, "openai", fallback_model, usage
+        )
     except (httpx.HTTPError, ValueError, json.JSONDecodeError) as error:
         return await finalize_error("openai", fallback_model, error)
