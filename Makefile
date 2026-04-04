@@ -38,10 +38,12 @@ lint:             ## Run pep8, black, mypy linters.
 	$(ENV_PREFIX)mypy --ignore-missing-imports prime_directive/
 
 .PHONY: test
-test: lint        ## Run tests and generate coverage report.
-	$(ENV_PREFIX)pytest -v --cov-config .coveragerc --cov=prime_directive -l --tb=short --maxfail=1 tests/
-	$(ENV_PREFIX)coverage xml
-	$(ENV_PREFIX)coverage html
+test: lint        ## Run linter then tests with coverage report.
+	$(ENV_PREFIX)pytest -v --cov=prime_directive --cov-report=term-missing --cov-report=xml:coverage.xml --cov-report=html -l --tb=short --maxfail=1 tests/
+
+.PHONY: test-only
+test-only:        ## Run tests with coverage and JUnit XML (no lint). Used by CI.
+	$(ENV_PREFIX)pytest -v --cov=prime_directive --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml -l --tb=short tests/
 
 .PHONY: watch
 watch:            ## Run tests on every change.
