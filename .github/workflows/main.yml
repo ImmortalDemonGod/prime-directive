@@ -1,44 +1,37 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the workflow will run
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
-
-  # Allows you to run this workflow manually from the Actions tab
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  linter:
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11"]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+  lint:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.11"
       - name: Install project
-        run: make install
-      - name: Run linter
-        run: make lint
+        run: pip install -e ".[test]"
+      - name: flake8
+        run: flake8 prime_directive/
+      - name: black
+        run: black -l 79 --check prime_directive/ tests/
+      - name: mypy
+        run: mypy --ignore-missing-imports prime_directive/
 
-  tests_linux:
-    needs: linter
+  test:
+    needs: lint
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.11", "3.12"]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -46,53 +39,52 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install project
-        run: make install
+        run: pip install -e ".[test]"
       - name: Run tests
-        run: make test
-      - name: "Upload coverage to Codecov"
+        run: pytest -v --cov=prime_directive --cov-report=term-missing --cov-report=xml:coverage.xml --junitxml=test-results.xml -l --tb=short tests/
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: test-results.xml
+          retention-days: 30
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 30
+      - name: Test summary
+        if: ${{ !cancelled() && runner.os == 'Linux' }}
+        run: |
+          echo "## Test Results (${{ matrix.os }} / Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python -c "
+          import xml.etree.ElementTree as ET
+          tree = ET.parse('test-results.xml')
+          root = tree.getroot()
+          tests = root.attrib.get('tests', '0')
+          failures = root.attrib.get('failures', '0')
+          errors = root.attrib.get('errors', '0')
+          skipped = root.attrib.get('skipped', '0')
+          time = root.attrib.get('time', '0')
+          status = ':white_check_mark:' if int(failures) + int(errors) == 0 else ':x:'
+          print(f'| Metric | Value |')
+          print(f'|--------|-------|')
+          print(f'| Status | {status} |')
+          print(f'| Tests  | {tests} |')
+          print(f'| Failures | {failures} |')
+          print(f'| Errors | {errors} |')
+          print(f'| Skipped | {skipped} |')
+          print(f'| Duration | {float(time):.1f}s |')
+          " >> $GITHUB_STEP_SUMMARY
+      - name: Upload to Codecov
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
         uses: codecov/codecov-action@v4
-        if: ${{ !cancelled() && secrets.CODECOV_TOKEN != '' }}
         continue-on-error: true
         with:
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  tests_mac:
-    needs: linter
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12"]
-        os: [macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install project
-        run: make install
-      - name: Run tests
-        run: make test
-
-  tests_win:
-    needs: linter
-    timeout-minutes: 10
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.11", "3.12"]
-        os: [windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Pip
-        run: pip install --user --upgrade pip
-      - name: Install project
-        run: pip install -e .[test]
-      - name: run tests
-        run: pytest -s -vvvv -l --tb=long tests
+          files: coverage.xml
