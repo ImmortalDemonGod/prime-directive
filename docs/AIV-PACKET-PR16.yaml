@@ -1,0 +1,656 @@
+# =============================================================================
+# AIV Packet — PR #16: Operator Dossier V3.1 Phase A
+# Conformance Target: AIV-SPEC-V1.0.0-CANONICAL, Compliance Level L2
+# =============================================================================
+
+aiv_version: "1.0.0"
+packet_schema_version: "1.0.0"
+
+# =============================================================================
+# IDENTIFICATION
+# =============================================================================
+identification:
+  repository: "github.com/ImmortalDemonGod/prime-directive"
+  pr_id: 16
+  pr_url: "https://github.com/ImmortalDemonGod/prime-directive/pull/16"
+  branch: "feature/operator-dossier-v31-phase-a"
+  base_branch: "main"
+  head_sha: "f174c8d18efe5c199a5f831aa824629dfc425ca1"
+  base_sha: "e59bac3a69d0e2ae86b715d285ceada5d9b3b951"
+  commit_range:
+    - "0954b628e1dc2790259824e8458253d8e31ffad2"
+    - "2d47bf8cecee2ea4b98f825e7d8196f23d0f86c0"
+    - "cfca144a49450a82dccc8d4c796514101ec7d831"
+    - "b4331f9bcdcb654d6773aa5f3597e0b6d72c9f22"
+    - "d3eed02e94b7fd0fd821f8ba1f3840263d82d66b"
+    - "1bfe77a1eef139df80d6ab7acf549d37616e3a42"
+    - "73c515b9b5575f30a0e180f79ecc4e23ae7825d5"
+    - "14c3dbd233c47e540493e84a8af7ed7a77e0186b"
+    - "793023972ded8ac7ab0306223ac1cb4e68663d5a"
+    - "feddda838c703bf26c6dc004e6c0f86e8a6c43b4"
+    - "89a6f3b955449efe8fa36fedfb3db650d0c617c3"
+    - "3e47fe5c42f84acf6117dfd3a6c56bb195ad87a9"
+    - "8a812013694a5d865f87076ac1d97f1c4977afd3"
+    - "7704c0a4c22cc028a5a84dfa233651beab11867f"
+    - "66427afcebfa17c6d9fb3af92207cdcab8993257"
+    - "56c02d682e819f2ead57abbcbcdce6bd24c49527"
+    - "2b91349ba432d8e751cbbda3dbc576527bb70fe2"
+    - "4e77d99cbc771735885fe85aa87fa0bdf725e73c"
+    - "1c7f22f99641cc5bc7fc329e9687cda798712ee8"
+    - "a71f0b88dae713b1170181d69422c639effe2a4e"
+    - "1000a89ae32cf81a9b55e7debf9dfe061c23de0e"
+    - "a2303254dcb89d0d62c19e89462c98d7c994a928"
+    - "f006da89834e254785bde0c579e055a696514cfa"
+    - "470cac8862ba8b199b2c203828784f8b5eaf6cc3"
+    - "6343de214dec80fd5112cbca7159679a125c71aa"
+    - "2cc2dc79cde78cc46360f718d2250dfb14bad12f"
+    - "1e6173874b85ea8ee83a511a47eb444d8dc2e6e5"
+    - "59bb66f6687fd18f715549d75da1e5fdb3d46b3b"
+    - "601487a34778cab8b54039f2f8b6c579c31ae1bb"
+    - "01b1bbac1eb952253be7cd1d8ed1e4e26561d951"
+    - "4261947c64bdd07354b47ef34a209ec564b09f9c"
+    - "6037527af2d2252e641aad1f90df1212e0fc6e50"
+    - "ee12dc5f59091435ef66c9f995e146b5b082fe9a"
+    - "455d2c8e74a2307cb30addbd6acde197f06f3b0b"
+    - "4d7b532fd28e09ed2a58a8057b16b9f0a57c5931"
+    - "6826740eebc011575a1cc054252476f80aab9356"
+    - "6f75df1164cdb639d82d34c8eeda898adea9c9f3"
+    - "ae77137b07b536f253318fc9ba527c8d8b2c58a6"
+    - "dfca76c9a08629f8a74bf7aa07f7cb7795bdebe7"
+    - "cabd196b117d35978730da9ce35a9cc71be13a3f"
+    - "81d147da1afac365fa69f9e1cec0c69c1e7e7aca"
+    - "73fdfb9032ab8c0e9a3466888e4ef42c2dc3ada5"
+    - "74870f4da760d03881c43cd051ddbbfccf0ecad3"
+    - "f174c8d18efe5c199a5f831aa824629dfc425ca1"
+  created_at: "2026-04-04T19:02:40Z"
+  created_by: "github.com/ImmortalDemonGod"
+
+  evidence_refs:
+    - file: "docs/DOSSIER-V31-PHASE-A-REVIEW.md"
+      commit_sha: "f174c8d18efe5c199a5f831aa824629dfc425ca1"
+      classes: [B, E]
+
+# =============================================================================
+# CLASSIFICATION (§5)
+# =============================================================================
+classification:
+  risk_tier: R2
+  sod_mode: S1
+  critical_surfaces: []
+  blast_radius: component
+  classification_rationale: |
+    Broad feature addition: 6 new modules, 5 new CLI subcommands, new data model
+    (OperatorDossier), AI provider integration, and empire configuration overlay.
+    23 files changed with +9,170/-134 lines across 44 atomic commits.
+
+    R2 (not R3) because:
+    - No authentication, authorization, or session management changes.
+    - No cryptographic operations beyond what providers already handle.
+    - No PII storage — dossier data is operator self-declared identity metadata.
+    - No financial processing, privilege boundaries, or audit log modifications.
+    - AI budget enforcement is a soft limit (logging + warning), not a billing gate.
+    - Blast radius is component-scoped: changes are confined to the prime_directive
+      package with no cross-service or infrastructure impact.
+
+    R2 (not R1) because:
+    - Adds public CLI surface area (5 new subcommands).
+    - Introduces external dependency scanning (reads pyproject.toml, package.json,
+      Cargo.toml, go.mod from operator repos).
+    - Adds AI provider HTTP calls (Ollama, OpenAI) with budget tracking.
+    - Modifies database schema (PRAGMA user_version migration).
+    - Changes async I/O patterns in tmux.py and orchestrator.py.
+  classified_by: "github.com/ImmortalDemonGod"
+  classified_at: "2026-04-04T19:02:40Z"
+
+# =============================================================================
+# CLAIMS
+# =============================================================================
+claims:
+  - id: "CLM-001"
+    type: [functional, structural]
+    statement: >
+      A 5-layer OperatorDossier data model (HumanIdentity, TechnicalCapabilities,
+      ProfessionalNetwork, StrategicPositioning, ConnectionSurface) is implemented
+      with YAML serialization, round-trip fidelity, validation, and auto-fix of
+      malformed tags.
+    scope:
+      files:
+        - "prime_directive/core/identity.py"
+      functions:
+        - "OperatorDossier"
+        - "validate_operator_dossier"
+        - "_normalize_tag_sequence"
+        - "write_operator_dossier"
+        - "read_operator_dossier"
+    evidence_refs: ["EV-A-001", "EV-B-001", "EV-C-001"]
+
+  - id: "CLM-002"
+    type: [functional, structural]
+    statement: >
+      An empire.yaml configuration overlay loads project metadata (roles, strategic
+      weights, dependencies) with DAG cycle detection via topological sort and
+      validates weight constraints.
+    scope:
+      files:
+        - "prime_directive/core/empire.py"
+      functions:
+        - "load_empire_config"
+        - "EmpireConfig"
+        - "detect_dependency_cycles"
+    evidence_refs: ["EV-A-001", "EV-B-002"]
+
+  - id: "CLM-003"
+    type: [functional]
+    statement: >
+      Multi-language skill scanning detects dependencies from pyproject.toml,
+      package.json, tsconfig.json, Cargo.toml, go.mod, and requirements.txt with
+      bounded-depth monorepo traversal (max_depth=2, skip dirs).
+    scope:
+      files:
+        - "prime_directive/core/skill_scanner.py"
+      functions:
+        - "scan_repository"
+        - "scan_pyproject"
+        - "scan_package_json"
+        - "scan_cargo_toml"
+        - "scan_go_mod"
+        - "scan_requirements_txt"
+    evidence_refs: ["EV-A-001", "EV-B-003"]
+
+  - id: "CLM-004"
+    type: [functional, operational]
+    statement: >
+      AI-backed theme extraction queries Ollama (primary) or OpenAI (fallback)
+      with budget enforcement via AIUsageLog, token counting via tiktoken (with
+      heuristic fallback), prompt truncation at 12k chars, and correct usage
+      accounting even when response parsing fails.
+    scope:
+      files:
+        - "prime_directive/core/dossier_ai.py"
+        - "prime_directive/core/scribe.py"
+      functions:
+        - "suggest_themes"
+        - "_count_tokens"
+        - "finalize_success"
+        - "finalize_error"
+    evidence_refs: ["EV-A-001", "EV-B-004", "EV-C-002"]
+
+  - id: "CLM-005"
+    type: [functional, interface]
+    statement: >
+      Five CLI subcommands (pd dossier init, validate, sync-skills, sync-tags,
+      show, export) are implemented with Rich terminal rendering, structured
+      output, and correct error handling including early exit on deep analysis
+      failure.
+    scope:
+      files:
+        - "prime_directive/bin/pd.py"
+      functions:
+        - "dossier_init"
+        - "dossier_validate"
+        - "dossier_sync_skills"
+        - "dossier_sync_tags"
+        - "dossier_show"
+        - "dossier_export"
+    evidence_refs: ["EV-A-001", "EV-B-005", "EV-E-001"]
+
+  - id: "CLM-006"
+    type: [structural, operational]
+    statement: >
+      tmux session management is rewritten from blocking subprocess.run to async
+      asyncio.create_subprocess_exec with timeout guards. The orchestrator awaits
+      the now-async ensure_session. Interactive attach-session retains blocking
+      subprocess.run by design (must hold the terminal).
+    scope:
+      files:
+        - "prime_directive/core/tmux.py"
+        - "prime_directive/core/orchestrator.py"
+      functions:
+        - "ensure_session"
+        - "detach_current"
+    evidence_refs: ["EV-A-001", "EV-B-006"]
+
+  - id: "CLM-007"
+    type: [structural, operational]
+    statement: >
+      SQLite schema migration uses PRAGMA user_version with a versioned migration
+      dict, replacing implicit schema assumptions. Current schema version is 1.
+    scope:
+      files:
+        - "prime_directive/core/db.py"
+      functions:
+        - "migrate_db"
+        - "init_db"
+    evidence_refs: ["EV-A-001", "EV-B-007"]
+
+  - id: "CLM-008"
+    type: [functional]
+    statement: >
+      Bash shell integration is provided alongside existing zsh integration,
+      supporting the Exit 88 split-process handshake for pd switch and tab
+      completion via complete -F.
+    scope:
+      files:
+        - "prime_directive/system/shell_integration.bash"
+    evidence_refs: ["EV-B-008", "EV-E-001"]
+
+  - id: "CLM-009"
+    type: [operational]
+    statement: >
+      pd doctor reports shell integration status (zsh vs bash detection) and
+      tasks.json staleness warning triggers after 48 hours without modification.
+    scope:
+      files:
+        - "prime_directive/bin/pd.py"
+        - "prime_directive/core/tasks.py"
+      functions:
+        - "doctor"
+    evidence_refs: ["EV-A-001", "EV-B-009"]
+
+  - id: "CLM-010"
+    type: [dependency]
+    statement: >
+      No new runtime dependencies are introduced beyond what was already declared.
+      uv.lock changes reflect resolution updates only, not new package additions
+      to pyproject.toml [dependencies].
+    scope:
+      files:
+        - "uv.lock"
+    evidence_refs: ["EV-C-003"]
+
+# =============================================================================
+# EVIDENCE (§6)
+# =============================================================================
+evidence_items:
+  # ---------------------------------------------------------------------------
+  # Class A — Execution Evidence
+  # ---------------------------------------------------------------------------
+  - id: "EV-A-001"
+    class: A
+    description: >
+      Full test suite execution: 111 tests collected across 8 test modules,
+      all passing. Covers identity model, empire config, skill scanning, AI
+      theme extraction, CLI flows, tmux async behavior, and scribe token counting.
+    claim_refs: ["CLM-001", "CLM-002", "CLM-003", "CLM-004", "CLM-005", "CLM-006", "CLM-007", "CLM-009"]
+    artifacts:
+      - type: ci_run
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/pull/16/checks"
+        immutability_mechanism: "GitHub commit-status API bound to head_sha; CodeRabbit SUCCESS status recorded"
+        retrieved_at: "2026-04-04T19:02:40Z"
+        retention_verified: false
+      - type: test_results
+        reference: "local pytest execution at head_sha f174c8d"
+        immutability_mechanism: "Reproducible via: .venv/bin/pytest tests/ -q at commit f174c8d"
+        retrieved_at: "2026-04-04T19:02:40Z"
+        retention_verified: false
+    scope: "All 8 test files: test_identity, test_empire, test_skill_scanner, test_dossier_ai, test_cli, test_tmux, test_scribe, test_tasks"
+    validation_method: "Run .venv/bin/pytest tests/ -q at head_sha and verify 111 passed, 0 failed, 0 errors"
+    limitations:
+      - "No dedicated CI pipeline with artifact retention — tests verified locally and via CodeRabbit bot status"
+      - "No code coverage metrics collected; coverage delta cannot be quantified"
+
+  - id: "EV-A-002"
+    class: A
+    description: >
+      Static analysis: flake8 linting was run against all modified and new
+      source files during development. No project-wide CI linting gate exists.
+    claim_refs: ["CLM-001", "CLM-002", "CLM-003", "CLM-004", "CLM-005"]
+    artifacts:
+      - type: static_analysis
+        reference: "local flake8 execution against modified files"
+        immutability_mechanism: "Reproducible via: .venv/bin/flake8 prime_directive/bin/pd.py prime_directive/core/identity.py prime_directive/core/skill_scanner.py prime_directive/core/empire.py prime_directive/core/dossier_ai.py"
+        retrieved_at: "2026-04-04T19:02:40Z"
+        retention_verified: false
+    scope: "All new and modified Python source files"
+    validation_method: "Run flake8 command above at head_sha; verify zero errors"
+    limitations:
+      - "flake8 only — no mypy/pyright type checking enforced"
+      - "Not integrated into CI; relies on manual execution"
+
+  # ---------------------------------------------------------------------------
+  # Class B — Referential Evidence
+  # ---------------------------------------------------------------------------
+  - id: "EV-B-001"
+    class: B
+    description: "SHA-bound permalink to 5-layer OperatorDossier data model with validation and YAML I/O"
+    claim_refs: ["CLM-001"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/identity.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_identity.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "identity.py (766 lines added) + test_identity.py (15 tests)"
+    validation_method: "Resolve permalinks; verify OperatorDossier class, validate_operator_dossier, _normalize_tag_sequence, write/read_operator_dossier exist"
+    limitations: []
+
+  - id: "EV-B-002"
+    class: B
+    description: "SHA-bound permalink to empire configuration loader with cycle detection"
+    claim_refs: ["CLM-002"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/empire.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_empire.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "empire.py + test_empire.py"
+    validation_method: "Resolve permalinks; verify load_empire_config, EmpireConfig, detect_dependency_cycles exist"
+    limitations: []
+
+  - id: "EV-B-003"
+    class: B
+    description: "SHA-bound permalink to multi-language skill scanner with bounded-depth monorepo traversal"
+    claim_refs: ["CLM-003"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/skill_scanner.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_skill_scanner.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "skill_scanner.py + test_skill_scanner.py (448 lines)"
+    validation_method: "Resolve permalinks; verify scan_repository, scan_pyproject, scan_package_json, scan_cargo_toml, scan_go_mod, scan_requirements_txt exist"
+    limitations: []
+
+  - id: "EV-B-004"
+    class: B
+    description: "SHA-bound permalink to AI theme extraction with budget enforcement and error-resilient token accounting"
+    claim_refs: ["CLM-004"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/dossier_ai.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_dossier_ai.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "dossier_ai.py + test_dossier_ai.py"
+    validation_method: "Resolve permalinks; verify suggest_themes, _count_tokens, finalize_success, finalize_error exist with correct error-path token propagation"
+    limitations: []
+
+  - id: "EV-B-005"
+    class: B
+    description: "SHA-bound permalink to dossier CLI command suite in pd.py"
+    claim_refs: ["CLM-005"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/bin/pd.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_cli.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "pd.py (dossier subcommands) + test_cli.py (10 CLI tests)"
+    validation_method: "Resolve permalinks; verify dossier_init, dossier_validate, dossier_sync_skills, dossier_sync_tags, dossier_show, dossier_export functions exist"
+    limitations: []
+
+  - id: "EV-B-006"
+    class: B
+    description: "SHA-bound permalink to async tmux rewrite and orchestrator await fix"
+    claim_refs: ["CLM-006"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/tmux.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/orchestrator.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/tests/test_tmux.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "tmux.py + orchestrator.py (1-line await fix) + test_tmux.py (4 async tests)"
+    validation_method: "Resolve permalinks; verify ensure_session and detach_current are async def; verify orchestrator awaits ensure_session_fn"
+    limitations: []
+
+  - id: "EV-B-007"
+    class: B
+    description: "SHA-bound permalink to PRAGMA user_version migration system"
+    claim_refs: ["CLM-007"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/db.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "db.py — migrate_db function and _MIGRATIONS dict"
+    validation_method: "Resolve permalink; verify migrate_db, _CURRENT_SCHEMA_VERSION, _MIGRATIONS exist"
+    limitations: []
+
+  - id: "EV-B-008"
+    class: B
+    description: "SHA-bound permalink to Bash shell integration script"
+    claim_refs: ["CLM-008"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/system/shell_integration.bash"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "shell_integration.bash — pd() wrapper, _pd_completion, Exit 88 handshake"
+    validation_method: "Resolve permalink; verify pd function, _pd_completion, complete -F, exit code 88 handling"
+    limitations: []
+
+  - id: "EV-B-009"
+    class: B
+    description: "SHA-bound permalink to doctor shell check and tasks staleness warning"
+    claim_refs: ["CLM-009"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/bin/pd.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/prime_directive/core/tasks.py"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "pd.py (doctor command shell check) + tasks.py (48h staleness check)"
+    validation_method: "Resolve permalinks; verify shell detection logic in doctor and getmtime staleness check in tasks.py"
+    limitations: []
+
+  - id: "EV-B-010"
+    class: B
+    description: "Scope inventory — complete list of files created, modified, and deleted in this change"
+    claim_refs: ["CLM-001", "CLM-002", "CLM-003", "CLM-004", "CLM-005", "CLM-006", "CLM-007", "CLM-008", "CLM-009", "CLM-010"]
+    artifacts:
+      - type: diff
+        reference: "git diff --name-status e59bac3..f174c8d"
+        immutability_mechanism: "Deterministic output bound to base_sha..head_sha"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: |
+      Added (11):
+        CLAUDE.md
+        docs/PD-ARCH-V3.0-GRAND-STRATEGIST.md
+        docs/PD-ARCH-V3.1-IDENTITY.md
+        prime_directive/core/dossier_ai.py
+        prime_directive/core/empire.py
+        prime_directive/core/identity.py
+        prime_directive/core/skill_scanner.py
+        prime_directive/system/shell_integration.bash
+        tests/test_dossier_ai.py
+        tests/test_empire.py
+        tests/test_identity.py
+        tests/test_skill_scanner.py
+      Modified (11):
+        prime_directive/bin/pd.py
+        prime_directive/conf/config.yaml
+        prime_directive/core/db.py
+        prime_directive/core/orchestrator.py
+        prime_directive/core/scribe.py
+        prime_directive/core/tasks.py
+        prime_directive/core/tmux.py
+        tests/test_cli.py
+        tests/test_scribe.py
+        tests/test_tmux.py
+        uv.lock
+      Deleted: none
+    validation_method: "Run git diff --name-status e59bac3..f174c8d and compare against this inventory"
+    limitations: []
+
+  # ---------------------------------------------------------------------------
+  # Class C — Negative Evidence
+  # ---------------------------------------------------------------------------
+  - id: "EV-C-001"
+    class: C
+    description: >
+      No hardcoded secrets, API keys, or credentials in new or modified source files.
+      Dossier data is operator self-declared identity metadata, not PII in the
+      regulatory sense.
+    claim_refs: ["CLM-001"]
+    artifacts:
+      - type: search_output
+        reference: "grep -rn 'sk-\\|api_key\\|password\\|secret\\|token.*=.*[\"'\\']' prime_directive/core/identity.py prime_directive/core/dossier_ai.py prime_directive/core/empire.py prime_directive/core/skill_scanner.py"
+        immutability_mechanism: "Reproducible at head_sha f174c8d"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "All 4 new core modules"
+    validation_method: "Run grep pattern above at head_sha; verify zero matches for literal secrets (config references to env vars are expected and acceptable)"
+    limitations:
+      - "Pattern-based search — cannot detect obfuscated or encoded secrets"
+      - "Searches new files only; does not audit pre-existing modules"
+
+  - id: "EV-C-002"
+    class: C
+    description: >
+      AI provider calls do not leak operator dossier content to third parties
+      beyond the intended AI provider. Prompt construction in dossier_ai.py sends
+      only context snapshot summaries (already project-scoped), not raw dossier
+      YAML or filesystem paths.
+    claim_refs: ["CLM-004"]
+    artifacts:
+      - type: search_output
+        reference: "grep -n 'operator_dossier\\|dossier_path\\|home_dir' prime_directive/core/dossier_ai.py"
+        immutability_mechanism: "Reproducible at head_sha f174c8d"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "dossier_ai.py prompt construction path"
+    validation_method: "Read suggest_themes function; verify prompt is built from context_summaries list, not from raw dossier or filesystem content"
+    limitations:
+      - "Context snapshots themselves may contain sensitive project information — this is by design and disclosed to the operator"
+      - "Operator opts in to AI analysis via explicit --deep flag"
+
+  - id: "EV-C-003"
+    class: C
+    description: >
+      No new runtime dependencies added to pyproject.toml [dependencies].
+      uv.lock changes are resolution-only (version pinning updates from
+      existing transitive tree).
+    claim_refs: ["CLM-010"]
+    artifacts:
+      - type: diff
+        reference: "git diff e59bac3..f174c8d -- pyproject.toml"
+        immutability_mechanism: "Deterministic diff bound to base_sha..head_sha"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "pyproject.toml dependency declarations"
+    validation_method: "Run diff command; verify no new entries in [project.dependencies] or [project.optional-dependencies]"
+    limitations:
+      - "uv.lock diff is large (+898 lines) but reflects resolution changes, not new top-level packages"
+
+  # ---------------------------------------------------------------------------
+  # Class E — Intent Evidence
+  # ---------------------------------------------------------------------------
+  - id: "EV-E-001"
+    class: E
+    description: >
+      This change implements Phase A of the Operator Identity Protocol (V3.1) as
+      specified in PD-ARCH-V3.1-IDENTITY.md. All 4 phases (A through D) of the
+      spec are delivered in this PR. The spec was written before implementation
+      and is included in the branch as a reference document.
+    claim_refs: ["CLM-005", "CLM-008"]
+    artifacts:
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/docs/PD-ARCH-V3.1-IDENTITY.md"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/docs/DOSSIER-V31-PHASE-A-REVIEW.md"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "V3.1 Operator Identity Protocol — all 4 phases (schema, scanning, AI analysis, CLI UX)"
+    validation_method: >
+      Compare PD-ARCH-V3.1-IDENTITY.md spec requirements against implementation:
+      Phase A (schema + validation) → identity.py;
+      Phase B (scanning + empire) → skill_scanner.py, empire.py;
+      Phase C (AI analysis) → dossier_ai.py;
+      Phase D (CLI UX) → pd.py dossier subcommands.
+      Verify each spec requirement has a corresponding implementation.
+    limitations:
+      - "Spec-to-implementation mapping is manual; no automated traceability matrix"
+
+  - id: "EV-E-002"
+    class: E
+    description: >
+      PR description and comprehensive diff review document the intent, scope,
+      and design decisions behind this change. CodeRabbit automated review
+      completed with SUCCESS status.
+    claim_refs: ["CLM-001", "CLM-002", "CLM-003", "CLM-004", "CLM-005", "CLM-006", "CLM-007", "CLM-008", "CLM-009", "CLM-010"]
+    artifacts:
+      - type: attestation
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/pull/16"
+        immutability_mechanism: "PR URL — note: PR description is mutable; head_sha f174c8d is the immutable anchor"
+        retrieved_at: "2026-04-04T19:02:40Z"
+      - type: permalink
+        reference: "https://github.com/ImmortalDemonGod/prime-directive/blob/f174c8d18efe5c199a5f831aa824629dfc425ca1/docs/DOSSIER-V31-PHASE-A-REVIEW.md"
+        immutability_mechanism: "Git commit-SHA-bound permalink"
+        retrieved_at: "2026-04-04T19:02:40Z"
+    scope: "Entire PR scope — all 23 files, 44 commits"
+    validation_method: "Read PR description and DOSSIER-V31-PHASE-A-REVIEW.md; verify they describe the same scope as this packet's claims"
+    limitations:
+      - "PR description is mutable — the review doc committed to the branch is the immutable intent record"
+
+# =============================================================================
+# ATTESTATIONS (§7)
+# =============================================================================
+attestations:
+  - id: "ATT-001"
+    verifier_id: "PENDING — requires independent verifier per S1 SoD"
+    verifier_identity_type: github
+    decision: PENDING
+    timestamp: "PENDING"
+
+    evidence_classes_validated: []
+    validation_rules_checked: []
+
+    findings: []
+
+    signature_method: unsigned
+    # NOTE: R2/L2 does not require cryptographic signing.
+    # Verifier should fill in this attestation after reviewing the packet.
+
+# =============================================================================
+# KNOWN LIMITATIONS (§7.5)
+# =============================================================================
+known_limitations:
+  - "No dedicated CI pipeline — tests verified locally and via CodeRabbit bot; no immutable CI artifact with retention guarantee (A-001 partially satisfied)"
+  - "No code coverage metrics collected — coverage non-regression cannot be quantified (C-006 not satisfied)"
+  - "No mypy/pyright type checking — static analysis limited to flake8 linting"
+  - "AI provider integration tested only via mocks — no integration tests against live Ollama or OpenAI endpoints"
+  - "Spec-to-implementation traceability is manual — no automated requirements matrix"
+  - "V3.0 (pd overseer, scoring engine) is not implemented — V3.1 is complete but V3.0 remains unstarted"
+  - "uv.lock diff is large (+898 lines) and was not individually audited line-by-line; dependency resolution trusted to uv"
+  - "pd.py is 2193 lines — high per-file complexity; not broken into sub-modules in this change"
+  - "Test integrity analysis uses pytest --collect-only counts, not AST-based semantic diff (C-004 partially satisfied)"
+
+# =============================================================================
+# EXCEPTION (§10)
+# =============================================================================
+exception:
+  invoked: false
+
+# =============================================================================
+# METADATA
+# =============================================================================
+metadata:
+  generator: "claude-code (manual packet authoring with Claude Opus 4.6 assistance)"
+  generator_version: "claude-opus-4-6"
+  generation_timestamp: "2026-04-04T19:02:40Z"
+  packet_hash: "PENDING — compute SHA-256 of this file excluding this field after finalization"
