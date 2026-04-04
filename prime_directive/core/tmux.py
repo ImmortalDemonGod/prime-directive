@@ -6,7 +6,9 @@ import shutil
 logger = logging.getLogger("prime_directive")
 
 
-async def ensure_session(repo_id: str, repo_path: str, attach: bool = True) -> None:
+async def ensure_session(
+    repo_id: str, repo_path: str, attach: bool = True
+) -> None:
     """Ensure a tmux session exists for the given repo_id and attach/switch to it.
 
     Uses asyncio.create_subprocess_exec throughout to avoid blocking the event loop.
@@ -20,7 +22,10 @@ async def ensure_session(repo_id: str, repo_path: str, attach: bool = True) -> N
     # Check if session exists
     try:
         proc = await asyncio.create_subprocess_exec(
-            "tmux", "has-session", "-t", session_name,
+            "tmux",
+            "has-session",
+            "-t",
+            session_name,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
@@ -32,10 +37,29 @@ async def ensure_session(repo_id: str, repo_path: str, attach: bool = True) -> N
     if returncode != 0:
         # Create new session
         if shutil.which("uv"):
-            cmd = ["tmux", "new-session", "-d", "-s", session_name, "-c", repo_path, "uv", "shell"]
+            cmd = [
+                "tmux",
+                "new-session",
+                "-d",
+                "-s",
+                session_name,
+                "-c",
+                repo_path,
+                "uv",
+                "shell",
+            ]
         else:
             shell = os.environ.get("SHELL") or "bash"
-            cmd = ["tmux", "new-session", "-d", "-s", session_name, "-c", repo_path, shell]
+            cmd = [
+                "tmux",
+                "new-session",
+                "-d",
+                "-s",
+                session_name,
+                "-c",
+                repo_path,
+                shell,
+            ]
         try:
             proc = await asyncio.create_subprocess_exec(
                 *cmd,
@@ -51,7 +75,10 @@ async def ensure_session(repo_id: str, repo_path: str, attach: bool = True) -> N
     if os.environ.get("TMUX"):
         try:
             proc = await asyncio.create_subprocess_exec(
-                "tmux", "switch-client", "-t", session_name,
+                "tmux",
+                "switch-client",
+                "-t",
+                session_name,
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
@@ -62,6 +89,7 @@ async def ensure_session(repo_id: str, repo_path: str, attach: bool = True) -> N
         # attach-session is interactive and blocks until the user detaches —
         # run it without a timeout via a standard subprocess to preserve interactivity.
         import subprocess
+
         subprocess.run(["tmux", "attach-session", "-t", session_name])
 
 
@@ -70,7 +98,8 @@ async def detach_current() -> None:
     if os.environ.get("TMUX"):
         try:
             proc = await asyncio.create_subprocess_exec(
-                "tmux", "detach-client",
+                "tmux",
+                "detach-client",
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
             )
