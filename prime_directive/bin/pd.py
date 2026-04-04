@@ -211,7 +211,14 @@ def _seed_programming_languages(dossier: Any, summaries: list[Any]) -> None:
     }
     for summary in summaries:
         for skill_name in summary.detected_skills:
-            if skill_name in {"Python", "JavaScript", "TypeScript", "Rust", "Go", "SQL"}:
+            if skill_name in {
+                "Python",
+                "JavaScript",
+                "TypeScript",
+                "Rust",
+                "Go",
+                "SQL",
+            }:
                 detected_languages.add(skill_name)
     dossier.identity.languages["programming"] = sorted(detected_languages)
 
@@ -225,7 +232,9 @@ def _bootstrap_dossier(cfg: DictConfig) -> tuple[Any, list[Any], list[Any]]:
     return dossier, summaries, proposals
 
 
-def _render_connection_surface_table(surface: dict[str, list[str]]) -> tuple[Table, int]:
+def _render_connection_surface_table(
+    surface: dict[str, list[str]],
+) -> tuple[Table, int]:
     table = Table(show_header=False)
     table.add_column("Category", style="bold cyan")
     table.add_column("Tags")
@@ -251,11 +260,15 @@ def _format_skill_profile(depth: str, recency: str) -> str:
         "proficient": "████████░░░",
         "familiar": "████░░░░░░░",
     }
-    return f"{bars.get(depth, '░░░░░░░░░░░')} {depth or '-'} ({recency or '-'})"
+    return (
+        f"{bars.get(depth, '░░░░░░░░░░░')} {depth or '-'} ({recency or '-'})"
+    )
 
 
 def _print_capabilities_layer(dossier: Any) -> None:
-    console.print("[bold]Operator Dossier — Layer 2: Technical Capabilities[/bold]")
+    console.print(
+        "[bold]Operator Dossier — Layer 2: Technical Capabilities[/bold]"
+    )
 
     console.rule(f"Skills ({len(dossier.capabilities.skills)})")
     if dossier.capabilities.skills:
@@ -278,7 +291,9 @@ def _print_capabilities_layer(dossier: Any) -> None:
     )
     console.print(", ".join(dossier.capabilities.domain_expertise) or "-")
 
-    console.rule(f"Projects Built ({len(dossier.capabilities.projects_built)})")
+    console.rule(
+        f"Projects Built ({len(dossier.capabilities.projects_built)})"
+    )
     if dossier.capabilities.projects_built:
         project_table = Table()
         project_table.add_column("Project")
@@ -336,7 +351,9 @@ def _print_identity_layer(dossier: Any) -> None:
 
     console.rule("Languages")
     spoken = ", ".join(dossier.identity.languages.get("spoken", [])) or "-"
-    programming = ", ".join(dossier.identity.languages.get("programming", [])) or "-"
+    programming = (
+        ", ".join(dossier.identity.languages.get("programming", [])) or "-"
+    )
     console.print(f"Spoken: {spoken}")
     console.print(f"Programming: {programming}")
 
@@ -358,7 +375,9 @@ def _print_identity_layer(dossier: Any) -> None:
 
 
 def _print_network_layer(dossier: Any) -> None:
-    console.print("[bold]Operator Dossier — Layer 3: Professional Network[/bold]")
+    console.print(
+        "[bold]Operator Dossier — Layer 3: Professional Network[/bold]"
+    )
 
     console.rule(f"Companies ({len(dossier.network.companies)})")
     if dossier.network.companies:
@@ -386,15 +405,15 @@ def _print_network_layer(dossier: Any) -> None:
     )
     if dossier.network.institutional_overlaps:
         for item in dossier.network.institutional_overlaps:
-            console.print(
-                f"{item.get('type', '-')}: {item.get('value', '-')}"
-            )
+            console.print(f"{item.get('type', '-')}: {item.get('value', '-')}")
     else:
         console.print("-")
 
 
 def _print_positioning_layer(dossier: Any) -> None:
-    console.print("[bold]Operator Dossier — Layer 4: Strategic Positioning[/bold]")
+    console.print(
+        "[bold]Operator Dossier — Layer 4: Strategic Positioning[/bold]"
+    )
 
     console.rule("Positioning Statement")
     console.print(dossier.positioning.positioning_statement or "-")
@@ -443,7 +462,9 @@ def _print_connection_surface_layer(dossier: Any) -> None:
     )
     console.print("[bold]Operator Connection Surface (Layer 5)[/bold]")
     console.print(table)
-    console.print(f"\n[bold]Total tags:[/bold] {total_tags} across 7 categories")
+    console.print(
+        f"\n[bold]Total tags:[/bold] {total_tags} across 7 categories"
+    )
 
 
 @dossier_app.command("init")
@@ -485,7 +506,9 @@ def dossier_init(
     )
     console.print(f"  Found {len(cfg.repos)} repos in config.yaml")
     if empire is not None:
-        console.print(f"  Found {len(empire.projects)} projects in empire.yaml")
+        console.print(
+            f"  Found {len(empire.projects)} projects in empire.yaml"
+        )
     console.print(
         f"  Scanned {source_file_count} dependency file(s) across configured repos"
     )
@@ -506,9 +529,13 @@ def dossier_init(
         f"  connection_surface.topic_tags: {len(dossier.connection_surface.topic_tags)} derived tag(s)"
     )
     console.print("\n[bold]Still needs your input:[/bold]")
-    console.print("  identity (education, military, hobbies, values, publications)")
+    console.print(
+        "  identity (education, military, hobbies, values, publications)"
+    )
     console.print("  network (companies, industries, collaborators, overlaps)")
-    console.print("  positioning (statement, offerings, case studies, revenue model)")
+    console.print(
+        "  positioning (statement, offerings, case studies, revenue model)"
+    )
     console.print("  connection_surface.philosophy_tags (manual only)")
     console.print(
         "\n[bold blue]Tip:[/bold blue] Run `pd dossier validate` after editing to check for errors."
@@ -517,10 +544,16 @@ def dossier_init(
 
 @empire_app.command("init")
 def empire_init(
-    force: bool = typer.Option(False, "--force", help="Overwrite existing empire.yaml"),
+    force: bool = typer.Option(
+        False, "--force", help="Overwrite existing empire.yaml"
+    ),
 ) -> None:
     """Generate a skeleton empire.yaml at ~/.prime-directive/empire.yaml."""
-    from prime_directive.core.empire import get_empire_path, ProjectRole, StrategicWeight
+    from prime_directive.core.empire import (
+        get_empire_path,
+        ProjectRole,
+        StrategicWeight,
+    )
 
     empire_path = get_empire_path()
     if empire_path.exists() and not force:
@@ -548,10 +581,13 @@ def empire_init(
 
     empire_path.parent.mkdir(parents=True, exist_ok=True)
     import yaml as _yaml
+
     with empire_path.open("w", encoding="utf-8") as fh:
         _yaml.safe_dump(skeleton, fh, sort_keys=False, allow_unicode=True)
 
-    console.print(f"[bold green]Empire skeleton written to[/bold green] {empire_path}")
+    console.print(
+        f"[bold green]Empire skeleton written to[/bold green] {empire_path}"
+    )
     console.print(
         f"  {len(repo_ids)} repo(s) scaffolded. "
         "Edit role/strategic_weight/description/depends_on for each project."
@@ -573,13 +609,21 @@ def dossier_validate():
         else []
     )
     if normalization_fixes:
-        console.print("\n[bold yellow]Tag normalization fixes available[/bold yellow]")
+        console.print(
+            "\n[bold yellow]Tag normalization fixes available[/bold yellow]"
+        )
         for item in normalization_fixes:
             console.print(f"  - {item}")
-        if typer.confirm("Apply suggested tag normalization fixes?", default=True):
-            applied_fixes = apply_operator_dossier_tag_normalization_fixes(raw_data)
+        if typer.confirm(
+            "Apply suggested tag normalization fixes?", default=True
+        ):
+            applied_fixes = apply_operator_dossier_tag_normalization_fixes(
+                raw_data
+            )
             if applied_fixes:
-                write_operator_dossier(parse_operator_dossier(raw_data), dossier_path)
+                write_operator_dossier(
+                    parse_operator_dossier(raw_data), dossier_path
+                )
                 console.print(
                     f"\n[bold green]Applied {len(applied_fixes)} tag normalization fix(es).[/bold green]"
                 )
@@ -609,7 +653,9 @@ def dossier_validate():
         f"info={len(report.info)}"
     )
     if report.is_valid:
-        console.print(f"\n[bold green]Validation passed[/bold green] ({summary})")
+        console.print(
+            f"\n[bold green]Validation passed[/bold green] ({summary})"
+        )
         return
 
     console.print(f"\n[bold red]Validation failed[/bold red] ({summary})")
@@ -640,7 +686,9 @@ def dossier_sync_skills(
         ctx.get_parameter_source("dry_run") == ParameterSource.COMMANDLINE
     )
     if apply and dry_run_explicit:
-        raise typer.BadParameter("`--apply` and `--dry-run` cannot be used together.")
+        raise typer.BadParameter(
+            "`--apply` and `--dry-run` cannot be used together."
+        )
 
     cfg = load_config()
     dossier_path = get_dossier_path()
@@ -653,7 +701,7 @@ def dossier_sync_skills(
 
     dossier = load_operator_dossier(dossier_path)
     summaries, proposals = build_sync_proposals(cfg, dossier)
-    theme_suggestions = []
+    theme_suggestions: list[Any] = []
     deep_error: Optional[str] = None
     deep_snapshot_count = 0
     deep_repo_count = 0
@@ -669,7 +717,9 @@ def dossier_sync_skills(
             "ai_fallback_provider",
             "none",
         )
-        fallback_model = getattr(cfg.system, "ai_fallback_model", "gpt-4o-mini")
+        fallback_model = getattr(
+            cfg.system, "ai_fallback_model", "gpt-4o-mini"
+        )
         require_confirmation = getattr(
             cfg.system,
             "ai_require_confirmation",
@@ -680,18 +730,28 @@ def dossier_sync_skills(
             "openai_api_url",
             "https://api.openai.com/v1/chat/completions",
         )
-        openai_timeout_seconds = getattr(cfg.system, "openai_timeout_seconds", 10.0)
+        openai_timeout_seconds = getattr(
+            cfg.system, "openai_timeout_seconds", 10.0
+        )
         openai_max_tokens = getattr(cfg.system, "openai_max_tokens", 150)
         ollama_api_url = getattr(
             cfg.system,
             "ollama_api_url",
             "http://localhost:11434/api/generate",
         )
-        ollama_timeout_seconds = getattr(cfg.system, "ollama_timeout_seconds", 5.0)
+        ollama_timeout_seconds = getattr(
+            cfg.system, "ollama_timeout_seconds", 5.0
+        )
         ollama_max_retries = getattr(cfg.system, "ollama_max_retries", 0)
-        ollama_backoff_seconds = getattr(cfg.system, "ollama_backoff_seconds", 0.0)
-        ai_monthly_budget_usd = getattr(cfg.system, "ai_monthly_budget_usd", 10.0)
-        ai_cost_per_1k_tokens = getattr(cfg.system, "ai_cost_per_1k_tokens", 0.002)
+        ollama_backoff_seconds = getattr(
+            cfg.system, "ollama_backoff_seconds", 0.0
+        )
+        ai_monthly_budget_usd = getattr(
+            cfg.system, "ai_monthly_budget_usd", 10.0
+        )
+        ai_cost_per_1k_tokens = getattr(
+            cfg.system, "ai_cost_per_1k_tokens", 0.002
+        )
         theme_suggestions, deep_metadata, deep_error = asyncio.run(
             generate_theme_suggestions_with_ai(
                 snapshot_texts=snapshot_texts,
@@ -714,13 +774,15 @@ def dossier_sync_skills(
             )
         )
         if deep_error is not None:
-            console.print(f"[bold red]Deep analysis error:[/bold red] {deep_error}")
+            console.print(
+                f"[bold red]Deep analysis error:[/bold red] {deep_error}"
+            )
             raise typer.Exit(code=1)
         if deep_metadata is not None:
-            total_tokens = deep_metadata.input_tokens + deep_metadata.output_tokens
-            deep_cost_line = (
-                f"Cost: {total_tokens} tokens (${deep_metadata.cost_estimate_usd:.4f})"
+            total_tokens = (
+                deep_metadata.input_tokens + deep_metadata.output_tokens
             )
+            deep_cost_line = f"Cost: {total_tokens} tokens (${deep_metadata.cost_estimate_usd:.4f})"
 
     console.print("[bold]Operator Dossier Skill Sync[/bold]")
     if summaries:
@@ -779,7 +841,9 @@ def dossier_sync_skills(
                 )
             console.print(theme_table)
         else:
-            console.print("[bold blue]No deep theme suggestions found.[/bold blue]")
+            console.print(
+                "[bold blue]No deep theme suggestions found.[/bold blue]"
+            )
         if deep_cost_line is not None:
             console.print(f"\n  {deep_cost_line}")
 
@@ -789,7 +853,9 @@ def dossier_sync_skills(
     console.print(f"  {len(theme_suggestions)} theme suggestion(s)")
 
     if not proposals and not theme_suggestions:
-        console.print("[bold green]No new skill, project, or theme proposals found.[/bold green]")
+        console.print(
+            "[bold green]No new skill, project, or theme proposals found.[/bold green]"
+        )
         return
 
     if not apply:
@@ -875,14 +941,12 @@ def dossier_sync_tags():
             change,
         )
     write_operator_dossier(dossier, dossier_path)
-    console.print("[bold]Tag Sync — Deriving connection_surface from Layers 1-4[/bold]")
+    console.print(
+        "[bold]Tag Sync — Deriving connection_surface from Layers 1-4[/bold]"
+    )
     console.print(summary_table)
-    console.print(
-        f"[bold]Total:[/bold] {total_before} → {total_after} tag(s)"
-    )
-    console.print(
-        f"[bold green]Updated[/bold green] {dossier_path}"
-    )
+    console.print(f"[bold]Total:[/bold] {total_before} → {total_after} tag(s)")
+    console.print(f"[bold green]Updated[/bold green] {dossier_path}")
 
 
 @dossier_app.command("show")
@@ -923,7 +987,9 @@ def dossier_show(
         }
         section_name = layer_mapping.get(layer)
         if section_name is None:
-            console.print("[bold red]Layer must be between 1 and 5.[/bold red]")
+            console.print(
+                "[bold red]Layer must be between 1 and 5.[/bold red]"
+            )
             raise typer.Exit(code=1)
         if layer == 2:
             _print_capabilities_layer(dossier)
@@ -2185,16 +2251,26 @@ def doctor():
     # 5. Shell integration
     current_shell = os.environ.get("SHELL", "")
     if "zsh" in current_shell:
-        checks.append(("Shell Integration", "✅", f"zsh detected ({current_shell})"))
+        checks.append(
+            ("Shell Integration", "✅", f"zsh detected ({current_shell})")
+        )
     elif current_shell:
-        checks.append((
-            "Shell Integration",
-            "⚠️",
-            f"{current_shell} detected — shell_integration.zsh is ZSH-only. "
-            "Source prime_directive/system/shell_integration.bash for Bash.",
-        ))
+        checks.append(
+            (
+                "Shell Integration",
+                "⚠️",
+                f"{current_shell} detected — shell_integration.zsh is ZSH-only. "
+                "Source prime_directive/system/shell_integration.bash for Bash.",
+            )
+        )
     else:
-        checks.append(("Shell Integration", "⚠️", "$SHELL not set; cannot verify integration"))
+        checks.append(
+            (
+                "Shell Integration",
+                "⚠️",
+                "$SHELL not set; cannot verify integration",
+            )
+        )
 
     # 4. Registry Paths
     console.print("\n[bold]Checking Repositories:[/bold]")
