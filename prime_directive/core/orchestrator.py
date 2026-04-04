@@ -112,7 +112,15 @@ async def switch_logic(
             logger.info(f"MOCK MODE: ensure_session({target_repo_id})")
             logger.info(f"MOCK MODE: launch_editor({target_path})")
         else:
-            await ensure_session_fn(target_repo_id, target_path, attach=False)
+            session_ok = await ensure_session_fn(
+                target_repo_id, target_path, attach=False
+            )
+            if not session_ok:
+                console.print(
+                    f"[bold red]tmux session bootstrap failed for"
+                    f" {target_repo_id}[/bold red]"
+                )
+                return False
             editor_args = getattr(cfg.system, "editor_args", ["-n"])
             launch_editor_fn(target_path, cfg.system.editor_cmd, editor_args)
 
