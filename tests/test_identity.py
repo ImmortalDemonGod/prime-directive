@@ -74,7 +74,12 @@ def test_validate_operator_dossier_file_warns_on_non_normalized_tags(tmp_path):
                 "version": "3.1",
                 "identity": {
                     "publications": [
-                        {"title": "T", "venue": "V", "year": 2025, "tags": ["AI Safety"]}
+                        {
+                            "title": "T",
+                            "venue": "V",
+                            "year": 2025,
+                            "tags": ["AI Safety"],
+                        }
                     ]
                 },
                 "capabilities": {
@@ -108,14 +113,23 @@ def test_validate_operator_dossier_file_warns_on_non_normalized_tags(tmp_path):
 def test_dossier_init_creates_file(tmp_path):
     cfg = OmegaConf.create(
         {
-            "system": {"db_path": ":memory:", "log_path": str(tmp_path / "pd.log")},
+            "system": {
+                "db_path": ":memory:",
+                "log_path": str(tmp_path / "pd.log"),
+            },
             "repos": {},
         }
     )
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path), patch(
-        "prime_directive.core.empire.Path.home", return_value=tmp_path
-    ), patch("prime_directive.bin.pd.load_config", return_value=cfg):
-        result = runner.invoke(app, ["dossier", "init"], catch_exceptions=False)
+    with (
+        patch(
+            "prime_directive.core.identity.Path.home", return_value=tmp_path
+        ),
+        patch("prime_directive.core.empire.Path.home", return_value=tmp_path),
+        patch("prime_directive.bin.pd.load_config", return_value=cfg),
+    ):
+        result = runner.invoke(
+            app, ["dossier", "init"], catch_exceptions=False
+        )
 
     dossier_path = tmp_path / ".prime-directive" / "operator_dossier.yaml"
 
@@ -134,8 +148,12 @@ def test_dossier_init_without_force_refuses_overwrite(tmp_path):
     dossier_path = dossier_dir / "operator_dossier.yaml"
     write_operator_dossier(default_operator_dossier(), dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "init"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "init"], catch_exceptions=False
+        )
 
     assert result.exit_code == 1
     assert "Dossier already exists" in result.stdout
@@ -147,8 +165,12 @@ def test_dossier_validate_reports_success_for_valid_file(tmp_path):
     dossier_path = dossier_dir / "operator_dossier.yaml"
     write_operator_dossier(default_operator_dossier(), dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "validate"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "validate"], catch_exceptions=False
+        )
 
     assert result.exit_code == 0
     assert "Validation passed" in result.stdout
@@ -182,8 +204,12 @@ def test_dossier_validate_reports_failure_for_invalid_file(tmp_path):
         encoding="utf-8",
     )
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "validate"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "validate"], catch_exceptions=False
+        )
 
     assert result.exit_code == 1
     assert "Validation failed" in result.stdout
@@ -214,7 +240,9 @@ def test_sync_connection_surface_derives_expected_tags():
     assert "developer-tooling" in dossier.connection_surface.topic_tags
     assert "san-francisco-ca" in dossier.connection_surface.geographic_tags
     assert "technical-writing" in dossier.connection_surface.hobby_tags
-    assert "verification-over-trust" in dossier.connection_surface.philosophy_tags
+    assert (
+        "verification-over-trust" in dossier.connection_surface.philosophy_tags
+    )
 
 
 def test_dossier_sync_tags_updates_connection_surface(tmp_path):
@@ -227,13 +255,20 @@ def test_dossier_sync_tags_updates_connection_surface(tmp_path):
     dossier.connection_surface.philosophy_tags = ["ownership"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "sync-tags"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "sync-tags"], catch_exceptions=False
+        )
 
     loaded = load_operator_dossier(dossier_path)
 
     assert result.exit_code == 0
-    assert "Tag Sync — Deriving connection_surface from Layers 1-4" in result.stdout
+    assert (
+        "Tag Sync — Deriving connection_surface from Layers 1-4"
+        in result.stdout
+    )
     assert "Updated" in result.stdout
     assert "developer-tooling" in loaded.connection_surface.topic_tags
     assert "open-source" in loaded.connection_surface.experience_tags
@@ -248,8 +283,12 @@ def test_dossier_show_tags_only_outputs_tag_table(tmp_path):
     dossier.connection_surface.topic_tags = ["developer-tooling"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "show", "--tags-only"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "show", "--tags-only"], catch_exceptions=False
+        )
 
     assert result.exit_code == 0
     assert "Operator Connection Surface (Layer 5)" in result.stdout
@@ -282,11 +321,17 @@ def test_dossier_show_layer_2_outputs_rich_capabilities_view(tmp_path):
     ]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
-        result = runner.invoke(app, ["dossier", "show", "--layer", "2"], catch_exceptions=False)
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
+        result = runner.invoke(
+            app, ["dossier", "show", "--layer", "2"], catch_exceptions=False
+        )
 
     assert result.exit_code == 0
-    assert "Operator Dossier — Layer 2: Technical Capabilities" in result.stdout
+    assert (
+        "Operator Dossier — Layer 2: Technical Capabilities" in result.stdout
+    )
     assert "Skills (1)" in result.stdout
     assert "developer-tooling" in result.stdout
     assert "prime-directive" in result.stdout
@@ -301,7 +346,9 @@ def test_dossier_export_layer5_only_json_to_stdout(tmp_path):
     dossier.connection_surface.topic_tags = ["developer-tooling"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
         result = runner.invoke(
             app,
             ["dossier", "export", "--format", "json", "--layer5-only"],
@@ -322,11 +369,15 @@ def test_dossier_export_full_json_matches_black_box_contract_shape(tmp_path):
     dossier.identity.values = ["verification-over-trust"]
     dossier.capabilities.domain_expertise = ["developer-tooling"]
     dossier.network.industries = ["devtools"]
-    dossier.positioning.positioning_statement = "Verification-first systems builder"
+    dossier.positioning.positioning_statement = (
+        "Verification-first systems builder"
+    )
     dossier.connection_surface.topic_tags = ["developer-tooling"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
         result = runner.invoke(
             app,
             ["dossier", "export", "--format", "json"],
@@ -345,8 +396,12 @@ def test_dossier_export_full_json_matches_black_box_contract_shape(tmp_path):
         "positioning",
         "connection_surface",
     }
-    assert exported["capabilities"]["domain_expertise"] == ["developer-tooling"]
-    assert exported["connection_surface"]["topic_tags"] == ["developer-tooling"]
+    assert exported["capabilities"]["domain_expertise"] == [
+        "developer-tooling"
+    ]
+    assert exported["connection_surface"]["topic_tags"] == [
+        "developer-tooling"
+    ]
 
 
 def test_dossier_export_yaml_to_file(tmp_path):
@@ -358,7 +413,9 @@ def test_dossier_export_yaml_to_file(tmp_path):
     dossier.connection_surface.topic_tags = ["developer-tooling"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
         result = runner.invoke(
             app,
             [
@@ -376,7 +433,9 @@ def test_dossier_export_yaml_to_file(tmp_path):
 
     assert result.exit_code == 0
     assert export_path.exists()
-    assert exported["connection_surface"]["topic_tags"] == ["developer-tooling"]
+    assert exported["connection_surface"]["topic_tags"] == [
+        "developer-tooling"
+    ]
 
 
 def test_dossier_export_tags_only_to_stdout(tmp_path):
@@ -388,7 +447,9 @@ def test_dossier_export_tags_only_to_stdout(tmp_path):
     dossier.connection_surface.philosophy_tags = ["verification-over-trust"]
     write_operator_dossier(dossier, dossier_path)
 
-    with patch("prime_directive.core.identity.Path.home", return_value=tmp_path):
+    with patch(
+        "prime_directive.core.identity.Path.home", return_value=tmp_path
+    ):
         result = runner.invoke(
             app,
             ["dossier", "export", "--format", "tags-only"],
