@@ -8,14 +8,15 @@ logger = logging.getLogger("prime_directive")
 
 async def ensure_session(
     repo_id: str, repo_path: str, attach: bool = True
-) -> None:
+) -> bool:
     """Ensure a tmux session exists for the given repo_id and attach/switch to it.
 
+    Returns True if the session was successfully created/found, False on failure.
     Uses asyncio.create_subprocess_exec throughout to avoid blocking the event loop.
     """
     if not shutil.which("tmux"):
         logger.error("tmux is not installed")
-        return
+        return False
 
     session_name = f"pd-{repo_id}"
 
@@ -32,7 +33,7 @@ async def ensure_session(
         returncode = await asyncio.wait_for(proc.wait(), timeout=2.0)
     except asyncio.TimeoutError:
         logger.error("tmux has-session timed out for %s", session_name)
-        return
+        return False
 
     if returncode != 0:
         # Create new session in the repo directory using the user's shell
@@ -56,14 +57,14 @@ async def ensure_session(
             rc = await asyncio.wait_for(proc.wait(), timeout=5.0)
         except asyncio.TimeoutError:
             logger.error("tmux new-session timed out for %s", session_name)
-            return
+            return False
         if rc != 0:
             logger.error(
                 "tmux new-session failed for %s (exit %d)",
                 session_name,
                 rc,
             )
-            return
+            return False
 
     # Attach logic
     if os.environ.get("TMUX"):
@@ -85,6 +86,8 @@ async def ensure_session(
         import subprocess
 
         subprocess.run(["tmux", "attach-session", "-t", session_name])
+
+    return True
 
 
 async def detach_current() -> None:
