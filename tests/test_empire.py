@@ -43,13 +43,19 @@ projects:
 
     assert loaded.version == "3.0"
     assert loaded.projects["repo1"].role == ProjectRole.INFRASTRUCTURE
-    assert loaded.projects["repo2"].strategic_weight == StrategicWeight.CRITICAL
+    assert (
+        loaded.projects["repo2"].strategic_weight == StrategicWeight.CRITICAL
+    )
     assert loaded.projects["repo2"].depends_on == ["repo1"]
 
 
 def test_load_empire_config_rejects_unknown_repo_id(tmp_path):
     cfg = OmegaConf.create(
-        {"repos": {"repo1": {"id": "repo1", "path": "/tmp/repo1", "priority": 10}}}
+        {
+            "repos": {
+                "repo1": {"id": "repo1", "path": "/tmp/repo1", "priority": 10}
+            }
+        }
     )
     empire_path = tmp_path / "empire.yaml"
     empire_path.write_text(
