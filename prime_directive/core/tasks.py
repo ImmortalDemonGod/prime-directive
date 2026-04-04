@@ -34,6 +34,7 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
         age_seconds = __import__("time").time() - mtime
         if age_seconds > _STALE_THRESHOLD_SECONDS:
             import warnings
+
             warnings.warn(
                 f"tasks.json has not been updated in "
                 f"{age_seconds / 3600:.0f}h — task data may be stale",
