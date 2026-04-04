@@ -299,6 +299,15 @@ def validate_operator_dossier_data(
     report: Optional[ValidationReport] = None,
 ) -> ValidationReport:
     current = report or ValidationReport()
+    # Normalise version: YAML may load 3.1 as float 3.1 instead of str "3.1"
+    raw_version = raw_data.get("version")
+    if isinstance(raw_version, (int, float)):
+        raw_data["version"] = str(raw_version)
+    # Attempt migration from older versions before validating
+    try:
+        migrate_operator_dossier(raw_data)
+    except ValueError as exc:
+        current.errors.append(str(exc))
     version = raw_data.get("version")
     if version != "3.1":
         current.errors.append(
