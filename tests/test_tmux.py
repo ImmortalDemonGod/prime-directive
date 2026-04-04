@@ -15,7 +15,9 @@ def _make_proc(returncode: int) -> AsyncMock:
 @patch("asyncio.create_subprocess_exec")
 @patch("subprocess.run")
 @patch.dict(os.environ, {}, clear=True)
-async def test_ensure_session_create_new_outside_tmux(mock_run, mock_cse, mock_which):
+async def test_ensure_session_create_new_outside_tmux(
+    mock_run, mock_cse, mock_which
+):
     # has-session → fail, new-session → ok; attach is synchronous subprocess.run
     mock_cse.side_effect = [
         _make_proc(1),  # has-session
@@ -35,7 +37,12 @@ async def test_ensure_session_create_new_outside_tmux(mock_run, mock_cse, mock_w
 
     # attach-session falls through to blocking subprocess.run
     mock_run.assert_called_once()
-    assert mock_run.call_args[0][0] == ["tmux", "attach-session", "-t", "pd-test-repo"]
+    assert mock_run.call_args[0][0] == [
+        "tmux",
+        "attach-session",
+        "-t",
+        "pd-test-repo",
+    ]
 
 
 @patch("shutil.which", return_value="/usr/bin/tmux")
@@ -52,7 +59,12 @@ async def test_ensure_session_exists_inside_tmux(mock_cse, mock_which):
 
     assert mock_cse.call_count == 2
     switch_args = mock_cse.call_args_list[1][0]
-    assert list(switch_args[:4]) == ["tmux", "switch-client", "-t", "pd-test-repo"]
+    assert list(switch_args[:4]) == [
+        "tmux",
+        "switch-client",
+        "-t",
+        "pd-test-repo",
+    ]
 
 
 @patch("asyncio.create_subprocess_exec")
