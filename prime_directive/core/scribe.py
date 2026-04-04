@@ -37,7 +37,7 @@ def _count_tokens(text: str, model: str) -> int:
         return len(enc.encode(text))
     except ImportError:
         logger.warning(
-            "tiktoken not installed; token counts will be 0 and cost tracking inactive"
+            "tiktoken not installed; using heuristic token estimate (chars/4)"
         )
         return len(text) // 4
     except Exception:
