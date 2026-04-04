@@ -139,8 +139,6 @@ def load_config() -> DictConfig:
         if user_cfg_path.exists():
             user_cfg = OmegaConf.load(str(user_cfg_path))
             cfg = cast(DictConfig, OmegaConf.merge(cfg, user_cfg))
-            if "repos" in user_cfg:
-                cfg.repos = user_cfg.repos
 
         try:
             cfg.system.db_path = os.path.expanduser(
