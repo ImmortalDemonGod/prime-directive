@@ -396,7 +396,12 @@ dependencies = ["httpx>=0.27.0"]
         )
 
     assert result.exit_code != 0
-    assert "--apply` and `--dry-run` cannot be used together" in result.output
+    # Rich injects ANSI escape codes around --apply/--dry-run in CI;
+    # strip them before asserting on the message text.
+    import re
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
+    assert "cannot be used together" in plain
 
 
 def test_build_theme_suggestions_extracts_repeated_snapshot_themes():
