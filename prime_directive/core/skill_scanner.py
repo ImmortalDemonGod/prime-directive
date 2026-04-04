@@ -148,7 +148,10 @@ def build_sync_proposals(
         proposed_for_repo: set[str] = set()
         for item in detected:
             normalized = item.skill_name.lower()
-            if normalized in existing_skills or normalized in proposed_for_repo:
+            if (
+                normalized in existing_skills
+                or normalized in proposed_for_repo
+            ):
                 continue
             proposals.append(
                 SyncProposal(
@@ -236,7 +239,9 @@ def apply_sync_proposals(
     return dossier
 
 
-def scan_repository(repo_path: Path, max_depth: int = 2) -> list[DetectedSkill]:
+def scan_repository(
+    repo_path: Path, max_depth: int = 2
+) -> list[DetectedSkill]:
     detected: list[DetectedSkill] = []
     pyproject_path = repo_path / "pyproject.toml"
     package_json_path = repo_path / "package.json"
@@ -265,7 +270,9 @@ def scan_repository(repo_path: Path, max_depth: int = 2) -> list[DetectedSkill]:
         detected.extend(scan_requirements_txt(requirements_path))
 
     if package_json_path.exists():
-        language_name = "TypeScript" if tsconfig_path.exists() else "JavaScript"
+        language_name = (
+            "TypeScript" if tsconfig_path.exists() else "JavaScript"
+        )
         detected.append(
             DetectedSkill(
                 skill_name=language_name,
@@ -296,10 +303,22 @@ def scan_repository(repo_path: Path, max_depth: int = 2) -> list[DetectedSkill]:
         detected.extend(scan_go_mod_dependencies(go_mod_path))
 
     # Bounded recursive scan for monorepo sub-packages (depth 1..max_depth)
-    _SKIP_DIRS = {"node_modules", ".git", "__pycache__", ".venv", "venv", "dist", "build", "target"}
+    _SKIP_DIRS = {
+        "node_modules",
+        ".git",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        "target",
+    }
     root_manifests = {
-        str(pyproject_path), str(requirements_path), str(package_json_path),
-        str(cargo_toml_path), str(go_mod_path),
+        str(pyproject_path),
+        str(requirements_path),
+        str(package_json_path),
+        str(cargo_toml_path),
+        str(go_mod_path),
     }
 
     def _recurse(directory: Path, current_depth: int) -> None:
@@ -310,7 +329,11 @@ def scan_repository(repo_path: Path, max_depth: int = 2) -> list[DetectedSkill]:
         except PermissionError:
             return
         for entry in entries:
-            if not entry.is_dir() or entry.name in _SKIP_DIRS or entry.name.startswith("."):
+            if (
+                not entry.is_dir()
+                or entry.name in _SKIP_DIRS
+                or entry.name.startswith(".")
+            ):
                 continue
             sub_pyproject = entry / "pyproject.toml"
             sub_requirements = entry / "requirements.txt"
@@ -319,24 +342,65 @@ def scan_repository(repo_path: Path, max_depth: int = 2) -> list[DetectedSkill]:
             sub_cargo = entry / "Cargo.toml"
             sub_go_mod = entry / "go.mod"
 
-            if sub_pyproject.exists() and str(sub_pyproject) not in root_manifests:
-                detected.append(DetectedSkill(skill_name="Python", source=str(sub_pyproject), confidence=LANGUAGE_CONFIDENCE))
+            if (
+                sub_pyproject.exists()
+                and str(sub_pyproject) not in root_manifests
+            ):
+                detected.append(
+                    DetectedSkill(
+                        skill_name="Python",
+                        source=str(sub_pyproject),
+                        confidence=LANGUAGE_CONFIDENCE,
+                    )
+                )
                 detected.extend(scan_pyproject_dependencies(sub_pyproject))
-            elif sub_requirements.exists() and str(sub_requirements) not in root_manifests:
-                detected.append(DetectedSkill(skill_name="Python", source=str(sub_requirements), confidence=LANGUAGE_CONFIDENCE))
+            elif (
+                sub_requirements.exists()
+                and str(sub_requirements) not in root_manifests
+            ):
+                detected.append(
+                    DetectedSkill(
+                        skill_name="Python",
+                        source=str(sub_requirements),
+                        confidence=LANGUAGE_CONFIDENCE,
+                    )
+                )
                 detected.extend(scan_requirements_txt(sub_requirements))
 
-            if sub_package_json.exists() and str(sub_package_json) not in root_manifests:
+            if (
+                sub_package_json.exists()
+                and str(sub_package_json) not in root_manifests
+            ):
                 lang = "TypeScript" if sub_tsconfig.exists() else "JavaScript"
-                detected.append(DetectedSkill(skill_name=lang, source=str(sub_package_json), confidence=LANGUAGE_CONFIDENCE))
-                detected.extend(scan_package_json_dependencies(sub_package_json))
+                detected.append(
+                    DetectedSkill(
+                        skill_name=lang,
+                        source=str(sub_package_json),
+                        confidence=LANGUAGE_CONFIDENCE,
+                    )
+                )
+                detected.extend(
+                    scan_package_json_dependencies(sub_package_json)
+                )
 
             if sub_cargo.exists() and str(sub_cargo) not in root_manifests:
-                detected.append(DetectedSkill(skill_name="Rust", source=str(sub_cargo), confidence=LANGUAGE_CONFIDENCE))
+                detected.append(
+                    DetectedSkill(
+                        skill_name="Rust",
+                        source=str(sub_cargo),
+                        confidence=LANGUAGE_CONFIDENCE,
+                    )
+                )
                 detected.extend(scan_cargo_toml_dependencies(sub_cargo))
 
             if sub_go_mod.exists() and str(sub_go_mod) not in root_manifests:
-                detected.append(DetectedSkill(skill_name="Go", source=str(sub_go_mod), confidence=LANGUAGE_CONFIDENCE))
+                detected.append(
+                    DetectedSkill(
+                        skill_name="Go",
+                        source=str(sub_go_mod),
+                        confidence=LANGUAGE_CONFIDENCE,
+                    )
+                )
                 detected.extend(scan_go_mod_dependencies(sub_go_mod))
 
             _recurse(entry, current_depth + 1)
@@ -497,7 +561,9 @@ def scan_go_mod_dependencies(go_mod_path: Path) -> list[DetectedSkill]:
 
         detected.append(
             DetectedSkill(
-                skill_name=format_skill_name(_extract_go_module_name(module_path)),
+                skill_name=format_skill_name(
+                    _extract_go_module_name(module_path)
+                ),
                 source=str(go_mod_path),
                 confidence=confidence,
             )
@@ -506,7 +572,9 @@ def scan_go_mod_dependencies(go_mod_path: Path) -> list[DetectedSkill]:
     return detected
 
 
-def scan_package_json_dependencies(package_json_path: Path) -> list[DetectedSkill]:
+def scan_package_json_dependencies(
+    package_json_path: Path,
+) -> list[DetectedSkill]:
     with package_json_path.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
 
@@ -557,7 +625,9 @@ def build_theme_suggestions(
     existing_tags: list[str],
     limit: int = 5,
 ) -> list[ThemeSuggestion]:
-    existing = {normalize_tag(tag) for tag in existing_tags if str(tag).strip()}
+    existing = {
+        normalize_tag(tag) for tag in existing_tags if str(tag).strip()
+    }
     counts: Counter[str] = Counter()
     samples: dict[str, str] = {}
 
@@ -609,7 +679,11 @@ def _extract_go_module_name(module_path: str) -> str:
     if not parts:
         return module_path
     candidate = parts[-1]
-    if candidate.startswith("v") and candidate[1:].isdigit() and len(parts) > 1:
+    if (
+        candidate.startswith("v")
+        and candidate[1:].isdigit()
+        and len(parts) > 1
+    ):
         candidate = parts[-2]
     return candidate
 
