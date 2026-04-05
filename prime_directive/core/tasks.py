@@ -6,12 +6,12 @@ from typing import Any, Dict, Optional
 def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     """
     Selects the highest-priority "in-progress" task from the repository's .taskmaster/tasks/tasks.json.
-    
+
     If the tasks file is missing, unreadable, or contains invalid JSON, returns None. If the file exists but has not been modified in over 48 hours, a warning is emitted indicating the task data may be stale.
-    
+
     Parameters:
         repo_path (str): Path to the repository root.
-    
+
     Returns:
         Optional[Dict[str, Any]]: The task dictionary with the highest priority and largest numeric `id` among tasks whose `status` is `"in-progress"`, or `None` if no such task is found or the file cannot be read/parsed.
     """
