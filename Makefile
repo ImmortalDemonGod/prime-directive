@@ -27,14 +27,14 @@ install:          ## Install the project in dev mode.
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
 	$(ENV_PREFIX)isort prime_directive/
-	$(ENV_PREFIX)black -l 79 prime_directive/
-	$(ENV_PREFIX)black -l 79 tests/
+	$(ENV_PREFIX)black prime_directive/
+	$(ENV_PREFIX)black tests/
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
 	$(ENV_PREFIX)flake8 prime_directive/
-	$(ENV_PREFIX)black -l 79 --check prime_directive/
-	$(ENV_PREFIX)black -l 79 --check tests/
+	$(ENV_PREFIX)black --check prime_directive/
+	$(ENV_PREFIX)black --check tests/
 	$(ENV_PREFIX)mypy --ignore-missing-imports prime_directive/
 
 .PHONY: test

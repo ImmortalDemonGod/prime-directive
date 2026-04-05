@@ -20,7 +20,7 @@ jobs:
       - name: flake8
         run: flake8 prime_directive/
       - name: black
-        run: black -l 79 --target-version py311 --check prime_directive/ tests/
+        run: black --check prime_directive/ tests/
       - name: mypy
         run: mypy --ignore-missing-imports prime_directive/
 
