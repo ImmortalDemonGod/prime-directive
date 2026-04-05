@@ -452,7 +452,7 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
                 Publication(
                     title=str(item.get("title", "")),
                     venue=str(item.get("venue", "")),
-                    year=int(item.get("year", 0) or 0),
+                    year=_safe_int(item.get("year", 0)),
                     tags=[str(tag) for tag in _as_list(item.get("tags"))],
                 )
                 for item in (
@@ -845,6 +845,13 @@ def _as_dict(value: Any) -> dict[str, Any]:
 
 def _as_list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+def _safe_int(value: Any, default: int = 0) -> int:
+    try:
+        return int(value or default)
+    except (ValueError, TypeError):
+        return default
 
 
 def _optional_str(value: Any) -> Optional[str]:
