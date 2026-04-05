@@ -7,10 +7,10 @@ from prime_directive.core.tmux import detach_current, ensure_session
 def _make_proc(returncode: int) -> AsyncMock:
     """
     Create an AsyncMock that simulates a subprocess whose `wait()` coroutine returns the given exit code.
-    
+
     Parameters:
         returncode (int): Exit code that the mock process's `wait()` coroutine will return.
-    
+
     Returns:
         AsyncMock: A mock process object with `wait()` set to return `returncode`.
     """
@@ -22,10 +22,10 @@ def _make_proc(returncode: int) -> AsyncMock:
 def _which_tmux_only(name: str) -> str | None:
     """
     Provide a which-like lookup that yields a tmux executable path only for the name "tmux".
-    
+
     Parameters:
         name (str): The program name to query.
-    
+
     Returns:
         str | None: "/usr/bin/tmux" if `name` is "tmux", `None` otherwise.
     """
