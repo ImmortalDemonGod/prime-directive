@@ -5,15 +5,15 @@ from typing import Any, Dict, Optional
 
 def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
     """
-    Retrieves the active task from the Task Master tasks.json file in the given
-    repository.
+    Selects the highest-priority "in-progress" task from the repository's .taskmaster/tasks/tasks.json.
 
-    Args:
+    If the tasks file is missing, unreadable, or contains invalid JSON, returns None. If the file exists but has not been modified in over 48 hours, a warning is emitted indicating the task data may be stale.
+
+    Parameters:
         repo_path (str): Path to the repository root.
 
     Returns:
-        Optional[Dict[str, Any]]: The active task dictionary or None if no task
-        is active or file not found.
+        Optional[Dict[str, Any]]: The task dictionary with the highest priority and largest numeric `id` among tasks whose `status` is `"in-progress"`, or `None` if no such task is found or the file cannot be read/parsed.
     """
     tasks_path = os.path.join(
         repo_path,
@@ -24,6 +24,24 @@ def get_active_task(repo_path: str) -> Optional[Dict[str, Any]]:
 
     if not os.path.exists(tasks_path):
         return None
+
+    # Warn if tasks.json hasn't been modified in >48 hours while the repo
+    # is clearly active (git activity is checked by the caller — here we
+    # just surface the staleness so the SITREP can flag it).
+    _STALE_THRESHOLD_SECONDS = 48 * 3600
+    try:
+        mtime = os.path.getmtime(tasks_path)
+        age_seconds = __import__("time").time() - mtime
+        if age_seconds > _STALE_THRESHOLD_SECONDS:
+            import warnings
+
+            warnings.warn(
+                f"tasks.json has not been updated in "
+                f"{age_seconds / 3600:.0f}h — task data may be stale",
+                stacklevel=2,
+            )
+    except OSError:
+        pass
 
     try:
         with open(tasks_path, "r") as f:

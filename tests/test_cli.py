@@ -1,7 +1,7 @@
 import pytest
 from typer.testing import CliRunner
 from unittest.mock import patch, Mock, MagicMock, AsyncMock
-from prime_directive.bin.pd import app
+from prime_directive.bin.pd import app, load_config
 from omegaconf import OmegaConf
 from datetime import datetime, timezone
 
@@ -10,9 +10,45 @@ from prime_directive.core.db import EventLog, EventType
 runner = CliRunner()
 
 
+def test_load_config_accepts_user_defined_repo_ids(tmp_path):
+    config_dir = tmp_path / ".prime-directive"
+    config_dir.mkdir(parents=True)
+    user_config = config_dir / "config.yaml"
+    user_config.write_text(
+        """
+system:
+  db_path: ~/.prime-directive/custom.db
+  log_path: ~/.prime-directive/custom.log
+repos:
+  demo-py:
+    id: demo-py
+    path: /tmp/demo-py
+    priority: 10
+    active_branch: main
+""".strip(),
+        encoding="utf-8",
+    )
+
+    with patch("prime_directive.bin.pd.Path.home", return_value=tmp_path):
+        cfg = load_config()
+
+    assert "demo-py" in cfg.repos
+    assert cfg.repos["demo-py"].path == "/tmp/demo-py"
+    assert str(cfg.system.db_path).endswith("custom.db")
+
+
 @pytest.fixture
 def mock_config(tmp_path):
     # Use OmegaConf to create a DictConfig that supports dot access
+    """
+    Create a test configuration OmegaConf DictConfig with default system settings and two repository entries.
+
+    Parameters:
+        tmp_path (Path): Temporary directory used to build the log file path (`tmp_path / "pd.log"`).
+
+    Returns:
+        DictConfig: An OmegaConf DictConfig containing a `system` mapping of default settings (including `db_path=":memory:"` and `log_path` pointing to the temp log file) and a `repos` mapping with entries `repo1` and `repo2`.
+    """
     log_file = tmp_path / "pd.log"
     conf_dict = {
         "system": {
