@@ -174,22 +174,60 @@ class ValidationReport:
 
     @property
     def is_valid(self) -> bool:
+        """
+        Indicates whether the validation report contains no errors.
+        
+        Returns:
+            `True` if the report has no errors, `False` otherwise.
+        """
         return not self.errors
 
 
 def get_dossier_path() -> Path:
+    """
+    Get the default filesystem path for the operator dossier YAML file.
+    
+    Returns:
+        path (Path): Path to "~/.prime-directive/operator_dossier.yaml".
+    """
     return Path.home() / ".prime-directive" / "operator_dossier.yaml"
 
 
 def default_operator_dossier() -> OperatorDossier:
+    """
+    Create a default OperatorDossier populated with sensible defaults.
+    
+    Returns:
+        OperatorDossier: A new OperatorDossier instance initialized with the module's default values (version "3.1" and empty sub-objects).
+    """
     return OperatorDossier()
 
 
 def operator_dossier_to_dict(dossier: OperatorDossier) -> dict[str, Any]:
+    """
+    Convert an OperatorDossier dataclass into a plain dictionary suitable for serialization.
+    
+    Parameters:
+        dossier (OperatorDossier): The dossier dataclass instance to convert.
+    
+    Returns:
+        dict[str, Any]: A dictionary representation of the dossier with all nested dataclasses converted to built-in Python types.
+    """
     return asdict(dossier)
 
 
 def sync_connection_surface(dossier: OperatorDossier) -> OperatorDossier:
+    """
+    Recompute the dossier's connection_surface tag lists from its contents while preserving existing philosophy tags.
+    
+    Produces normalized, sorted lists for `experience_tags`, `topic_tags`, `geographic_tags`, `education_tags`, `industry_tags`, and `hobby_tags` based on the dossier's identity, capabilities, and network data. Preserves non-blank `philosophy_tags` from the existing connection surface after normalizing and deduplicating them, and replaces the dossier's `connection_surface` with the updated values.
+    
+    Parameters:
+        dossier (OperatorDossier): The dossier to update; its `connection_surface` is replaced in-place.
+    
+    Returns:
+        OperatorDossier: The same dossier instance with an updated `connection_surface`.
+    """
     preserved_philosophy_tags = [
         normalize_tag(tag)
         for tag in dossier.connection_surface.philosophy_tags
@@ -250,6 +288,17 @@ def write_operator_dossier(
     dossier: OperatorDossier,
     path: Optional[Path] = None,
 ) -> Path:
+    """
+    Write an OperatorDossier to YAML on disk.
+    
+    Parameters:
+        dossier (OperatorDossier): The dossier to serialize and write.
+        path (Optional[Path]): Destination file path. If omitted, writes to the default
+            path returned by get_dossier_path().
+    
+    Returns:
+        Path: The final path written to.
+    """
     target_path = path or get_dossier_path()
     target_path.parent.mkdir(parents=True, exist_ok=True)
     with target_path.open("w", encoding="utf-8") as handle:
@@ -263,6 +312,18 @@ def write_operator_dossier(
 
 
 def load_operator_dossier(path: Optional[Path] = None) -> OperatorDossier:
+    """
+    Load an OperatorDossier from the given YAML file, validating and parsing its contents.
+    
+    Parameters:
+        path (Optional[Path]): Path to the dossier YAML file. If omitted, the default path returned by get_dossier_path() is used.
+    
+    Returns:
+        OperatorDossier: The parsed and validated dossier dataclass.
+    
+    Raises:
+        ValueError: If validation reports any errors; the exception message lists each validation error.
+    """
     target_path = path or get_dossier_path()
     report, raw_data = validate_operator_dossier_file(target_path)
     if report.errors:
@@ -276,6 +337,15 @@ def load_operator_dossier(path: Optional[Path] = None) -> OperatorDossier:
 def validate_operator_dossier_file(
     path: Optional[Path] = None,
 ) -> tuple[ValidationReport, dict[str, Any]]:
+    """
+    Validate an operator dossier YAML file and return a validation report alongside the parsed raw data.
+    
+    Parameters:
+        path (Optional[Path]): Path to the dossier YAML file. If omitted, the default path from get_dossier_path() is used.
+    
+    Returns:
+        tuple[ValidationReport, dict[str, Any]]: A pair where the first element is a ValidationReport containing any errors, warnings, and info collected during validation, and the second element is the parsed top-level mapping from the YAML file. If the file is missing, contains invalid YAML, or the top-level content is not a mapping, the report will contain corresponding errors and the returned mapping will be empty.
+    """
     target_path = path or get_dossier_path()
     report = ValidationReport()
     if not target_path.exists():
@@ -298,6 +368,27 @@ def validate_operator_dossier_data(
     raw_data: dict[str, Any],
     report: Optional[ValidationReport] = None,
 ) -> ValidationReport:
+    """
+    Validate raw operator dossier data and return a populated ValidationReport.
+    
+    Performs version normalization and migration when needed, validates schema-specific
+    constraints (version, skill depth/recency, tag lists, connection-surface tag counts,
+    project tech-stack vs. skills) and records errors, warnings, and informational
+    messages on the returned ValidationReport.
+    
+    Parameters:
+        raw_data (dict[str, Any]): Raw data (typically loaded from YAML) representing an
+            operator dossier. Note: this function may mutate `raw_data` (e.g., normalizing
+            numeric `version` values to strings and performing supported in-place
+            migrations).
+        report (Optional[ValidationReport]): An existing ValidationReport to append to.
+            If omitted, a new ValidationReport is created.
+    
+    Returns:
+        ValidationReport: A report whose `errors`, `warnings`, and `info` lists describe
+        validation findings. The report's `is_valid` property is `True` only when `errors`
+        is empty.
+    """
     current = report or ValidationReport()
     # Normalise version: YAML may load 3.1 as float 3.1 instead of str "3.1"
     raw_version = raw_data.get("version")
@@ -375,6 +466,17 @@ def validate_operator_dossier_data(
 
 
 def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
+    """
+    Convert a raw YAML-loaded mapping into a fully populated OperatorDossier dataclass.
+    
+    Parses the nested mapping in `raw_data`, coercing and normalizing fields into the module's dataclass types (Education, MilitaryService, GeographicEntry, Publication, HumanIdentity, Skill, ProjectBuilt, Methodology, TechnicalCapabilities, Company, ProfessionalNetwork, Offering, StrategicPositioning, ConnectionSurface, and OperatorDossier). Missing or unexpected shapes are tolerated by using sensible defaults (empty lists, empty strings, or None), numeric publication years are converted to int with a fallback of 0, language sections are read into `spoken` and `programming` lists, military information is converted into a MilitaryService instance when present, and connection_surface tag lists are converted to sorted string lists.
+    
+    Parameters:
+        raw_data (dict[str, Any]): Raw mapping (typically the result of YAML loading) representing an operator dossier.
+    
+    Returns:
+        OperatorDossier: A populated OperatorDossier instance constructed from `raw_data`.
+    """
     identity = _as_dict(raw_data.get("identity"))
     capabilities = _as_dict(raw_data.get("capabilities"))
     network = _as_dict(raw_data.get("network"))
@@ -645,6 +747,18 @@ def parse_operator_dossier(raw_data: dict[str, Any]) -> OperatorDossier:
 def _iter_normalized_tag_lists(
     raw_data: dict[str, Any],
 ) -> list[tuple[str, list[str]]]:
+    """
+    Collects tag-list fields from raw dossier data and returns them with location identifiers.
+    
+    Parameters:
+        raw_data (dict[str, Any]): Top-level mapping parsed from the dossier YAML.
+    
+    Returns:
+        list[tuple[str, list[str]]]: A list of (location, tags) pairs where `location` is a dotted
+        path identifying the source (e.g. "capabilities.domain_expertise",
+        "identity.publications[0].tags", "connection_surface.experience_tags") and `tags` is the
+        corresponding list of tag strings (coerced to `str`, empty list when absent).
+    """
     capabilities = _as_dict(raw_data.get("capabilities"))
     identity = _as_dict(raw_data.get("identity"))
     connection_surface = _as_dict(raw_data.get("connection_surface"))
@@ -692,6 +806,17 @@ def _validate_tag_list(
     tags: list[str],
     report: ValidationReport,
 ) -> None:
+    """
+    Validate a sequence of raw tag strings and record normalization and duplicate warnings on the provided ValidationReport.
+    
+    Parameters:
+    	location (str): Human-readable location identifier used in warning messages (e.g., a YAML path).
+    	tags (list[str]): Sequence of raw tag values to validate.
+    	report (ValidationReport): ValidationReport instance to which warnings will be appended.
+    
+    Behavior:
+    	Appends a warning for each tag whose normalized form (via normalize_tag) differs from the raw value, suggesting the normalized form. Appends a warning for each duplicate raw tag value (duplicate detection is performed on the original, unnormalized strings). This function mutates the provided `report` by adding warnings.
+    """
     seen: set[str] = set()
     duplicate_tags: set[str] = set()
     for tag in tags:
@@ -711,6 +836,18 @@ def _validate_tag_list(
 def preview_operator_dossier_tag_normalization_fixes(
     raw_data: dict[str, Any],
 ) -> list[str]:
+    """
+    List proposed tag-normalization edits for the provided raw operator dossier data.
+    
+    Does not modify the input; examines tag-list locations and records each tag that would change when normalized.
+    
+    Parameters:
+        raw_data (dict[str, Any]): Raw dossier data (typically the YAML-parsed mapping) to inspect.
+    
+    Returns:
+        list[str]: A list of human-readable fix descriptions in the form
+                   '<location>: "original" -> "normalized"' for each tag that would be changed.
+    """
     fixes: list[str] = []
     for location, tags in _iter_normalized_tag_lists(raw_data):
         for tag in tags:
@@ -723,6 +860,21 @@ def preview_operator_dossier_tag_normalization_fixes(
 def apply_operator_dossier_tag_normalization_fixes(
     raw_data: dict[str, Any],
 ) -> list[str]:
+    """
+    Normalize and de-duplicate tag lists in-place for known dossier fields and record the applied fixes.
+    
+    This function mutates the provided raw_data mapping by normalizing and removing duplicate tags in the following locations when they are present as lists:
+    - capabilities.domain_expertise
+    - identity.publications[{index}].tags
+    - capabilities.projects_built[{index}].capability_tags
+    - each connection_surface.<field> for fields listed in CONNECTION_SURFACE_FIELDS
+    
+    Parameters:
+        raw_data (dict[str, Any]): Parsed operator dossier data (typically loaded from YAML). The mapping is mutated in place.
+    
+    Returns:
+        list[str]: A list of human-readable descriptions of the changes made (e.g., tag normalizations and duplicate removals).
+    """
     fixes: list[str] = []
     capabilities = raw_data.get("capabilities")
     identity = raw_data.get("identity")
@@ -786,6 +938,15 @@ def apply_operator_dossier_tag_normalization_fixes(
 
 
 def normalize_tag(value: str) -> str:
+    """
+    Normalize a tag string into a lowercase, dash-separated token suitable for use as a canonical tag.
+    
+    Parameters:
+        value (str): The raw tag value.
+    
+    Returns:
+        normalized (str): The input normalized by trimming whitespace, converting to lowercase, replacing underscores with dashes, replacing slashes/spaces with single dashes, and collapsing repeated dashes so tokens are separated by single `-`.
+    """
     normalized = value.strip().lower().replace("_", "-")
     normalized = "-".join(
         part for part in normalized.replace("/", " ").split()
@@ -799,6 +960,17 @@ def _normalize_tag_sequence(
     tags: list[str],
     location: str,
 ) -> tuple[list[str], list[str]]:
+    """
+    Normalize a sequence of tag strings and collect human-readable fix descriptions.
+    
+    Parameters:
+    	tags (list[str]): Sequence of raw tag values to normalize.
+    	location (str): Identifier used in each fix message to indicate the tag list's origin.
+    
+    Returns:
+    	normalized_tags (list[str]): List of normalized tags in first-occurrence order with duplicates removed.
+    	fixes (list[str]): Descriptions of changes made (normalizations and removed duplicates), each prefixed with the provided location.
+    """
     normalized_tags: list[str] = []
     fixes: list[str] = []
     seen: set[str] = set()
@@ -815,17 +987,33 @@ def _normalize_tag_sequence(
 
 
 def _normalized_tag_set(values: list[Any]) -> set[str]:
+    """
+    Produce a set of normalized tags from a sequence of values.
+    
+    Parameters:
+        values (list[Any]): Values to convert to tags; each value is coerced to `str`, whitespace-only strings are ignored.
+    
+    Returns:
+        set[str]: A set of normalized tag strings (blank values omitted).
+    """
     return {
         normalize_tag(str(value)) for value in values if str(value).strip()
     }
 
 
 def migrate_operator_dossier(raw_data: dict[str, Any]) -> dict[str, Any]:
-    """Migrate a dossier from an older version to 3.1 in-place.
-
-    Currently handles v3.0 → v3.1 (no structural changes; version bump only).
-    Returns the mutated raw_data dict.
-    Raises ValueError if the version is unrecognised.
+    """
+    Migrate raw operator-dossier data to version "3.1" in place.
+    
+    If the incoming data already declares version "3.1" it is returned unchanged.
+    Currently supports only the 3.0 → 3.1 upgrade, which consists of updating the top-level
+    `version` field from "3.0" to "3.1" without other structural changes.
+    
+    Returns:
+        The same `raw_data` mapping, potentially mutated so that `raw_data["version"] == "3.1"`.
+    
+    Raises:
+        ValueError: If `raw_data["version"]` is not "3.0" or "3.1".
     """
     version = str(raw_data.get("version", "")).strip()
     if version == "3.1":
@@ -840,10 +1028,28 @@ def migrate_operator_dossier(raw_data: dict[str, Any]) -> dict[str, Any]:
 
 
 def _as_dict(value: Any) -> dict[str, Any]:
+    """
+    Ensure a value is represented as a dictionary.
+    
+    Parameters:
+        value (Any): The value to coerce into a dictionary.
+    
+    Returns:
+        dict[str, Any]: The original mapping if `value` is a `dict`, otherwise an empty dict.
+    """
     return value if isinstance(value, dict) else {}
 
 
 def _as_list(value: Any) -> list[Any]:
+    """
+    Return the input unchanged when it is a list, otherwise return an empty list.
+    
+    Parameters:
+        value (Any): The value to treat as a list.
+    
+    Returns:
+        list[Any]: `value` if it is a list, otherwise an empty list.
+    """
     return value if isinstance(value, list) else []
 
 
@@ -855,12 +1061,30 @@ def _safe_int(value: Any, default: int = 0) -> int:
 
 
 def _optional_str(value: Any) -> Optional[str]:
+    """
+    Convert a value to a string, returning None when the input is None.
+    
+    Parameters:
+        value (Any): The value to convert to a string.
+    
+    Returns:
+        Optional[str]: `None` if `value` is `None`, otherwise `str(value)`.
+    """
     if value is None:
         return None
     return str(value)
 
 
 def _is_empty_layer(value: Any) -> bool:
+    """
+    Determine whether a nested dossier layer should be considered empty.
+    
+    Parameters:
+        value (Any): The value to inspect; for containers (dicts/lists) emptiness is determined recursively.
+    
+    Returns:
+        bool: `True` if `value` is one of: `None`, a string containing only whitespace, a dict whose all values are empty, or a list whose all items are empty; `False` otherwise.
+    """
     if value is None:
         return True
     if isinstance(value, dict):

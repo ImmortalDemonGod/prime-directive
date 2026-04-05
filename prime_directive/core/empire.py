@@ -41,6 +41,12 @@ class EmpireProject:
 
     @property
     def weight_numeric(self) -> int:
+        """
+        Get the numeric score for the project's strategic weight.
+        
+        Returns:
+            int: Integer score corresponding to `self.strategic_weight` (CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1).
+        """
         return WEIGHT_NUMERIC_MAP[self.strategic_weight]
 
 
@@ -51,12 +57,28 @@ class EmpireConfig:
 
 
 def get_empire_path() -> Path:
+    """
+    Get the default path to the Empire configuration file.
+    
+    Returns:
+        path (Path): Path to the user's ~/.prime-directive/empire.yaml file. This function does not check for the file's existence.
+    """
     return Path.home() / ".prime-directive" / "empire.yaml"
 
 
 def load_empire_if_exists(
     cfg: Any, path: Optional[Path] = None
 ) -> Optional[EmpireConfig]:
+    """
+    Load the Empire configuration from the specified path if the file exists.
+    
+    Parameters:
+    	cfg (Any): Application configuration used during parsing and validation (e.g., supplies known repository ids).
+    	path (Optional[Path]): Path to the empire YAML file; if omitted, the default path (~/.prime-directive/empire.yaml) is used.
+    
+    Returns:
+    	An EmpireConfig parsed from the file, or `None` if the target file does not exist.
+    """
     target_path = path or get_empire_path()
     if not target_path.exists():
         return None
@@ -64,6 +86,19 @@ def load_empire_if_exists(
 
 
 def load_empire_config(cfg: Any, path: Optional[Path] = None) -> EmpireConfig:
+    """
+    Load and validate an Empire configuration from the given file and return an EmpireConfig.
+    
+    Parameters:
+        cfg (Any): Runtime configuration object used to validate project references (e.g., provides `repos`).
+        path (Optional[Path]): Path to the empire YAML file; if omitted, the default user empire path is used.
+    
+    Returns:
+        EmpireConfig: Parsed and validated Empire configuration.
+    
+    Raises:
+        ValueError: If the top-level YAML value is not a mapping, or if parsing/validation of the configuration fails.
+    """
     target_path = path or get_empire_path()
     with target_path.open("r", encoding="utf-8") as handle:
         raw_data = yaml.safe_load(handle) or {}
@@ -73,6 +108,27 @@ def load_empire_config(cfg: Any, path: Optional[Path] = None) -> EmpireConfig:
 
 
 def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
+    """
+    Parse and validate a raw Empire YAML mapping and convert it into an EmpireConfig.
+    
+    Parses the top-level mapping produced by yaml.safe_load and enforces the Empire schema:
+    - Requires `version` to equal "3.0".
+    - Requires a `projects` mapping and validates each project's shape.
+    - Verifies each project id exists in `cfg.repos`.
+    - Validates `role` and `strategic_weight` against their enums.
+    - Normalizes `domain`, `description`, and `depends_on` entries (stripping and filtering empty values).
+    - Ensures every dependency refers to a known project and that the dependency graph contains no cycles.
+    
+    Parameters:
+        raw_data (dict[str, Any]): Top-level mapping loaded from empire.yaml.
+        cfg (Any): Application configuration object whose `repos` mapping provides valid project ids.
+    
+    Returns:
+        EmpireConfig: A validated, immutable configuration containing `version` and normalized `projects`.
+    
+    Raises:
+        ValueError: If the version is not "3.0", if `projects` is missing or malformed, if any project id is not present in `cfg.repos`, if project fields are the wrong type or contain invalid enum values, if `depends_on` contains unknown ids, or if a dependency cycle is detected.
+    """
     version = str(raw_data.get("version", "")).strip()
     if version != "3.0":
         raise ValueError(
@@ -150,11 +206,29 @@ def parse_empire_config(raw_data: dict[str, Any], cfg: Any) -> EmpireConfig:
 
 
 def _find_cycle(projects: dict[str, EmpireProject]) -> list[str]:
+    """
+    Finds a circular dependency among the provided projects.
+    
+    Parameters:
+        projects (dict[str, EmpireProject]): Mapping of project id to EmpireProject whose `depends_on` lists define dependency edges.
+    
+    Returns:
+        cycle (list[str]): Ordered list of project ids forming the detected cycle, starting and ending with the same id to close the loop; empty list if no cycle exists.
+    """
     visited: set[str] = set()
     active: set[str] = set()
     stack: list[str] = []
 
     def visit(node: str) -> list[str]:
+        """
+        Visit a project node and detect any dependency cycle reachable from that node.
+        
+        Parameters:
+            node (str): The project id to start the traversal from.
+        
+        Returns:
+            list[str]: A list of project ids describing the detected cycle, with the final element repeating the first to close the cycle (e.g., ['a', 'b', 'a']); an empty list if no cycle is found.
+        """
         if node in active:
             start = stack.index(node)
             return [*stack[start:], node]

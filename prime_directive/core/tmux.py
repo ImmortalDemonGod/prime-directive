@@ -9,10 +9,18 @@ logger = logging.getLogger("prime_directive")
 async def ensure_session(
     repo_id: str, repo_path: str, attach: bool = True
 ) -> bool:
-    """Ensure a tmux session exists for the given repo_id and attach/switch to it.
-
-    Returns True if the session was successfully created/found, False on failure.
-    Uses asyncio.create_subprocess_exec throughout to avoid blocking the event loop.
+    """
+    Ensure a tmux session named "pd-<repo_id>" exists and, if requested, attach or switch the client to it.
+    
+    Creates a detached session in the given repository path using the user's shell when the session is missing. If the process is already inside a tmux client, attempts to switch the client to that session; otherwise, when `attach` is True, runs an interactive attach to that session.
+    
+    Parameters:
+        repo_id (str): Identifier used to form the session name as "pd-<repo_id>".
+        repo_path (str): Directory to use as the session's working directory when creating a new session.
+        attach (bool): If True and not already inside tmux, perform an interactive attach to the session.
+    
+    Returns:
+        bool: `True` if the session exists or was successfully created and the attach/switch was attempted, `False` on failure.
     """
     if not shutil.which("tmux"):
         logger.error("tmux is not installed")
