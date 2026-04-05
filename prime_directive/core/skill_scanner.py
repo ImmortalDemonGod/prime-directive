@@ -10,8 +10,6 @@ import re
 import tomllib
 from typing import Any
 
-logger = logging.getLogger("prime_directive")
-
 from prime_directive.core.empire import ProjectRole, load_empire_if_exists
 from prime_directive.core.identity import (
     OperatorDossier,
@@ -19,6 +17,8 @@ from prime_directive.core.identity import (
     Skill,
     normalize_tag,
 )
+
+logger = logging.getLogger("prime_directive")
 
 RUNTIME_CONFIDENCE = 0.8
 DEV_CONFIDENCE = 0.5
