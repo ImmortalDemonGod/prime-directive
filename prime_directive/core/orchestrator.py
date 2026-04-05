@@ -120,7 +120,7 @@ async def switch_logic(
                     f"[bold red]tmux session bootstrap failed for"
                     f" {target_repo_id}[/bold red]"
                 )
-                return False
+                return
             editor_args = getattr(cfg.system, "editor_args", ["-n"])
             launch_editor_fn(target_path, cfg.system.editor_cmd, editor_args)
 
