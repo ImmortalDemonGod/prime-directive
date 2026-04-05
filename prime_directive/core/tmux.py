@@ -80,6 +80,7 @@ async def ensure_session(
             await asyncio.wait_for(proc.wait(), timeout=2.0)
         except asyncio.TimeoutError:
             logger.error("tmux switch-client timed out")
+            return False
     elif attach:
         # attach-session is interactive and blocks until the user detaches —
         # run it without a timeout via a standard subprocess to preserve interactivity.
