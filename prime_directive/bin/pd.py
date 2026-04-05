@@ -619,8 +619,11 @@ def dossier_validate():
                 raw_data
             )
             if applied_fixes:
-                write_operator_dossier(
-                    parse_operator_dossier(raw_data), dossier_path
+                import yaml as _yaml
+
+                dossier_path.write_text(
+                    _yaml.safe_dump(raw_data, sort_keys=False),
+                    encoding="utf-8",
                 )
                 console.print(
                     f"\n[bold green]Applied {len(applied_fixes)} tag normalization fix(es).[/bold green]"
