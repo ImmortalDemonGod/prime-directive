@@ -122,15 +122,15 @@ def build_sync_proposals(
 ) -> tuple[list[RepoScanSummary], list[SyncProposal]]:
     """
     Builds scan summaries and synchronization proposals by scanning repositories configured in `cfg` and comparing detected capabilities against `dossier`.
-    
+
     Scans each repo path in `cfg.repos` to detect languages and dependencies, produces a RepoScanSummary per repository, and emits SyncProposal entries for new skills and (when present in an external empire config) for new projects. Repositories that fail scanning are skipped with a warning. Duplicate skill proposals are avoided both against the dossier and within the same repository scan.
-    
+
     Parameters:
         cfg (Any): Configuration object containing a mapping `repos` of repository identifiers to repo configuration (must provide a `path` attribute).
         dossier (OperatorDossier): Operator dossier whose existing capabilities (skills and projects_built) are used to suppress already-known proposals.
-    
+
     Returns:
-        tuple[list[RepoScanSummary], list[SyncProposal]]: 
+        tuple[list[RepoScanSummary], list[SyncProposal]]:
             - A list of per-repository scan summaries.
             - A list of synchronization proposals to add detected skills or projects.
     """
@@ -218,14 +218,14 @@ def apply_sync_proposals(
 ) -> OperatorDossier:
     """
     Apply synchronization proposals to an OperatorDossier by adding any missing skills or projects.
-    
+
     Parameters:
         dossier (OperatorDossier): The dossier to mutate; skills and projects will be appended when proposals require them.
         proposals (list[SyncProposal]): Sync proposals to apply. Proposals with `action == "add_skill"` will add a Skill
             (depth set to "familiar", recency set to "active", evidence set to "Detected in <source>") if the skill name
             does not already exist in the dossier (case-insensitive). Proposals with `action == "add_project"` will add a
             ProjectBuilt if the project name does not already exist in the dossier (case-insensitive).
-    
+
     Returns:
         OperatorDossier: The same dossier instance after applying non-duplicate proposals.
     """
@@ -279,13 +279,13 @@ def scan_repository(
 ) -> list[DetectedSkill]:
     """
     Scan a repository for programming languages and dependency-based skills, returning detected items for sync proposals.
-    
+
     Performs a bounded scan of the repository rooted at `repo_path`, detecting language manifests (pyproject.toml, requirements.txt, package.json/tsconfig.json, Cargo.toml, go.mod) and extracting dependency names as `DetectedSkill` entries. The scan recurses into subdirectories up to `max_depth` levels to discover monorepo sub-packages while skipping common vendor/build directories. Duplicate detections are collapsed by (skill name lowercased, source) keeping the entry with the highest confidence.
-    
+
     Parameters:
         repo_path (Path): Path to the repository root to scan.
         max_depth (int): Maximum recursion depth for subdirectory scanning (default 2).
-    
+
     Returns:
         list[DetectedSkill]: A list of unique detected skills, each with `skill_name`, `source` (manifest path), and `confidence`.
     """
@@ -372,11 +372,11 @@ def scan_repository(
     def _recurse(directory: Path, current_depth: int) -> None:
         """
         Recursively scan a directory tree for language manifest files and dependency lists, appending discovered DetectedSkill entries to the enclosing `detected` list until the configured `max_depth` is exceeded.
-        
+
         Parameters:
             directory (Path): Directory to scan.
             current_depth (int): Current recursion depth relative to the initial root (incremented on each recursion).
-        
+
         Notes:
             - The function silently returns on PermissionError when listing a directory.
             - Scanning stops when `current_depth > max_depth`.
@@ -478,12 +478,12 @@ def scan_repository(
 def scan_pyproject_dependencies(pyproject_path: Path) -> list[DetectedSkill]:
     """
     Extract dependency names from a pyproject.toml and produce DetectedSkill entries for each dependency.
-    
+
     Parses the `project.dependencies`, `project.optional-dependencies`, and top-level `dependency-groups` sections of the specified pyproject.toml and emits a DetectedSkill for every parsed requirement name. Dependencies listed under `project.dependencies` are assigned runtime confidence; dependencies from `project.optional-dependencies` and `dependency-groups` are assigned development confidence.
-    
+
     Parameters:
         pyproject_path (Path): Path to the pyproject.toml file to scan.
-    
+
     Returns:
         list[DetectedSkill]: DetectedSkill objects for each discovered dependency. Entries from `project.dependencies` use `RUNTIME_CONFIDENCE`; entries from `project.optional-dependencies` and `dependency-groups` use `DEV_CONFIDENCE`.
     """
@@ -538,12 +538,12 @@ def scan_pyproject_dependencies(pyproject_path: Path) -> list[DetectedSkill]:
 def scan_requirements_txt(requirements_path: Path) -> list[DetectedSkill]:
     """
     Extract dependency names from a requirements.txt file into DetectedSkill entries.
-    
+
     Skips blank lines, lines beginning with `#`, and lines beginning with `-`. If the file cannot be read, returns an empty list.
-    
+
     Parameters:
         requirements_path (Path): Path to the requirements.txt file to parse.
-    
+
     Returns:
         list[DetectedSkill]: One DetectedSkill per parsed dependency with `skill_name` normalized via `format_skill_name`, `source` set to the file path string, and `confidence` set to `RUNTIME_CONFIDENCE`.
     """
@@ -572,10 +572,10 @@ def scan_requirements_txt(requirements_path: Path) -> list[DetectedSkill]:
 def scan_cargo_toml_dependencies(cargo_toml_path: Path) -> list[DetectedSkill]:
     """
     Scan a Cargo.toml file for dependency entries and produce DetectedSkill records.
-    
+
     Parameters:
         cargo_toml_path (Path): Path to the Cargo.toml file to scan.
-    
+
     Returns:
         list[DetectedSkill]: A list of detected dependencies where each item has:
             - `skill_name`: the normalized dependency name,
@@ -624,12 +624,12 @@ def scan_cargo_toml_dependencies(cargo_toml_path: Path) -> list[DetectedSkill]:
 def scan_go_mod_dependencies(go_mod_path: Path) -> list[DetectedSkill]:
     """
     Extract module dependencies from a go.mod file into DetectedSkill records.
-    
+
     Parses require blocks, single-line `require` directives, and `tool` directives to extract module paths. Each found module is converted into a normalized skill name via `_extract_go_module_name` and `format_skill_name`. `tool` directives are marked with `DEV_CONFIDENCE`; other requires use `RUNTIME_CONFIDENCE`.
-    
+
     Parameters:
         go_mod_path (Path): Path to the go.mod file to parse.
-    
+
     Returns:
         list[DetectedSkill]: A list of DetectedSkill objects representing each discovered module dependency.
     """
@@ -683,10 +683,10 @@ def scan_package_json_dependencies(
 ) -> list[DetectedSkill]:
     """
     Scan a package.json file and extract detected dependency names as skills.
-    
+
     Parameters:
         package_json_path (Path): Path to the package.json file to scan.
-    
+
     Returns:
         list[DetectedSkill]: Detected skills for each dependency key in the file. Entries for
         `dependencies` and `peerDependencies` use runtime confidence; entries for
@@ -723,15 +723,15 @@ def scan_package_json_dependencies(
 def extract_requirement_name(requirement: str) -> str:
     """
     Extract the leading package or requirement identifier from a requirement specifier.
-    
+
     Parses the requirement up to any environment marker (';') and returns the first identifier
     matching the requirement-name pattern; returns an empty string if no valid name is found.
-    
+
     Parameters:
-    	requirement (str): A requirement specifier (for example "package>=1.2; python_version<'3.9'").
-    
+        requirement (str): A requirement specifier (for example "package>=1.2; python_version<'3.9'").
+
     Returns:
-    	str: The extracted requirement name, or an empty string if none is present.
+        str: The extracted requirement name, or an empty string if none is present.
     """
     candidate = requirement.split(";", maxsplit=1)[0].strip()
     match = _REQUIREMENT_NAME_RE.match(candidate)
@@ -743,13 +743,13 @@ def extract_requirement_name(requirement: str) -> str:
 def format_skill_name(raw_name: str) -> str:
     """
     Normalize a raw dependency or package name into a canonical, display-friendly skill name.
-    
+
     Trims surrounding whitespace and, if the trimmed name matches a known alias (case-insensitive),
     returns the canonical display name from SKILL_ALIASES; otherwise returns the trimmed input.
-    
+
     Returns:
-    	normalized_name (str): Empty string if the input is empty after trimming; otherwise the canonical
-    	name if an alias exists, or the trimmed original name.
+        normalized_name (str): Empty string if the input is empty after trimming; otherwise the canonical
+        name if an alias exists, or the trimmed original name.
     """
     normalized = raw_name.strip()
     if not normalized:
@@ -767,16 +767,16 @@ def build_theme_suggestions(
 ) -> list[ThemeSuggestion]:
     """
     Suggest theme tag candidates derived from provided snapshot texts.
-    
+
     Analyzes the input texts to propose tags (single tokens and adjacent bigrams) that are not present in `existing_tags`, counts how many distinct texts mention each candidate, and returns the most frequent candidates that appear in at least two different texts.
-    
+
     Parameters:
-    	snapshot_texts (list[str]): Text snippets to analyze for candidate tags.
-    	existing_tags (list[str]): Tags to exclude from suggestions; values are normalized before comparison.
-    	limit (int): Maximum number of suggestions to return.
-    
+        snapshot_texts (list[str]): Text snippets to analyze for candidate tags.
+        existing_tags (list[str]): Tags to exclude from suggestions; values are normalized before comparison.
+        limit (int): Maximum number of suggestions to return.
+
     Returns:
-    	list[ThemeSuggestion]: Up to `limit` suggestions sorted by descending occurrence then tag; each suggestion appears only if its candidate occurs in two or more distinct input texts.
+        list[ThemeSuggestion]: Up to `limit` suggestions sorted by descending occurrence then tag; each suggestion appears only if its candidate occurs in two or more distinct input texts.
     """
     existing = {
         normalize_tag(tag) for tag in existing_tags if str(tag).strip()
@@ -822,10 +822,10 @@ def build_theme_suggestions(
 def _build_project_capability_tags(project: Any) -> list[str]:
     """
     Builds capability tags for a project based on its domain and role.
-    
+
     Parameters:
         project (Any): An object expected to have a `domain` attribute (string) and a `role` attribute; `domain` is normalized into a tag if non-empty and `role` is used to look up role-specific tags.
-    
+
     Returns:
         list[str]: A sorted list of unique, non-empty capability tags derived from the project's domain and role.
     """
@@ -839,10 +839,10 @@ def _build_project_capability_tags(project: Any) -> list[str]:
 def _extract_go_module_name(module_path: str) -> str:
     """
     Select the most appropriate package name from a Go module import path.
-    
+
     Parameters:
         module_path (str): The full module path (for example "github.com/user/repo" or "github.com/user/repo/v2").
-    
+
     Returns:
         str: The chosen module name segment — normally the last path component, or the penultimate component if the last component is a semantic version token like "v2". If the input is empty or contains no non-empty segments, returns the original `module_path`.
     """
@@ -862,10 +862,10 @@ def _extract_go_module_name(module_path: str) -> str:
 def _as_dict(value: Any) -> dict[str, Any]:
     """
     Normalize an arbitrary value to a dictionary.
-    
+
     Parameters:
         value (Any): The value to normalize.
-    
+
     Returns:
         dict[str, Any]: The original `value` if it is a `dict`, otherwise an empty dictionary.
     """
@@ -875,10 +875,10 @@ def _as_dict(value: Any) -> dict[str, Any]:
 def _as_list(value: Any) -> list[Any]:
     """
     Return the input unchanged if it is a list, otherwise return an empty list.
-    
+
     Parameters:
         value (Any): Value to ensure is a list.
-    
+
     Returns:
         list[Any]: `value` if it is a `list`, otherwise an empty list.
     """
