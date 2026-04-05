@@ -59,8 +59,8 @@ jobs:
       - name: Test summary
         if: ${{ !cancelled() && runner.os == 'Linux' }}
         run: |
-          echo "## Test Results (${{ matrix.os }} / Python ${{ matrix.python-version }})" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Test Results (${{ matrix.os }} / Python ${{ matrix.python-version }})" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
           python -c "
           import xml.etree.ElementTree as ET
           tree = ET.parse('test-results.xml')
@@ -79,7 +79,7 @@ jobs:
           print(f'| Errors | {errors} |')
           print(f'| Skipped | {skipped} |')
           print(f'| Duration | {float(time):.1f}s |')
-          " >> $GITHUB_STEP_SUMMARY
+          " >> "$GITHUB_STEP_SUMMARY"
       - name: Upload to Codecov
         if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.11' }}
         uses: codecov/codecov-action@v4
