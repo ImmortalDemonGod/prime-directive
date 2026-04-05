@@ -37,7 +37,7 @@ def test_default_operator_dossier_validates(tmp_path):
 def test_validate_operator_dossier_file_rejects_invalid_skill_enum(tmp_path):
     """
     Verifies that validation rejects a skill with an invalid `depth` enum value.
-    
+
     Writes a minimal dossier YAML where a skill has `depth: "legendary"`, runs
     validate_operator_dossier_file on the written file, and asserts that the
     validation report contains an error mentioning the path `capabilities.skills[0].depth`.
@@ -414,7 +414,7 @@ def test_dossier_export_full_json_matches_black_box_contract_shape(tmp_path):
 def test_dossier_export_yaml_to_file(tmp_path):
     """
     Verifies the CLI exports an operator dossier in YAML format to a specified output file.
-    
+
     Creates a default dossier with `connection_surface.topic_tags = ["developer-tooling"]`, writes it to the patched home location, runs `pd dossier export --format yaml --output <path>`, and asserts the command succeeds, the export file exists, and the exported YAML contains the expected `connection_surface.topic_tags` value.
     """
     dossier_dir = tmp_path / ".prime-directive"
@@ -453,7 +453,7 @@ def test_dossier_export_yaml_to_file(tmp_path):
 def test_dossier_export_tags_only_to_stdout(tmp_path):
     """
     Verifies that the CLI `dossier export --format tags-only` prints connection-surface tags to stdout.
-    
+
     Creates a dossier containing `topic_tags` and `philosophy_tags`, writes it to the default location, invokes the export command with `tags-only` format, and asserts the command succeeds and stdout includes the expected `topic_tags: developer-tooling` and `philosophy_tags: verification-over-trust` lines.
     """
     dossier_dir = tmp_path / ".prime-directive"
