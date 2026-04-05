@@ -133,7 +133,12 @@ def build_sync_proposals(
 
     summaries: list[RepoScanSummary] = []
     proposals: list[SyncProposal] = []
-    empire = load_empire_if_exists(cfg)
+    proposed_skills: set[str] = set()
+    try:
+        empire = load_empire_if_exists(cfg)
+    except Exception as exc:
+        logger.warning("Could not load empire.yaml: %s", exc)
+        empire = None
     empire_projects = empire.projects if empire is not None else {}
 
     for repo_id, repo_cfg in cfg.repos.items():
@@ -152,13 +157,9 @@ def build_sync_proposals(
             )
         )
 
-        proposed_for_repo: set[str] = set()
         for item in detected:
             normalized = item.skill_name.lower()
-            if (
-                normalized in existing_skills
-                or normalized in proposed_for_repo
-            ):
+            if normalized in existing_skills or normalized in proposed_skills:
                 continue
             proposals.append(
                 SyncProposal(
@@ -169,7 +170,7 @@ def build_sync_proposals(
                     confidence=item.confidence,
                 )
             )
-            proposed_for_repo.add(normalized)
+            proposed_skills.add(normalized)
 
         empire_project = empire_projects.get(repo_id)
         if (
@@ -266,14 +267,15 @@ def scan_repository(
             )
         )
         detected.extend(scan_pyproject_dependencies(pyproject_path))
-    elif requirements_path.exists():
-        detected.append(
-            DetectedSkill(
-                skill_name="Python",
-                source=str(requirements_path),
-                confidence=LANGUAGE_CONFIDENCE,
+    if requirements_path.exists():
+        if not pyproject_path.exists():
+            detected.append(
+                DetectedSkill(
+                    skill_name="Python",
+                    source=str(requirements_path),
+                    confidence=LANGUAGE_CONFIDENCE,
+                )
             )
-        )
         detected.extend(scan_requirements_txt(requirements_path))
 
     if package_json_path.exists():
