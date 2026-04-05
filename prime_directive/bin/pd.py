@@ -47,7 +47,6 @@ from prime_directive.core.identity import (
     get_dossier_path,
     load_operator_dossier,
     operator_dossier_to_dict,
-    parse_operator_dossier,
     preview_operator_dossier_tag_normalization_fixes,
     sync_connection_surface,
     validate_operator_dossier_file,
