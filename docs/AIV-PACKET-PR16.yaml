@@ -79,7 +79,7 @@ classification:
   critical_surfaces: []
   blast_radius: component
   classification_rationale: |
-    Broad feature addition: 6 new modules, 5 new CLI subcommands, new data model
+    Broad feature addition: 6 new modules, 6 new CLI subcommands, new data model
     (OperatorDossier), AI provider integration, and empire configuration overlay.
     23 files changed with +9,170/-134 lines across 44 atomic commits.
 
@@ -178,7 +178,7 @@ claims:
   - id: "CLM-005"
     type: [functional, interface]
     statement: >
-      Five CLI subcommands (pd dossier init, validate, sync-skills, sync-tags,
+      Six CLI subcommands (pd dossier init, validate, sync-skills, sync-tags,
       show, export) are implemented with Rich terminal rendering, structured
       output, and correct error handling including early exit on deep analysis
       failure.
