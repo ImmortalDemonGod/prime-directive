@@ -65,9 +65,9 @@ async def switch_logic(
 ) -> None:
     """
     Switch the active workspace to the repository identified by `target_repo_id`.
-    
+
     Detects the current repository from `cwd` and, if different, attempts to freeze it. Ensures a session for the target repository (or logs intended actions when `cfg.system.mock_mode` is true), launches the configured editor for the repository path, records an EventType.SWITCH_IN in the database, and prints the most recent ContextSnapshot (human note, AI summary, and timestamp) if present. Regardless of success or failure, calls `dispose_engine_fn()` to clean up database engine resources.
-    
+
     Parameters:
         target_repo_id (str): Identifier of the repository to switch to.
         cfg (Any): Configuration exposing `repos` (mapping of repo id -> repo config) and `system` with `mock_mode`, `editor_cmd`, optional `editor_args`, and `db_path`.
