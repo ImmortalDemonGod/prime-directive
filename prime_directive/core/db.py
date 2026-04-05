@@ -87,17 +87,17 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
     # Expand ~ to home directory
     """
     Provide a cached database engine connected to the SQLite database at the given path.
-    
+
     Parameters:
         db_path (str): Filesystem path for the SQLite database. A leading "~" is
             expanded to the user's home directory. The special value ":memory:"
             uses an in-memory database. Defaults to "~/.prime-directive/data/prime.db".
-    
+
     Returns:
         sqlalchemy.ext.asyncio.AsyncEngine: An AsyncEngine configured for SQLite
             with foreign key enforcement and WAL journaling. The same engine
             instance is returned for repeated calls with the same expanded path.
-    
+
     Notes:
         If `db_path` is not ":memory:", the function ensures the parent directory
         exists before creating the engine. On each new DB-API connection the engine
@@ -157,7 +157,7 @@ def get_engine(db_path: str = "~/.prime-directive/data/prime.db"):
 async def init_db(db_path: str = "data/prime.db") -> None:
     """
     Initialize the database and apply schema migrations up to the current version.
-    
+
     Parameters:
         db_path (str): Filesystem path to the SQLite database file (defaults to "data/prime.db").
     """
@@ -176,13 +176,13 @@ _MIGRATIONS: dict[int, list[str]] = {
 async def migrate_db(db_path: str = "data/prime.db") -> None:
     """
     Apply any pending SQL schema migrations to the SQLite database at the given path.
-    
+
     This function ensures database tables for the current models exist and then advances the
     database schema version by applying SQL statements listed in the module-level _MIGRATIONS
     mapping for each subsequent version until reaching _CURRENT_SCHEMA_VERSION. It is safe
     to call on every startup because it performs no work when the database is already at
     the current schema version.
-    
+
     Parameters:
         db_path (str): Filesystem path to the SQLite database file (e.g., "data/prime.db").
     """
@@ -193,10 +193,10 @@ async def migrate_db(db_path: str = "data/prime.db") -> None:
         def _get_version(sync_conn: Any) -> int:
             """
             Read the SQLite `PRAGMA user_version` from a synchronous DB connection and return it as an integer.
-            
+
             Parameters:
                 sync_conn (Any): A synchronous DB-API or SQLAlchemy Connection that supports executing SQL and fetching rows.
-            
+
             Returns:
                 int: The `user_version` value from the database, or 0 if the query returned no rows.
             """
@@ -208,7 +208,7 @@ async def migrate_db(db_path: str = "data/prime.db") -> None:
         def _set_version(sync_conn: Any, version: int) -> None:
             """
             Set the SQLite `user_version` PRAGMA to the given integer schema version.
-            
+
             Parameters:
                 sync_conn (Any): A synchronous DB-API or SQLAlchemy connection object on which the PRAGMA will be executed.
                 version (int): The schema version number to store in `PRAGMA user_version`.
@@ -238,10 +238,10 @@ async def get_session(
 ) -> AsyncGenerator[AsyncSession, None]:
     """
     Provide an async SQLAlchemy session bound to the configured SQLite database.
-    
+
     Parameters:
         db_path (str): Path to the SQLite database file (tilde `~` is expanded). Defaults to "data/prime.db".
-    
+
     Returns:
         AsyncSession: An open AsyncSession instance bound to the database; the session is closed when the generator exits.
     """
