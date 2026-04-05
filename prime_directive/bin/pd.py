@@ -1927,10 +1927,11 @@ def sitrep(
                 # Build historical narrative with a character budget
                 # ~12 000 chars ≈ 3 000 tokens, leaving room for prompt overhead
                 _MAX_NARRATIVE_CHARS = 12_000
-                history_entries = []
+                history_entries: list[str] = []
                 chars_used = 0
-                for i, snap in enumerate(reversed(snapshots)):  # oldest first
-                    entry = f"--- Snapshot {i+1} ({snap.timestamp}) ---\n"
+                # Iterate newest-first so the budget keeps recent context
+                for i, snap in enumerate(snapshots):
+                    entry = f"--- Snapshot ({snap.timestamp}) ---\n"
                     if snap.human_objective:
                         entry += f"Objective: {snap.human_objective}\n"
                     if snap.human_blocker:
@@ -1942,12 +1943,15 @@ def sitrep(
                     entry += f"AI Summary: {snap.ai_sitrep}\n"
                     entry += f"Git State: {snap.git_status_summary}\n"
                     if chars_used + len(entry) > _MAX_NARRATIVE_CHARS:
+                        omitted = len(snapshots) - i
                         history_entries.append(
-                            f"[{len(snapshots) - i} older snapshot(s) truncated]"
+                            f"[{omitted} older snapshot(s) omitted]"
                         )
                         break
                     history_entries.append(entry)
                     chars_used += len(entry)
+                # Reverse so narrative reads oldest → newest
+                history_entries.reverse()
 
                 historical_narrative = "\n".join(history_entries)
 
