@@ -187,11 +187,18 @@ async def migrate_db(db_path: str = "data/prime.db") -> None:
 
         current = await conn.run_sync(_get_version)
 
-        for version in range(current + 1, _CURRENT_SCHEMA_VERSION + 1):
-            statements = _MIGRATIONS.get(version, [])
-            for sql in statements:
-                await conn.execute(sqlalchemy.text(sql))
-            await conn.run_sync(lambda c, v=version: _set_version(c, v))
+        if current == 0:
+            # Fresh database — create_all() already built the full schema,
+            # so skip incremental migrations and stamp the current version.
+            await conn.run_sync(
+                lambda c: _set_version(c, _CURRENT_SCHEMA_VERSION)
+            )
+        else:
+            for version in range(current + 1, _CURRENT_SCHEMA_VERSION + 1):
+                statements = _MIGRATIONS.get(version, [])
+                for sql in statements:
+                    await conn.execute(sqlalchemy.text(sql))
+                await conn.run_sync(lambda c, v=version: _set_version(c, v))
 
 
 async def get_session(
