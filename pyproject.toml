@@ -51,6 +51,10 @@ addopts = "-v --tb=short"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 
+[tool.black]
+line-length = 79
+target-version = ["py311"]
+
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
