@@ -40,6 +40,15 @@ repos:
 @pytest.fixture
 def mock_config(tmp_path):
     # Use OmegaConf to create a DictConfig that supports dot access
+    """
+    Create a test configuration OmegaConf DictConfig with default system settings and two repository entries.
+    
+    Parameters:
+        tmp_path (Path): Temporary directory used to build the log file path (`tmp_path / "pd.log"`).
+    
+    Returns:
+        DictConfig: An OmegaConf DictConfig containing a `system` mapping of default settings (including `db_path=":memory:"` and `log_path` pointing to the temp log file) and a `repos` mapping with entries `repo1` and `repo2`.
+    """
     log_file = tmp_path / "pd.log"
     conf_dict = {
         "system": {

@@ -88,6 +88,15 @@ app.add_typer(empire_app, name="empire")
 
 
 def _normalize_repo_id(repo_id: str) -> str:
+    """
+    Normalize a repository identifier by trimming surrounding whitespace and removing any trailing forward or backward slashes.
+    
+    Parameters:
+        repo_id (str): The repository identifier to normalize.
+    
+    Returns:
+        str: The normalized repository identifier.
+    """
     return repo_id.strip().rstrip("/\\")
 
 
@@ -112,12 +121,12 @@ def _resolve_repo_id(repo_id: str, cfg: DictConfig) -> str:
 
 def load_config() -> DictConfig:
     """
-    Load and compose the application's Hydra configuration.
-
-    Composes and returns the structured `DictConfig` for the application. If configuration loading fails, prints an error, logs it, and exits the process with status code 1.
-
+    Compose and return the application's Hydra configuration.
+    
+    Merges the packaged config with an optional user config at ~/.prime-directive/config.yaml when present, and expands variables/user home in cfg.system.db_path, cfg.system.log_path, and each repo.path when possible. On failure prints an error, logs it, and exits the process with status code 1.
+    
     Returns:
-        DictConfig: The composed Hydra configuration for the application.
+        DictConfig: The composed Hydra configuration.
     """
     # Ensure any previous Hydra instance is cleared
     GlobalHydra.instance().clear()
@@ -170,6 +179,21 @@ async def _load_recent_snapshot_texts(
     db_path: str,
     limit: int = 100,
 ) -> tuple[list[str], int, int]:
+    """
+    Collect recent human-authored snapshot texts from the database for the past 30 days.
+    
+    Only snapshots whose timestamp is within the last 30 days are considered. The function returns up to `limit` snapshots, extracting non-empty text from the snapshot fields `human_objective`, `human_blocker`, `human_next_step`, and `human_note`.
+    
+    Parameters:
+        db_path (str): Path to the SQLite/database file used by the application.
+        limit (int): Maximum number of snapshots to fetch (default 100).
+    
+    Returns:
+        tuple[list[str], int, int]:
+            - list[str]: Collected non-empty snapshot texts (trimmed), in newest-first order as retrieved.
+            - int: Number of snapshot records fetched from the database (<= `limit`).
+            - int: Number of distinct `repo_id` values represented among the fetched snapshots.
+    """
     await init_db(db_path)
     cutoff = datetime.now(timezone.utc) - timedelta(days=30)
     try:
@@ -202,6 +226,15 @@ async def _load_recent_snapshot_texts(
 
 
 def _seed_programming_languages(dossier: Any, summaries: list[Any]) -> None:
+    """
+    Ensure the dossier's programming languages list includes any recognized languages found in the provided summaries.
+    
+    Reads existing non-empty entries from dossier.identity.languages["programming"], adds any of the recognized languages {"Python", "JavaScript", "TypeScript", "Rust", "Go", "SQL"} found in each summary.detected_skills, and writes back a sorted, deduplicated list to dossier.identity.languages["programming"].
+    
+    Parameters:
+        dossier (Any): Operator dossier object with an attribute `identity.languages` (a mapping where the `"programming"` key holds a list of language names).
+        summaries (list[Any]): Iterable of summary objects, each exposing `detected_skills` (an iterable of skill/language names).
+    """
     detected_languages = {
         item
         for item in dossier.identity.languages.get("programming", [])
@@ -222,6 +255,18 @@ def _seed_programming_languages(dossier: Any, summaries: list[Any]) -> None:
 
 
 def _bootstrap_dossier(cfg: DictConfig) -> tuple[Any, list[Any], list[Any]]:
+    """
+    Create and initialize an operator dossier by generating sync proposals from the provided configuration and applying them.
+    
+    Parameters:
+        cfg (DictConfig): Composed application configuration used to discover configured repositories and proposal settings.
+    
+    Returns:
+        tuple: (dossier, summaries, proposals)
+            dossier: The initialized operator dossier object with applied proposals and synchronized connection surface.
+            summaries: List of repository scan summaries used to infer proposals and programming languages.
+            proposals: List of sync proposals that were generated and applied to the dossier.
+    """
     dossier = default_operator_dossier()
     summaries, proposals = build_sync_proposals(cfg, dossier)
     apply_sync_proposals(dossier, proposals)
@@ -233,6 +278,19 @@ def _bootstrap_dossier(cfg: DictConfig) -> tuple[Any, list[Any], list[Any]]:
 def _render_connection_surface_table(
     surface: dict[str, list[str]],
 ) -> tuple[Table, int]:
+    """
+    Render a Rich table summarizing connection-surface tag categories and count the total tags.
+    
+    Parameters:
+        surface (dict[str, list[str]]): Mapping from connection-surface category keys
+            (e.g., "experience_tags", "topic_tags", "geographic_tags",
+            "education_tags", "industry_tags", "hobby_tags", "philosophy_tags")
+            to lists of tag strings.
+    
+    Returns:
+        tuple[Table, int]: A tuple containing the rendered Rich Table and the total
+        number of tags across all categories.
+    """
     table = Table(show_header=False)
     table.add_column("Category", style="bold cyan")
     table.add_column("Tags")
@@ -253,6 +311,16 @@ def _render_connection_surface_table(
 
 
 def _format_skill_profile(depth: str, recency: str) -> str:
+    """
+    Format a compact skill profile showing a proficiency bar, the depth label, and recency.
+    
+    Parameters:
+        depth (str): Proficiency level; expected values include "expert", "proficient", "familiar". If unknown or empty, a placeholder bar and `-` label are used.
+        recency (str): Human-readable recency string (e.g., "recent", "6 months ago"); if empty, `-` is used.
+    
+    Returns:
+        str: A single-line formatted profile like "███████████ expert (recent)" where the bar corresponds to `depth`, followed by the depth label and recency in parentheses.
+    """
     bars = {
         "expert": "███████████",
         "proficient": "████████░░░",
@@ -264,6 +332,20 @@ def _format_skill_profile(depth: str, recency: str) -> str:
 
 
 def _print_capabilities_layer(dossier: Any) -> None:
+    """
+    Prints Layer 2 (Technical Capabilities) of an operator dossier to the console.
+    
+    Displays four sections with counts and tables (or "-" when empty):
+    - Skills: rows with Skill, Profile, and Evidence.
+    - Domain expertise: comma-separated list of domain tags.
+    - Projects built: rows with Project, Tech Stack, Capability Tags, and Description.
+    - Methodologies: rows with Methodology, Description, and Contexts.
+    
+    Parameters:
+        dossier (Any): Operator dossier object expected to expose
+            `capabilities.skills`, `capabilities.domain_expertise`,
+            `capabilities.projects_built`, and `capabilities.methodologies`.
+    """
     console.print(
         "[bold]Operator Dossier — Layer 2: Technical Capabilities[/bold]"
     )
@@ -327,6 +409,22 @@ def _print_capabilities_layer(dossier: Any) -> None:
 
 
 def _print_identity_layer(dossier: Any) -> None:
+    """
+    Print Layer 1 (Human Identity) of an operator dossier to the console.
+    
+    Prints the dossier's education entries, spoken and programming languages, hobbies, formative experiences,
+    intellectual influences, and values as formatted Rich console sections and tables.
+    
+    Parameters:
+        dossier (Any): Operator dossier object whose `identity` attribute provides:
+            - `education`: iterable of records with `institution`, `degree`, `field`, `years`
+            - `languages`: dict with `spoken` and `programming` lists
+            - `hobbies`: iterable of hobby strings
+            - `formative_experiences`: iterable of strings
+            - `intellectual_influences`: iterable of strings
+            - `values`: iterable of strings
+    
+    """
     console.print("[bold]Operator Dossier — Layer 1: Human Identity[/bold]")
 
     console.rule(f"Education ({len(dossier.identity.education)})")
@@ -373,6 +471,17 @@ def _print_identity_layer(dossier: Any) -> None:
 
 
 def _print_network_layer(dossier: Any) -> None:
+    """
+    Render Layer 3 ("Professional Network") of the operator dossier to the console.
+    
+    Prints a header and three sections:
+    - Companies: a table of company name, role, years, and accomplishment (prints `-` for missing values or when the list is empty).
+    - Industries: a comma-separated list of industries (or `-` when empty).
+    - Institutional Overlaps: newline entries formatted as `type: value` (or `-` when empty).
+    
+    Parameters:
+        dossier (Any): Operator dossier object containing `network.companies`, `network.industries`, and `network.institutional_overlaps`.
+    """
     console.print(
         "[bold]Operator Dossier — Layer 3: Professional Network[/bold]"
     )
@@ -409,6 +518,19 @@ def _print_network_layer(dossier: Any) -> None:
 
 
 def _print_positioning_layer(dossier: Any) -> None:
+    """
+    Render Layer 4 ("Strategic Positioning") of an operator dossier to the console.
+    
+    Prints the positioning statement, competitive differentiation list, an offerings table (name, description, deliverable, timeline), case studies (title/client and outcome/description), and the revenue model. Empty or missing sections are rendered as "-".
+    
+    Parameters:
+        dossier (Any): Operator dossier object with a `positioning` attribute exposing:
+            - `positioning_statement` (str)
+            - `competitive_differentiation` (list[str])
+            - `offerings` (iterable of objects with `name`, `description`, `deliverable`, `typical_timeline`)
+            - `case_studies` (list[dict], where each dict may contain `title`, `client`, `outcome`, `description`)
+            - `revenue_model` (str)
+    """
     console.print(
         "[bold]Operator Dossier — Layer 4: Strategic Positioning[/bold]"
     )
@@ -455,6 +577,14 @@ def _print_positioning_layer(dossier: Any) -> None:
 
 
 def _print_connection_surface_layer(dossier: Any) -> None:
+    """
+    Prints Layer 5 (Operator Connection Surface) table and the total tag count.
+    
+    Renders the dossier's `connection_surface` into a Rich table and prints a header, the table, and a summary line showing the total number of tags across the seven connection-surface categories.
+    
+    Parameters:
+        dossier (Any): Operator dossier object convertible by `operator_dossier_to_dict` and containing a `connection_surface` key.
+    """
     table, total_tags = _render_connection_surface_table(
         operator_dossier_to_dict(dossier)["connection_surface"]
     )
@@ -473,7 +603,14 @@ def dossier_init(
         help="Overwrite an existing dossier file.",
     )
 ):
-    """Generate a dossier skeleton with repo-derived capability seed data."""
+    """
+    Create an operator dossier file populated with capability data inferred from configured repositories.
+    
+    Writes a skeleton dossier to ~/.prime-directive/operator_dossier.yaml containing auto-populated sections (capabilities, identity programming languages, connection surface tags, etc.). If a dossier file already exists the command aborts unless `force` is true. After writing, prints a summary of scanned repositories, detected skills/projects, and items that still require manual input.
+    
+    Parameters:
+    	force (bool): If true, overwrite an existing dossier file.
+    """
     dossier_path = get_dossier_path()
     if dossier_path.exists() and not force:
         console.print(
@@ -546,7 +683,12 @@ def empire_init(
         False, "--force", help="Overwrite existing empire.yaml"
     ),
 ) -> None:
-    """Generate a skeleton empire.yaml at ~/.prime-directive/empire.yaml."""
+    """
+    Create a scaffolded empire.yaml file at the user's ~/.prime-directive/empire.yaml path.
+    
+    Parameters:
+    	force (bool): If True, overwrite an existing empire.yaml; otherwise abort if the file exists.
+    """
     from prime_directive.core.empire import (
         get_empire_path,
         ProjectRole,
@@ -598,7 +740,14 @@ def empire_init(
 
 @dossier_app.command("validate")
 def dossier_validate():
-    """Parse and validate the operator dossier, reporting errors and warnings."""
+    """
+    Validate the operator dossier file and report any errors, warnings, or informational messages.
+    
+    If tag-normalization suggestions are discovered the user is prompted to apply them; when accepted, the dossier file may be modified on disk and re-validated. Validation results are printed to the console. On validation failure the command exits the process.
+    
+    Raises:
+        typer.Exit: Exits with code 1 when validation fails.
+    """
     dossier_path = get_dossier_path()
     report, raw_data = validate_operator_dossier_file(dossier_path)
     normalization_fixes = (
@@ -679,7 +828,19 @@ def dossier_sync_skills(
         help="Analyze recent snapshot text for repeated domain themes.",
     ),
 ):
-    """Scan configured repos and propose dossier skill/project updates."""
+    """
+    Scan configured repositories, propose skill and project updates for the operator dossier, optionally run a deep LLM-based analysis of recent snapshots, and (when requested) apply the proposals to the dossier file.
+    
+    Parameters:
+        ctx (typer.Context): CLI context used to detect how options were provided.
+        apply (bool): When true, persist proposed skill, project, and theme changes to the dossier.
+        dry_run (bool): When true, show proposals without modifying the dossier (default behavior).
+        deep (bool): When true, analyze recent DB snapshot text to produce LLM-generated theme suggestions.
+    
+    Raises:
+        typer.BadParameter: If both `--apply` and `--dry-run` are passed explicitly.
+        typer.Exit: If the dossier file is missing or a deep analysis error occurs.
+    """
     dry_run_explicit = (
         ctx.get_parameter_source("dry_run") == ParameterSource.COMMANDLINE
     )
@@ -886,7 +1047,11 @@ def dossier_sync_skills(
 
 @dossier_app.command("sync-tags")
 def dossier_sync_tags():
-    """Regenerate Layer 5 connection-surface tags from dossier Layers 1-4."""
+    """
+    Regenerates Layer 5 connection-surface tags from Layers 1–4 and writes the updated dossier to disk.
+    
+    If the dossier file is missing the command exits with code 1. Philosophy tags are preserved as manual; a category-by-category summary and total tag counts are printed to the console after writing.
+    """
     dossier_path = get_dossier_path()
     if not dossier_path.exists():
         console.print(
@@ -960,7 +1125,13 @@ def dossier_show(
         help="Show only Layer 5 connection-surface tags.",
     ),
 ):
-    """Display the dossier in human-readable terminal output."""
+    """
+    Render the operator dossier to the terminal.
+    
+    Parameters:
+        layer (Optional[int]): If provided, display only the specified dossier layer (1–5).
+        tags_only (bool): If true, display only Layer 5 connection-surface tags; this option takes precedence over `layer`.
+    """
     dossier_path = get_dossier_path()
     if not dossier_path.exists():
         console.print(
@@ -1037,7 +1208,24 @@ def dossier_export(
         help="Export only the connection_surface payload.",
     ),
 ):
-    """Export the dossier for downstream systems or inspection."""
+    """
+    Export the operator dossier in the requested format to stdout or a file.
+    
+    Supported formats (case-insensitive): "json", "yaml", and "tags-only". When
+    `layer5_only` is true, the export contains only the dossier `version` and
+    `connection_surface` payload.
+    
+    Parameters:
+        format (str): Output format: "json", "yaml", or "tags-only".
+        output (Optional[Path]): If provided, write the export to this file; otherwise
+            print the export to stdout.
+        layer5_only (bool): When true, include only the `version` and
+            `connection_surface` fields in the exported payload.
+    
+    Notes:
+        Exits with a non-zero code if the dossier file is missing or an unsupported
+        format is requested.
+    """
     dossier_path = get_dossier_path()
     if not dossier_path.exists():
         console.print(
@@ -1834,16 +2022,17 @@ def sitrep(
 ):
     """
     Show a situational report (SITREP) for a repository.
-
-    If deep_dive is enabled, compile recent historical snapshots and produce a longitudinal
-    SITREP using the configured high-quality AI model; deep-dive requires a valid OpenAI API key.
-    When not deep-diving, display the latest snapshot's timestamp, optional human-provided
-    fields (objective, blocker, next step, note), and the AI summary.
-
+    
+    When called without deep-dive, display the latest snapshot's timestamp, any provided
+    human fields (objective, blocker, next step, note), and the AI-generated summary.
+    When `deep_dive` is True, compile a longitudinal narrative from up to `limit`
+    historical snapshots and generate a concise deep-dive summary using the configured
+    high-quality AI model (requires `OPENAI_API_KEY`).
+    
     Parameters:
         repo_id (str): Identifier of the repository to inspect.
-        deep_dive (bool): When True, generate a longitudinal summary from historical snapshots.
-        limit (int): Number of most-recent snapshots to include in the deep-dive analysis.
+        deep_dive (bool): If True, perform a longitudinal deep-dive using the HQ model.
+        limit (int): Maximum number of most-recent snapshots to include in the deep-dive.
     """
     logger.info(f"Command: sitrep {repo_id} (deep_dive={deep_dive})")
     cfg = load_config()
@@ -1853,9 +2042,9 @@ def sitrep(
 
     async def run_sitrep():
         """
-        Show recent context snapshots for the configured repository and, if requested, produce an HQ deep-dive SITREP.
-
-        Initializes the database, retrieves up to `limit` ContextSnapshot records for `repo_id`, and prints either a brief SITREP of the latest snapshot (timestamp, human objective/blocker/next step/note, and AI summary) or a longitudinal deep-dive. For deep dives, the function compiles a historical narrative from the snapshots and calls the OpenAI-based chat generator (requires OPENAI_API_KEY) to produce a concise longitudinal summary; any errors from the AI call are printed. The database engine is always disposed on exit.
+        Show recent context snapshots for a configured repository and optionally produce a concise longitudinal deep-dive SITREP.
+        
+        When run without deep-dive mode, prints the latest snapshot's timestamp, any human-provided fields (objective, blocker, next step, note), and the AI summary. When deep-dive mode is enabled, compiles a historical narrative from available snapshots (subject to a character budget) and requests a longitudinal summary from an HQ model; deep-dive requires an OpenAI API key. The function writes output to the console and always disposes the database engine on exit.
         """
         await init_db(cfg.system.db_path)
         try:

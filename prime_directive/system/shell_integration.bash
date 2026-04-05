@@ -4,7 +4,7 @@
 # wrapped command exits with status 88, attempts to attach or switch to a tmux
 # session named "pd-<target_repo_id>". It returns the tmux command's exit
 # status in that special case; otherwise it returns the wrapped command's exit
-# status.
+# pd wraps the real `pd` command, returning its exit status; if the subcommand is `switch` and the wrapped command exits with 88, it requires `tmux` and will attach to or switch the client to the session named `pd-<target_repo_id>`.
 
 pd() {
     local subcmd="$1"
@@ -30,7 +30,7 @@ pd() {
     return $rc
 }
 
-# Basic completion for pd command
+# _pd_completion provides tab-completion for the `pd` command, suggesting the subcommands: list, status, doctor, freeze, switch, dossier, and empire.
 _pd_completion() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local commands="list status doctor freeze switch dossier empire"

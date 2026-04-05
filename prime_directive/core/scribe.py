@@ -17,14 +17,16 @@ logger = logging.getLogger("prime_directive")
 
 def _count_tokens(text: str, model: str) -> int:
     """
-    Count the number of tokens in a text string using tiktoken for a specified model.
-
+    Count tokens in `text` using tiktoken's encoding for `model`, with fallbacks and heuristics.
+    
+    If `tiktoken` is available, this uses `tiktoken.encoding_for_model(model)` and falls back to the `"cl100k_base"` encoding when a model-specific encoding cannot be obtained. If `tiktoken` is not installed, emits a warning and returns a heuristic estimate of `len(text) // 4`. If an unexpected error occurs during tokenization, returns `0`.
+    
     Parameters:
-        text (str): The input text to tokenize.
-        model (str): The model name used to select the encoding; if model-specific encoding cannot be obtained, a base encoding is used.
-
+        text (str): Input text to count tokens for.
+        model (str): Model name used to select the encoding.
+    
     Returns:
-        int: The token count for the input text according to the chosen encoder, or 0 if tokenization fails.
+        int: The token count for `text`, a heuristic estimate when `tiktoken` is missing, or `0` on unexpected errors.
     """
     try:
         import tiktoken

@@ -30,6 +30,18 @@ class AIAnalysisMetadata:
 
 
 def _count_tokens(text: str, model: str) -> int:
+    """
+    Return the number of tokens in `text` according to the tokenizer for `model`.
+    
+    If the model-specific encoding is unavailable, falls back to the `cl100k_base` encoding. If the `tiktoken` package is not installed or any error occurs during encoding, returns `0` (a warning is logged when `tiktoken` is missing).
+    
+    Parameters:
+        text (str): The input text to count tokens for.
+        model (str): Model name used to select a tokenizer/encoding.
+    
+    Returns:
+        int: The token count for `text`, or `0` if tokenization is unavailable or an error occurred.
+    """
     try:
         import tiktoken
 
@@ -51,6 +63,17 @@ def _count_tokens(text: str, model: str) -> int:
 
 
 def _extract_json_text(raw_text: str) -> str:
+    """
+    Extract JSON content from text that may be wrapped in a fenced code block.
+    
+    If `raw_text` begins with a triple-backtick fenced block (``` or ```json), returns the trimmed contents of that block. Otherwise returns `raw_text` trimmed of leading and trailing whitespace.
+    
+    Parameters:
+        raw_text (str): Text that may contain a fenced JSON code block.
+    
+    Returns:
+        The inner text of the fenced code block if one is present, otherwise the trimmed input string.
+    """
     stripped = raw_text.strip()
     if stripped.startswith("```"):
         match = re.search(r"```(?:json)?\s*(.*?)```", stripped, re.DOTALL)
@@ -64,6 +87,22 @@ def _parse_theme_suggestions_response(
     existing_tags: list[str],
     limit: int,
 ) -> list[ThemeSuggestion]:
+    """
+    Parse and normalize theme suggestions from a JSON-formatted model response.
+    
+    Accepts either a JSON object containing a `suggestions` field or a top-level JSON list. Normalizes and deduplicates suggested tags against `existing_tags` and within the response, filters out blank or invalid tags, converts `occurrences` to a non-negative integer, clamps `confidence` to the range 0.0–1.0, and returns up to `limit` ThemeSuggestion instances preserving the order they appeared.
+    
+    Parameters:
+        raw_text (str): Raw text returned by the model; may contain fenced code blocks and/or plain JSON.
+        existing_tags (list[str]): Tags to exclude from the results; each tag will be normalized before comparison.
+        limit (int): Maximum number of suggestions to return.
+    
+    Returns:
+        list[ThemeSuggestion]: A list of normalized, deduplicated theme suggestions (at most `limit` items).
+    
+    Raises:
+        ValueError: If the parsed JSON is neither an object nor a list.
+    """
     payload = json.loads(_extract_json_text(raw_text))
     if isinstance(payload, dict):
         raw_suggestions = payload.get("suggestions", [])
@@ -119,6 +158,20 @@ async def _log_usage(
     cost_estimate_usd: float,
     success: bool,
 ) -> None:
+    """
+    Record AI usage metrics to persistent storage when a database path is provided.
+    
+    If `db_path` is falsy the function returns immediately and no data is recorded.
+    
+    Parameters:
+        db_path (Optional[str]): Path to the usage database; if falsy, logging is skipped.
+        provider (str): Name of the AI provider (e.g., "openai", "ollama").
+        model (str): Model identifier used for the request.
+        input_tokens (int): Number of input tokens counted for the request.
+        output_tokens (int): Number of output tokens produced by the request.
+        cost_estimate_usd (float): Estimated cost in USD associated with the response.
+        success (bool): Whether the AI request completed successfully.
+    """
     if not db_path:
         return
     await log_ai_usage(
@@ -155,6 +208,39 @@ async def generate_theme_suggestions_with_ai(
     limit: int = 5,
     max_prompt_chars: int = 12000,
 ) -> tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+    """
+    Generate a list of recurring technical theme suggestions from provided snapshot texts using an AI provider.
+    
+    Builds a prompt from the given snapshot texts and requests strict JSON theme suggestions from the selected provider (OpenAI or Ollama), optionally falling back to OpenAI. Results are normalized, deduplicated against existing tags, clamped to the requested limit, and accompanied by usage metadata when available. Errors produce a user-visible message instead of suggestions.
+    
+    Parameters:
+        snapshot_texts (list[str]): Ordered pieces of recent context to analyze; blank items are ignored.
+        existing_tags (list[str]): Tags to exclude from suggestions (case/format normalization applied).
+        model (str): Primary model to request from the chosen provider.
+        provider (str): Primary provider identifier (e.g., "openai", "ollama").
+        fallback_provider (str): Provider to use if the primary provider fails.
+        fallback_model (str): Model to use with the fallback provider.
+        require_confirmation (bool): If True, require explicit confirmation before using the OpenAI fallback.
+        openai_api_url (str): Base URL for OpenAI API requests.
+        openai_timeout_seconds (float): Request timeout for OpenAI calls.
+        openai_max_tokens (int): Maximum tokens to request from OpenAI for the response.
+        api_url (str): Base URL for the primary provider (e.g., Ollama).
+        timeout_seconds (float): Request timeout for the primary provider.
+        max_retries (int): Number of retries for the primary provider.
+        backoff_seconds (float): Backoff delay between retries for the primary provider.
+        db_path (Optional[str]): If provided, usage and budget checks are persisted to this database.
+        monthly_budget_usd (float): Monthly budget used to determine whether to permit OpenAI requests.
+        cost_per_1k_tokens (float): Cost per 1k output tokens used to estimate OpenAI cost.
+        limit (int): Maximum number of theme suggestions to return (default 5).
+        max_prompt_chars (int): Maximum combined character length of snapshots included in the prompt (default 12000).
+    
+    Returns:
+        tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+            A tuple containing:
+            - A list of parsed ThemeSuggestion objects (may be empty on error or no data),
+            - AIAnalysisMetadata with provider, model, token counts, and estimated cost when available, otherwise None,
+            - An error message string when generation failed, otherwise None.
+    """
     joined_snapshots = "\n\n".join(
         f"[{index}] {text.strip()}"
         for index, text in enumerate(snapshot_texts, start=1)
@@ -190,6 +276,23 @@ async def generate_theme_suggestions_with_ai(
     ) -> tuple[
         list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]
     ]:
+        """
+        Finalize an error path by recording AI usage and returning a standardized error result.
+        
+        Records usage metrics (including a cost estimate when `used_provider` is "openai") and returns an empty suggestions list, no metadata, and a user-facing error message.
+        
+        Parameters:
+            used_provider (str): The AI provider identifier used for the attempt.
+            used_model (str): The model name used for the attempt.
+            error (Exception): The exception that occurred; its string form is included in the returned message.
+            input_tokens (int): Number of input tokens to record (default 0).
+            output_tokens (int): Number of output tokens to record (default 0).
+        
+        Returns:
+            tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+                An empty list of suggestions, `None` metadata, and an error message string prefixed with
+                "Error generating theme suggestions: ".
+        """
         cost = (
             estimate_cost(output_tokens, cost_per_1k_tokens)
             if used_provider == "openai"
@@ -214,6 +317,21 @@ async def generate_theme_suggestions_with_ai(
     ) -> tuple[
         list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]
     ]:
+        """
+        Finalize a successful AI response by parsing theme suggestions, recording usage, and producing analysis metadata.
+        
+        Parameters:
+            response_text (str): Raw text returned by the AI provider.
+            used_provider (str): Identifier of the provider that produced the response (e.g., "openai", "ollama").
+            used_model (str): Model name used to generate the response.
+            usage (Optional[OpenAIUsage]): Optional OpenAI usage metadata containing token counts (e.g., `{"prompt_tokens": int, "completion_tokens": int}`); if omitted, token counts are estimated from the prompt and response.
+        
+        Returns:
+            tuple[list[ThemeSuggestion], Optional[AIAnalysisMetadata], Optional[str]]:
+                - A list of parsed `ThemeSuggestion` objects (may be empty).
+                - An `AIAnalysisMetadata` instance with provider, model, input/output token counts, and an estimated cost when available, or `None` if parsing failed.
+                - An error message `str` when parsing or processing failed, or `None` on success.
+        """
         if usage is not None:
             input_tokens = usage.get("prompt_tokens", 0)
             output_tokens = usage.get("completion_tokens", 0)
